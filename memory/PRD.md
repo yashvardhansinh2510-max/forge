@@ -1,114 +1,90 @@
-# PRD: Purchase Tracker — Final Complete Overhaul
-## Project: Forge SaaS OS for Buildcon House
+# PRD: Forge — Purchase Tracker
 
----
+## Product Overview
+Forge is a SaaS Operating System for **Buildcon House** (premium bath fixtures dealer).
+The **Purchase Tracker** is a core module for tracking procurement pipeline of PO line items through 7 stages.
 
-## Problem Statement
-Complete overhaul of the Purchase Tracker page to implement a 7-stage pipeline procurement system with live stage tracking, partial qty moves, Excel exports, and reactive UI cascade.
-
----
+## 7-Stage Pipeline
+```
+ORDERED → PENDING_CO → PENDING_DIST → AT_GODOWN → IN_BOX → DISPATCHED → NOT_DISPLAYED
+```
 
 ## Architecture
-
-### Tech Stack
-- **Frontend**: Next.js 15 App Router, React, Zustand + Immer (client state), TypeScript
-- **Backend**: Next.js API routes, Prisma ORM (mock data for now)
-- **Data**: Mock data in `/lib/mock/procurement-data.ts`, real DB via `@forge/db`
-
-### Key Files Modified / Created
-- `packages/db/prisma/schema.prisma` — added stage qty fields + StageMovement model
-- `src/lib/mock/procurement-data.ts` — 7-stage types, LEGAL_TRANSITIONS, STAGE_LABELS, STAGE_COLORS
-- `src/lib/tracker-utils.ts` — computeKPIs, getLinesForKPIDrillDown, getCustomerStageCounts
-- `src/lib/procurement-store.ts` — moveStage action (Zustand+Immer)
-- `src/lib/usePurchasesStore.ts` — moveStageModal, openKPICard state
-- `src/lib/excelExporter.ts` — exportStageLines, exportTrackerLines, exportCustomerLines
-- `src/components/procurement/TrackerKPIStrip.tsx` — redesigned 7 KPI cards
-- `src/components/procurement/StatDrillDownPanel.tsx` — drill-down + Excel export
-- `src/components/procurement/CompanyView/CodeTableRow.tsx` — per-stage columns + pipeline dots + Move button
-- `src/components/procurement/CompanyView/CodeTable.tsx` — updated 7-stage headers
-- `src/components/procurement/CompanyView/CompanyView.tsx` — wired Export button
-- `src/components/procurement/CustomerView/CustomerDetailPanel.tsx` — 7 stage stat boxes + Excel
-- `src/components/procurement/PartialMoveModal.tsx` — qty selector + legal stage transitions
-- `src/app/api/purchase-orders/lines/[lineId]/move-stage/route.ts` — server-side move validation
-- `src/app/api/purchase-orders/by-stage/route.ts` — stage drill-down API
-- `src/app/api/customers/[customerId]/by-stage/route.ts` — customer stage filter API
-
----
-
-## Core Requirements (Static)
-
-### 7-Stage Pipeline
-```
-Total Ordered → Pending Co. → Pending Dist. → At Godown → In Box → Dispatched → Not Displayed
-```
-
-### Stage Colors
-| Stage | Color |
-|-------|-------|
-| Pend. from Co. | #F5A623 amber |
-| Pend. from Dist. | #E8762C orange |
-| At Godown | #4A90D9 blue |
-| In Box | #7B68EE purple |
-| Dispatched | #27AE60 green |
-| Not Displayed | #95A5A6 grey |
-
-### Brand Groups (post Step 3)
-- ALL | GROHE | HANSGROHE+AXOR | VITRA | GEBERIT
-- KAJARIA: removed entirely
-
-### Legal Transitions (enforced client + server)
-- ORDERED → PENDING_CO | PENDING_DIST
-- PENDING_CO → PENDING_DIST | AT_GODOWN
-- PENDING_DIST → AT_GODOWN
-- AT_GODOWN → IN_BOX
-- IN_BOX → DISPATCHED
-- DISPATCHED → NOT_DISPLAYED
-- NOT_DISPLAYED → terminal
-
----
+- **Frontend**: Next.js 15 App Router (monorepo at `/app/apps/web/`)
+- **State**: SWR for API data (stat cards, customer counts) + Zustand for UI state and drill-down panels
+- **Database**: PostgreSQL via Prisma ORM (`/app/packages/db/`)
+- **API Routes**: Next.js API routes at `/app/apps/web/src/app/api/`
 
 ## What's Been Implemented
 
-### Session 1–3 (Previous sessions)
-- [x] Step 1: File audit
-- [x] Step 2: Prisma schema — 6 new stage qty fields + StageMovement model; prisma generate run
-- [x] Step 3: Remove Kajaria everywhere; merge Axor under Hansgrohe tab
-- [x] Step 4: Remove "Needs PO" from all surfaces
-- [x] Step 5: API routes — move-stage, by-stage, customers/[id]/by-stage
-- [x] Step 6: excelExporter.ts — exportStageLines, exportTrackerLines, exportCustomerLines
-- [x] Step 7: PartialMoveModal — qty selector, FROM/TO stage pills, legal transitions enforced
+### Steps 1-7 (Previous Sessions)
+- Base Purchase Tracker UI, sidebar, brand tabs, company/customer views
+- Zustand procurement store with mock data
+- PO line items table, stage pipeline dots
+- Move stage modal with legal transitions
 
-### Session 4 (2026-03-31)
-- [x] Step 8: Stat cards redesign — colored top accent bar, progress bars, pct of total, OPEN badge
-- [x] Step 8: Drill-down panel — Export Excel button wired to exportStageLines
-- [x] Step 9: CodeTableRow — 7-stage columns (PEND. CO / PEND. DIST / GODOWN / IN BOX / DISPATCHED), pipeline dot strip under SKU, Move Stage button
-- [x] Step 9: CodeTable headers — updated to match 7-stage columns
-- [x] Step 10: CustomerDetailPanel — 7 stage stat boxes with click-to-filter, Export button, stage filter indicator
-- [x] Step 11: Reactive cascade — Zustand+Immer ensures moveStage updates propagate to all KPI cards, row columns, pipeline dots instantly
-- [x] Step 12: UI pass — #FAFAF8 warm background, #FFFFFF cards, colored accent borders
+### Steps 8-12 (Previous Fork)
+- KPI stat cards with percentage indicators (Step 8)
+- Excel export via ExcelJS (Step 8)
+- Per-stage qty split in CodeTableRow + pipeline dots (Step 9)
+- Customer panel with 7 stat boxes and stage filter (Step 10)
+- Reactive cascade — Zustand updates on mutations (Step 11)
+- Color system updates (#FAFAF8 background, #FFFFFF cards) (Step 12)
 
----
+### Emergency Fix Session (Current - March 30, 2026)
+- **Installed PostgreSQL** and seeded DB with mock procurement data
+- **FIX 1**: API Route `/api/purchase-orders/lines/[id]/move-stage` — now connects to real PostgreSQL DB via Prisma (was crashing due to missing DB)
+- **FIX 2**: Created `/api/purchase-orders/stage-totals` — aggregated stage qty totals from DB
+- **FIX 3**: Created `/api/customers/[customerId]/stage-totals` — customer-scoped stage totals from DB
+- **FIX 4**: Wired `PartialMoveModal` to call API first, then optimistic Zustand update (was Zustand-only)
+- **FIX 5**: Wired `TrackerKPIStrip` to use SWR from `/api/purchase-orders/stage-totals` (was Zustand-only)
+- **FIX 6**: Wired `CustomerDetailPanel` to use SWR from `/api/customers/[customerId]/stage-totals` (was Zustand-only)
+- **FIX 7**: Added `LEGAL_TRANSITIONS` enforcement to Move button (hidden when no legal moves)
+- **FIX 8**: Fixed React hooks order violation in `CustomerDetailPanel` (found by testing agent)
+- **Backend proxy**: Created FastAPI proxy on port 8001 → port 3000 for Kubernetes ingress compatibility
+- **SWR helpers**: Created `/app/apps/web/src/lib/swr-helpers.ts` with typed hooks and revalidation
 
-## Prioritized Backlog
+## Key API Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| PATCH | `/api/purchase-orders/lines/[id]/move-stage` | Move qty between stages |
+| GET | `/api/purchase-orders/stage-totals` | Aggregated stage totals |
+| GET | `/api/customers/[customerId]/stage-totals` | Customer-scoped stage totals |
 
-### P0 (Must have — not yet done)
-- Connect to real Prisma DB (schema migrated, routes written, mock data in place)
+## Key Files
+- `/app/apps/web/src/components/procurement/TrackerKPIStrip.tsx` — KPI stat cards (SWR)
+- `/app/apps/web/src/components/procurement/PartialMoveModal.tsx` — Move stage modal (API + Zustand)
+- `/app/apps/web/src/components/procurement/CustomerView/CustomerDetailPanel.tsx` — Customer panel (SWR)
+- `/app/apps/web/src/components/procurement/CompanyView/CodeTableRow.tsx` — Product rows + Move button
+- `/app/apps/web/src/lib/swr-helpers.ts` — SWR hooks and revalidation
+- `/app/apps/web/src/lib/procurement-store.ts` — Zustand store (mock data for drill-downs)
+- `/app/packages/db/prisma/schema.prisma` — Prisma schema
+- `/app/packages/db/prisma/seed.ts` — DB seed script
+
+## What's Still Mocked
+- **CompanyView table rows** — reads from Zustand mock data (`procurement-store`)
+- **StatDrillDownPanel detail items** — reads from Zustand mock data
+- The stat card COUNTS and customer panel COUNTS are now from real DB via SWR
+
+## Upcoming Tasks (P1)
+- Hydrate CompanyView table rows from real Prisma API (replace Zustand mock data)
+- Add "Mark Received" workflow (update qtyReceived + auto-promote to AT_GODOWN)
+- Pipeline dots per OrderRow in Customer View
+
+## Future Tasks (P2)
 - Auth guard for move-stage API
-
-### P1 (High value)
-- Partial move history / audit trail (StageMovement table exists in schema)
-- "Mark Received" button — update qtyReceived and promote to AT_GODOWN
-- Customer panel: show pipeline dots per OrderRow (currently shows BoxAllocationStatus only)
-
-### P2 (Nice to have)
-- Push notifications when qty moves to IN_BOX for customer's project
-- Overdue indicator if stock has been at a stage > N days
+- StageMovement audit trail UI
+- Push notifications for IN_BOX stage
+- Overdue indicator for stalled inventory
 - PDF export for customer summaries
+- Connect full procurement store to Prisma (replace all mock data)
 
----
+## Database
+- PostgreSQL at `postgresql://postgres:postgres@localhost:5432/forge`
+- Seed: `cd /app/packages/db && npx tsx prisma/seed.ts`
+- 8 Purchase Orders, 11 Line Items, 7 Projects, 11 Products
 
-## Next Tasks
-1. Wire up real DB — run `prisma migrate dev` in production environment
-2. Add `moveStage` API call from PartialMoveModal (currently optimistic Zustand only)
-3. OrderRow in Customer View: update to show per-stage pipeline dots instead of old BoxAllocationStatus funnel
-4. "Mark Received" workflow — update qtyReceived + stage promotion
+## Testing
+- Test report: `/app/test_reports/iteration_1.json`
+- Backend: 12/12 tests passed (100%)
+- Frontend: 95% (minor hydration warning for initial SWR load)
