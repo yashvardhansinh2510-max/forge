@@ -1,0 +1,210 @@
+<h2>Overall Page Layout — Choose an Approach</h2>
+<p class="subtitle">The Purchases page needs brand tabs at the top + two views: company/brand summary and customer order tracking. Here are 3 layout approaches.</p>
+
+<div class="cards" style="grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 24px;">
+
+  <!-- Option A -->
+  <div class="card" data-choice="A" onclick="toggleSelect(this)" style="padding: 0; overflow: hidden;">
+    <div class="card-image" style="padding: 16px; background: #0f0f0f; border-bottom: 1px solid #222;">
+      <div style="font-weight:700; font-size:13px; color:#fff; margin-bottom:12px;">Option A — Brand Tabs → Side-by-Side</div>
+      <!-- Brand tabs mockup -->
+      <div style="display:flex; gap:4px; background:#1a1a1a; padding:6px; border-radius:8px; margin-bottom:10px; overflow:hidden;">
+        <div style="flex:1; background:#00A3E0; color:#fff; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; font-weight:700;">GROHE</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; font-weight:700; border:1px solid #333;">HG</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; font-weight:700; border:1px solid #333;">AXOR</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; font-weight:700; border:1px solid #333;">VITRA</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; font-weight:700; border:1px solid #333;">GEB</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; font-weight:700; border:1px solid #333;">KAJ</div>
+      </div>
+      <!-- Split layout -->
+      <div style="display:flex; gap:6px; height:160px;">
+        <!-- Left: Company view -->
+        <div style="flex:1; background:#111; border-radius:6px; padding:8px; border:1px solid #222; overflow:hidden;">
+          <div style="font-size:8px; color:#888; font-weight:700; text-transform:uppercase; margin-bottom:6px;">Company Orders</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="background:#1a1a1a; border-radius:4px; padding:5px 7px; border:1px solid #00A3E040;">
+              <div style="font-size:8px; color:#fff; font-weight:600;">Grohe India Pvt Ltd</div>
+              <div style="display:flex; gap:6px; margin-top:3px;">
+                <span style="font-size:7px; color:#00A3E0;">Ordered: 12</span>
+                <span style="font-size:7px; color:#F59E0B;">Pending: 4</span>
+                <span style="font-size:7px; color:#22C55E;">At Godown: 8</span>
+              </div>
+            </div>
+            <div style="background:#1a1a1a; border-radius:4px; padding:5px 7px;">
+              <div style="font-size:8px; color:#888;">Another Vendor</div>
+              <div style="display:flex; gap:6px; margin-top:3px;">
+                <span style="font-size:7px; color:#6B7280;">Ordered: 6</span>
+                <span style="font-size:7px; color:#6B7280;">Pending: 6</span>
+              </div>
+            </div>
+            <div style="background:#1a1a1a; border-radius:4px; padding:5px 7px;">
+              <div style="font-size:8px; color:#888;">Third Vendor</div>
+            </div>
+          </div>
+        </div>
+        <!-- Right: Customer view -->
+        <div style="flex:1; background:#111; border-radius:6px; padding:8px; border:1px solid #222; overflow:hidden;">
+          <div style="font-size:8px; color:#888; font-weight:700; text-transform:uppercase; margin-bottom:6px;">Customer Orders</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="background:#1a1a1a; border-radius:4px; padding:5px 7px;">
+              <div style="font-size:8px; color:#fff; font-weight:600;">Mehta Architects</div>
+              <div style="display:flex; gap:4px; margin-top:3px; flex-wrap:wrap;">
+                <span style="font-size:6px; background:#22C55E20; color:#22C55E; padding:1px 5px; border-radius:3px;">In Box: 4</span>
+                <span style="font-size:6px; background:#F59E0B20; color:#F59E0B; padding:1px 5px; border-radius:3px;">Pending: 2</span>
+                <span style="font-size:6px; background:#3B82F620; color:#3B82F6; padding:1px 5px; border-radius:3px;">Delivered: 6</span>
+              </div>
+            </div>
+            <div style="background:#1a1a1a; border-radius:4px; padding:5px 7px;">
+              <div style="font-size:8px; color:#888;">Lodha Projects</div>
+              <div style="display:flex; gap:4px; margin-top:3px; flex-wrap:wrap;">
+                <span style="font-size:6px; background:#6B728020; color:#6B7280; padding:1px 5px; border-radius:3px;">Pending: 8</span>
+              </div>
+            </div>
+            <div style="background:#1a1a1a; border-radius:4px; padding:5px 7px;">
+              <div style="font-size:8px; color:#888;">Oberoi Realty</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Side-by-Side Split</h3>
+      <p>Brand tabs on top. Left = company/vendor summary. Right = customer orders. Both panels visible at once.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="B" onclick="toggleSelect(this)" style="padding: 0; overflow: hidden;">
+    <div class="card-image" style="padding: 16px; background: #0f0f0f; border-bottom: 1px solid #222;">
+      <div style="font-weight:700; font-size:13px; color:#fff; margin-bottom:12px;">Option B — Brand Tabs → Master Detail</div>
+      <!-- Brand tabs -->
+      <div style="display:flex; gap:4px; background:#1a1a1a; padding:6px; border-radius:8px; margin-bottom:8px; overflow:hidden;">
+        <div style="flex:1; background:#00A3E0; color:#fff; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; font-weight:700;">GROHE</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; border:1px solid #333;">HG</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; border:1px solid #333;">AXOR</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; border:1px solid #333;">VITRA</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; border:1px solid #333;">GEB</div>
+        <div style="flex:1; background:#1a1a1a; color:#555; padding:5px 6px; border-radius:5px; text-align:center; font-size:9px; border:1px solid #333;">KAJ</div>
+      </div>
+      <!-- Sub-tabs: Company / Customer -->
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <div style="font-size:9px; color:#00A3E0; font-weight:700; padding-bottom:3px; border-bottom:2px solid #00A3E0;">Company View</div>
+        <div style="font-size:9px; color:#555; padding-bottom:3px;">Customer View</div>
+      </div>
+      <!-- SKU table (master) + slide-over (detail) -->
+      <div style="display:flex; gap:6px; height:150px;">
+        <div style="flex:1.4; background:#111; border-radius:6px; border:1px solid #222; overflow:hidden;">
+          <div style="background:#1a1a1a; padding:4px 8px; display:flex; gap:8px; border-bottom:1px solid #222;">
+            <span style="font-size:7px; color:#888; flex:2;">SKU / Product</span>
+            <span style="font-size:7px; color:#888; flex:1; text-align:right;">Ordered</span>
+            <span style="font-size:7px; color:#888; flex:1; text-align:right;">Pending</span>
+            <span style="font-size:7px; color:#888; flex:1; text-align:right;">In Box</span>
+          </div>
+          <div style="padding:4px 0; display:flex; flex-direction:column; gap:0;">
+            <div style="padding:5px 8px; background:#00A3E008; display:flex; gap:8px; align-items:center; border-left:2px solid #00A3E0;">
+              <span style="font-size:7px; color:#fff; flex:2;">Grohtherm 800 Set</span>
+              <span style="font-size:7px; color:#00A3E0; flex:1; text-align:right; font-variant-numeric:tabular-nums;">12</span>
+              <span style="font-size:7px; color:#F59E0B; flex:1; text-align:right;">4</span>
+              <span style="font-size:7px; color:#22C55E; flex:1; text-align:right;">8</span>
+            </div>
+            <div style="padding:5px 8px; display:flex; gap:8px; align-items:center; border-left:2px solid transparent;">
+              <span style="font-size:7px; color:#888; flex:2;">Grohtherm 1000</span>
+              <span style="font-size:7px; color:#888; flex:1; text-align:right;">6</span>
+              <span style="font-size:7px; color:#F59E0B; flex:1; text-align:right;">6</span>
+              <span style="font-size:7px; color:#888; flex:1; text-align:right;">0</span>
+            </div>
+            <div style="padding:5px 8px; display:flex; gap:8px; align-items:center;">
+              <span style="font-size:7px; color:#888; flex:2;">SmartControl 300</span>
+              <span style="font-size:7px; color:#888; flex:1; text-align:right;">3</span>
+              <span style="font-size:7px; color:#888; flex:1; text-align:right;">0</span>
+              <span style="font-size:7px; color:#22C55E; flex:1; text-align:right;">3</span>
+            </div>
+            <div style="padding:5px 8px; display:flex; gap:8px; align-items:center;">
+              <span style="font-size:7px; color:#555; flex:2;">+ 5 more items</span>
+            </div>
+          </div>
+        </div>
+        <!-- Slide-over -->
+        <div style="flex:1; background:#111; border-radius:6px; border:1px solid #00A3E040; overflow:hidden;">
+          <div style="background:#00A3E015; padding:6px 8px; border-bottom:1px solid #00A3E030;">
+            <div style="font-size:8px; color:#00A3E0; font-weight:700;">Grohtherm 800 Set × 12</div>
+          </div>
+          <div style="padding:6px 8px; display:flex; flex-direction:column; gap:4px;">
+            <div style="font-size:7px; color:#888; font-weight:700; text-transform:uppercase; margin-bottom:2px;">Customer Boxes</div>
+            <div style="background:#1a1a1a; border-radius:3px; padding:4px 6px; display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:7px; color:#fff;">Mehta Arch.</span>
+              <span style="font-size:7px; background:#22C55E20; color:#22C55E; padding:1px 5px; border-radius:3px;">3 delivered</span>
+            </div>
+            <div style="background:#1a1a1a; border-radius:3px; padding:4px 6px; display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:7px; color:#fff;">Lodha Projects</span>
+              <span style="font-size:7px; background:#F59E0B20; color:#F59E0B; padding:1px 5px; border-radius:3px;">2 in box</span>
+            </div>
+            <div style="background:#EA580C20; border-radius:3px; padding:4px 6px; display:flex; justify-content:space-between; align-items:center; border:1px dashed #EA580C40;">
+              <span style="font-size:7px; color:#888;">Other person</span>
+              <span style="font-size:7px; color:#EA580C;">1 + note</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Master-Detail + Sub-Tabs</h3>
+      <p>Brand tabs on top, then toggle Company/Customer sub-view. Click a SKU row → slide-over shows customer boxes for that item.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="C" onclick="toggleSelect(this)" style="padding: 0; overflow: hidden;">
+    <div class="card-image" style="padding: 16px; background: #0f0f0f; border-bottom: 1px solid #222;">
+      <div style="font-weight:700; font-size:13px; color:#fff; margin-bottom:12px;">Option C — Full-Width Brand Dashboard</div>
+      <!-- Brand tabs -->
+      <div style="display:flex; gap:4px; margin-bottom:10px;">
+        <div style="background:#00A3E0; color:#fff; padding:5px 10px; border-radius:20px; font-size:9px; font-weight:700;">GROHE</div>
+        <div style="background:#1a1a1a; color:#555; padding:5px 10px; border-radius:20px; font-size:9px; border:1px solid #333;">HANSGROHE</div>
+        <div style="background:#1a1a1a; color:#555; padding:5px 10px; border-radius:20px; font-size:9px; border:1px solid #333;">AXOR</div>
+        <div style="background:#1a1a1a; color:#555; padding:5px 10px; border-radius:20px; font-size:9px; border:1px solid #333;">VITRA</div>
+        <div style="background:#1a1a1a; color:#555; padding:5px 10px; border-radius:20px; font-size:9px; border:1px solid #333;">GEBERIT</div>
+        <div style="background:#1a1a1a; color:#555; padding:5px 10px; border-radius:20px; font-size:9px; border:1px solid #333;">KAJARIA</div>
+      </div>
+      <!-- KPI strip -->
+      <div style="display:flex; gap:6px; margin-bottom:8px;">
+        <div style="flex:1; background:#00A3E015; border-radius:6px; padding:6px 8px; border:1px solid #00A3E030; text-align:center;">
+          <div style="font-size:7px; color:#888;">Ordered</div>
+          <div style="font-size:14px; font-weight:700; color:#00A3E0;">47</div>
+        </div>
+        <div style="flex:1; background:#F59E0B15; border-radius:6px; padding:6px 8px; border:1px solid #F59E0B30; text-align:center;">
+          <div style="font-size:7px; color:#888;">Pending</div>
+          <div style="font-size:14px; font-weight:700; color:#F59E0B;">12</div>
+        </div>
+        <div style="flex:1; background:#A855F715; border-radius:6px; padding:6px 8px; border:1px solid #A855F730; text-align:center;">
+          <div style="font-size:7px; color:#888;">In Godown</div>
+          <div style="font-size:14px; font-weight:700; color:#A855F7;">23</div>
+        </div>
+        <div style="flex:1; background:#22C55E15; border-radius:6px; padding:6px 8px; border:1px solid #22C55E30; text-align:center;">
+          <div style="font-size:7px; color:#888;">Dispatched</div>
+          <div style="font-size:14px; font-weight:700; color:#22C55E;">12</div>
+        </div>
+      </div>
+      <!-- Two tables side by side -->
+      <div style="display:flex; gap:6px; height:100px;">
+        <div style="flex:1; background:#111; border-radius:6px; border:1px solid #222; padding:6px 8px; overflow:hidden;">
+          <div style="font-size:7px; color:#888; font-weight:700; margin-bottom:4px;">📦 ORDERED FROM COMPANY</div>
+          <div style="font-size:7px; color:#fff; margin-bottom:2px;">Grohtherm 800 × 12 <span style="color:#F59E0B; float:right;">4 pending</span></div>
+          <div style="font-size:7px; color:#888; margin-bottom:2px;">SmartControl 300 × 3 <span style="color:#22C55E; float:right;">all received</span></div>
+          <div style="font-size:7px; color:#888;">Grohtherm 1000 × 6 <span style="color:#F59E0B; float:right;">6 pending</span></div>
+        </div>
+        <div style="flex:1; background:#111; border-radius:6px; border:1px solid #222; padding:6px 8px; overflow:hidden;">
+          <div style="font-size:7px; color:#888; font-weight:700; margin-bottom:4px;">👥 CUSTOMER ORDERS</div>
+          <div style="font-size:7px; color:#fff; margin-bottom:2px;">Mehta Arch. <span style="color:#22C55E; float:right;">4 in box</span></div>
+          <div style="font-size:7px; color:#888; margin-bottom:2px;">Lodha Projects <span style="color:#F59E0B; float:right;">2 del. pending</span></div>
+          <div style="font-size:7px; color:#888;">Oberoi Realty <span style="color:#3B82F6; float:right;">3 ordered</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Brand Dashboard</h3>
+      <p>Brand pills on top. KPI strip for the brand. Full-width table with all SKUs + customer assignments in one scrollable view.</p>
+    </div>
+  </div>
+
+</div>

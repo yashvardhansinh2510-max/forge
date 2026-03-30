@@ -1,0 +1,20 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --filter web add recharts)",
+      "Bash(pnpm --filter web type-check)",
+      "Bash(pnpm --filter web build)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(pnpm --filter web add @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities)",
+      "Bash(pnpm --filter web add @tanstack/react-table)",
+      "Bash(pnpm --filter web exec tsc --noEmit)",
+      "Bash(ls /Users/yashvardhansinhjhala/forge/apps/web/src/app/\\\\\\(dashboard\\\\\\)/sales/)",
+      "Bash(pdftotext '/Users/yashvardhansinhjhala/Library/Mobile Documents/com~apple~CloudDocs/CHIRAGBHAI LAKHANI GROHE 24-03-2026.pdf' -)",
+      "Bash(pdftotext '/Users/yashvardhansinhjhala/Downloads/MASTER QUOTATION FILE- 01-05-2025 \\(1\\).pdf' -)",
+      "Bash(pdftotext '/Users/yashvardhansinhjhala/Downloads/Grohe Pricing -10th July.pdf' -)"
+    ]
+  }
+}

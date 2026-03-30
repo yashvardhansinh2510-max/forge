@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="18" fill="#003087"/>
+  <!-- G letterform, rounded -->
+  <path d="M66 36 Q56 24 42 24 Q24 24 24 50 Q24 76 42 76 Q56 76 64 66 L64 50 L47 50"
+        fill="none" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

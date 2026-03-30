@@ -1,0 +1,12 @@
+<svg viewBox="0 0 28 42" xmlns="http://www.w3.org/2000/svg">
+  <!-- 2×3 grid of brand color tiles — represents ALL brands -->
+  <!-- Row 1: GROHE + HANSGROHE -->
+  <rect x="0"  y="0"  width="12" height="12" rx="2.5" fill="#00A3E0"/>
+  <rect x="16" y="0"  width="12" height="12" rx="2.5" fill="#E30613"/>
+  <!-- Row 2: AXOR + VITRA -->
+  <rect x="0"  y="15" width="12" height="12" rx="2.5" fill="#2C2C2C"/>
+  <rect x="16" y="15" width="12" height="12" rx="2.5" fill="#005BAC"/>
+  <!-- Row 3: GEBERIT + KAJARIA -->
+  <rect x="0"  y="30" width="12" height="12" rx="2.5" fill="#003087"/>
+  <rect x="16" y="30" width="12" height="12" rx="2.5" fill="#FF6B00"/>
+</svg>

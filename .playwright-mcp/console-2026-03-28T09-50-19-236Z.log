@@ -1,0 +1,30 @@
+[    1888ms] [ERROR] In HTML, whitespace text nodes cannot be a child of <%s>. Make sure you don't have any extra whitespace between tags on each line of your source code.
+This will cause a hydration error.%s colgroup 
+
+  ...
+    <InnerLayoutRouter url="/purchases" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>
+      <SegmentViewNode type="page" pagePath="(dashboard...">
+        <SegmentTrieNode>
+        <PurchasesPage>
+          <POListClient>
+            <motion.div variants={{initial:{...}, ...}} initial="initial" animate="animate" style={{display:"flex", ...}}>
+              <div style={{display:"flex", ...}} ref={function useMotionRef.useCallback}>
+                <div>
+                <div style={{flex:1, ...}}>
+                  <PODetail order={{id:"po-001", ...}} onStatusChange={function onStatusChange}>
+                    <div style={{display:"flex", ...}}>
+                      <div>
+                      <div style={{flex:1, ...}}>
+                        <POLineItemsTable poId="po-001" lineItems={[...]} readonly={false}>
+                          <div style={{...}}>
+                            <table style={{width:"100%", ...}}>
+>                             <colgroup>
+                                <col>
+>                               {"   "}
+                                ...
+                              ...
+                          ...
+                      ...
+      ...
+ @ webpack-internal:///(app-pages-browser)/../../node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/next-devtools/userspace/app/errors/intercept-console-error.js:56
+[    2029ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:57539/favicon.ico:0

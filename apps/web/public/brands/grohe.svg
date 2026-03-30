@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="18" fill="#00A3E0"/>
+  <!-- Wave mark -->
+  <path d="M22 62 Q34 52 46 62 Q58 72 70 62 Q76 57 78 54"
+        fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="4" stroke-linecap="round"/>
+  <!-- G letterform -->
+  <path d="M63 40 Q55 30 43 30 Q28 30 28 50 Q28 70 44 70 Q55 70 62 62 L62 52 L48 52"
+        fill="none" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

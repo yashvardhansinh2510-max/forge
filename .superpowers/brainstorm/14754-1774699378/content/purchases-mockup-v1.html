@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Purchases Page Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    color: #e5e5e5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Geist', 'Inter', sans-serif;
+    font-size: 13px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── Brand Tab Bar ──────────────────────────────────────────────────── */
+  .brand-bar {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    background: #111;
+    border-bottom: 1px solid #1f1f1f;
+    padding: 0 16px;
+    flex-shrink: 0;
+    height: 52px;
+  }
+  .brand-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 18px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    position: relative;
+    min-width: 80px;
+  }
+  .brand-tab:hover { background: #1a1a1a; }
+  .brand-tab.active { border-bottom-color: var(--brand-color, #00A3E0); }
+  .brand-tab .tab-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #666;
+  }
+  .brand-tab.active .tab-label { color: var(--brand-color, #00A3E0); }
+  .brand-tab .tab-count {
+    font-size: 9px;
+    color: #444;
+    font-variant-numeric: tabular-nums;
+  }
+  .brand-tab.active .tab-count { color: var(--brand-color, #00A3E0); opacity: 0.7; }
+  .brand-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--brand-color, #666);
+    margin-bottom: 1px;
+    opacity: 0.5;
+  }
+  .brand-tab.active .brand-dot { opacity: 1; }
+
+  /* ─── KPI Strip ──────────────────────────────────────────────────────── */
+  .kpi-strip {
+    display: flex;
+    gap: 1px;
+    background: #111;
+    border-bottom: 1px solid #1f1f1f;
+    flex-shrink: 0;
+  }
+  .kpi-chip {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: #0d0d0d;
+    transition: background 0.15s;
+    cursor: default;
+    border-right: 1px solid #1a1a1a;
+  }
+  .kpi-chip:last-child { border-right: none; }
+  .kpi-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .kpi-body { display: flex; flex-direction: column; gap: 1px; }
+  .kpi-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .kpi-label { font-size: 10px; color: #666; font-weight: 500; }
+
+  /* ─── Main Layout ────────────────────────────────────────────────────── */
+  .main-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  /* ─── Left Sidebar ───────────────────────────────────────────────────── */
+  .sidebar {
+    width: 184px;
+    flex-shrink: 0;
+    background: #0d0d0d;
+    border-right: 1px solid #1f1f1f;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .sidebar-section { padding: 12px 12px 8px; }
+  .sidebar-heading {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #444;
+    margin-bottom: 8px;
+  }
+  .company-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+    margin-bottom: 2px;
+  }
+  .company-filter-item:hover { background: #1a1a1a; }
+  .company-filter-item.active { background: #00A3E015; }
+  .company-checkbox {
+    width: 14px; height: 14px;
+    border: 1.5px solid #333;
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+  }
+  .company-filter-item.active .company-checkbox {
+    background: #00A3E0;
+    border-color: #00A3E0;
+    color: #fff;
+  }
+  .company-name { font-size: 11px; color: #aaa; flex: 1; line-height: 1.2; }
+  .company-filter-item.active .company-name { color: #e5e5e5; }
+  .company-count {
+    font-size: 10px;
+    color: #555;
+    font-variant-numeric: tabular-nums;
+    background: #1a1a1a;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 2px;
+    transition: background 0.12s;
+  }
+  .status-pill:hover { background: #1a1a1a; }
+  .status-pill.active { background: #1a1a1a; }
+  .pill-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .pill-label { font-size: 11px; color: #888; flex: 1; }
+  .status-pill.active .pill-label { color: #e5e5e5; }
+  .pill-count { font-size: 10px; color: #555; font-variant-numeric: tabular-nums; }
+
+  /* ─── Code Panel (main table area) ──────────────────────────────────── */
+  .code-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #0a0a0a;
+  }
+
+  .panel-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #1a1a1a;
+    flex-shrink: 0;
+    background: #0d0d0d;
+  }
+  .toolbar-view-toggle {
+    display: flex;
+    background: #151515;
+    border: 1px solid #222;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .view-btn {
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.12s;
+    border: none;
+    background: transparent;
+  }
+  .view-btn.active { background: #1f1f1f; color: #e5e5e5; }
+  .search-box {
+    flex: 1;
+    max-width: 260px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    color: #888;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .search-icon { color: #444; font-size: 12px; }
+  .spacer { flex: 1; }
+  .btn-outline {
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    border: 1px solid #222;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .btn-outline:hover { background: #1a1a1a; color: #e5e5e5; }
+  .btn-primary {
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    background: #00A3E0;
+    cursor: pointer;
+  }
+
+  /* ─── Table ──────────────────────────────────────────────────────────── */
+  .table-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .code-table { width: 100%; border-collapse: collapse; }
+  .code-table thead th {
+    position: sticky; top: 0;
+    background: #111;
+    padding: 8px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #555;
+    border-bottom: 1px solid #1f1f1f;
+    text-align: left;
+    white-space: nowrap;
+    z-index: 1;
+  }
+  .code-table thead th.num { text-align: right; }
+
+  .row-main {
+    border-bottom: 1px solid #141414;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .row-main:hover { background: #111; }
+  .row-main.expanded { background: #0f0f0f; }
+  .row-main td {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+
+  .product-cell { display: flex; align-items: center; gap: 10px; }
+  .product-img {
+    width: 32px; height: 32px;
+    background: #1a1a1a;
+    border-radius: 6px;
+    border: 1px solid #222;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; color: #444; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .product-name { font-size: 12px; font-weight: 600; color: #e5e5e5; line-height: 1.3; }
+  .product-sku { font-size: 10px; color: #555; font-family: 'Geist Mono', monospace; margin-top: 1px; }
+
+  .num-cell {
+    text-align: right;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #888;
+    white-space: nowrap;
+  }
+  .num-cell.ordered { color: #3B82F6; }
+  .num-cell.pending { color: #F59E0B; }
+  .num-cell.in-order { color: #A855F7; }
+  .num-cell.in-box { color: #22C55E; }
+  .num-cell.dispatched { color: #10B981; }
+
+  .company-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    background: #1a1a1a;
+    color: #888;
+    border: 1px solid #222;
+  }
+
+  /* ─── Expanded Row (Customer Boxes) ─────────────────────────────────── */
+  .row-expand { background: #0d0d0d; border-bottom: 1px solid #1f1f1f; }
+  .row-expand td { padding: 0; }
+  .expand-inner { padding: 12px 16px 16px 54px; }
+  .expand-header {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #444; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .expand-header::after {
+    content: ''; flex: 1; height: 1px; background: #1a1a1a;
+  }
+
+  .customer-boxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .customer-box {
+    background: #111;
+    border: 1px solid #1f1f1f;
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-width: 180px;
+    max-width: 220px;
+    flex: 1;
+    cursor: pointer;
+    transition: all 0.12s;
+    position: relative;
+  }
+  .customer-box:hover { border-color: #333; background: #141414; }
+  .customer-box.delivered { border-color: #22C55E30; }
+  .customer-box.pending-delivery { border-color: #F59E0B30; }
+  .customer-box.in-box { border-color: #3B82F630; }
+  .customer-box.other { border-color: #EA580C30; }
+  .customer-box.needs-order { border-color: #6B728030; border-style: dashed; }
+
+  .box-customer-name { font-size: 11px; font-weight: 700; color: #e5e5e5; margin-bottom: 4px; }
+  .box-qty { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 6px; }
+  .box-qty.delivered { color: #22C55E; }
+  .box-qty.pending-delivery { color: #F59E0B; }
+  .box-qty.in-box { color: #3B82F6; }
+  .box-qty.other { color: #EA580C; }
+  .box-qty.needs-order { color: #6B7280; }
+
+  .box-status-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .box-status-badge {
+    font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .box-status-badge.delivered { background: #22C55E20; color: #22C55E; }
+  .box-status-badge.pending-delivery { background: #F59E0B20; color: #F59E0B; }
+  .box-status-badge.in-box { background: #3B82F620; color: #3B82F6; }
+  .box-status-badge.other { background: #EA580C20; color: #EA580C; }
+  .box-status-badge.needs-order { background: #6B728015; color: #6B7280; }
+
+  .box-note {
+    margin-top: 6px;
+    font-size: 10px;
+    color: #888;
+    background: #1a1a1a;
+    border-radius: 4px;
+    padding: 4px 6px;
+    border-left: 2px solid #EA580C40;
+    font-style: italic;
+  }
+  .box-note-label { font-size: 9px; color: #EA580C; font-weight: 700; font-style: normal; }
+
+  .box-date { font-size: 9px; color: #555; margin-top: 4px; }
+
+  /* ─── Right Detail Panel ─────────────────────────────────────────────── */
+  .detail-panel {
+    width: 320px;
+    flex-shrink: 0;
+    background: #0d0d0d;
+    border-left: 1px solid #1f1f1f;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .detail-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid #1a1a1a;
+    flex-shrink: 0;
+  }
+  .detail-product-name { font-size: 13px; font-weight: 700; color: #e5e5e5; margin-bottom: 2px; }
+  .detail-sku { font-size: 10px; color: #555; font-family: 'Geist Mono', monospace; }
+  .detail-kpis {
+    display: flex;
+    gap: 1px;
+    background: #1a1a1a;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .detail-kpi { flex: 1; padding: 7px 8px; background: #111; text-align: center; }
+  .detail-kpi-val { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .detail-kpi-label { font-size: 8px; color: #555; margin-top: 1px; }
+
+  .detail-body { flex: 1; overflow-y: auto; padding: 12px; }
+  .detail-section-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #444; margin-bottom: 8px; margin-top: 4px;
+  }
+  .detail-customer-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    background: #111;
+    border: 1px solid #1a1a1a;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .detail-customer-row:hover { background: #161616; border-color: #2a2a2a; }
+  .dcr-avatar {
+    width: 26px; height: 26px;
+    background: #1f1f1f;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #888;
+    flex-shrink: 0;
+  }
+  .dcr-name { font-size: 11px; font-weight: 600; color: #ccc; flex: 1; }
+  .dcr-qty { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: #888; }
+  .dcr-badge {
+    font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 3px;
+  }
+
+  .add-customer-btn {
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: 1px dashed #222;
+    border-radius: 6px;
+    color: #555;
+    font-size: 11px;
+    cursor: pointer;
+    text-align: center;
+    margin-top: 4px;
+    transition: all 0.12s;
+  }
+  .add-customer-btn:hover { background: #111; color: #888; border-color: #333; }
+
+  /* ─── Scrollbars ─────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ─── Brand Tab Bar ───────────────────────────────────────────────────── -->
+<div class="brand-bar">
+  <div class="brand-tab" style="--brand-color:#6B7280">
+    <div class="brand-dot"></div>
+    <div class="tab-label">ALL</div>
+    <div class="tab-count">21 POs</div>
+  </div>
+  <div class="brand-tab active" style="--brand-color:#00A3E0">
+    <div class="brand-dot"></div>
+    <div class="tab-label">GROHE</div>
+    <div class="tab-count">8 POs</div>
+  </div>
+  <div class="brand-tab" style="--brand-color:#E30613">
+    <div class="brand-dot"></div>
+    <div class="tab-label">HANSGROHE</div>
+    <div class="tab-count">5 POs</div>
+  </div>
+  <div class="brand-tab" style="--brand-color:#1A1A2E">
+    <div class="brand-dot" style="background:#a0a0c0"></div>
+    <div class="tab-label">AXOR</div>
+    <div class="tab-count">3 POs</div>
+  </div>
+  <div class="brand-tab" style="--brand-color:#005BAC">
+    <div class="brand-dot"></div>
+    <div class="tab-label">VITRA</div>
+    <div class="tab-count">2 POs</div>
+  </div>
+  <div class="brand-tab" style="--brand-color:#003087">
+    <div class="brand-dot"></div>
+    <div class="tab-label">GEBERIT</div>
+    <div class="tab-count">2 POs</div>
+  </div>
+  <div class="brand-tab" style="--brand-color:#FF6B00">
+    <div class="brand-dot"></div>
+    <div class="tab-label">KAJARIA</div>
+    <div class="tab-count">1 PO</div>
+  </div>
+</div>
+
+<!-- ─── KPI Strip ───────────────────────────────────────────────────────── -->
+<div class="kpi-strip">
+  <div class="kpi-chip">
+    <div class="kpi-dot" style="background:#3B82F6"></div>
+    <div class="kpi-body">
+      <div class="kpi-value" style="color:#3B82F6">47</div>
+      <div class="kpi-label">Total Ordered</div>
+    </div>
+  </div>
+  <div class="kpi-chip">
+    <div class="kpi-dot" style="background:#F59E0B"></div>
+    <div class="kpi-body">
+      <div class="kpi-value" style="color:#F59E0B">12</div>
+      <div class="kpi-label">Pending from Company</div>
+    </div>
+  </div>
+  <div class="kpi-chip">
+    <div class="kpi-dot" style="background:#A855F7"></div>
+    <div class="kpi-body">
+      <div class="kpi-value" style="color:#A855F7">8</div>
+      <div class="kpi-label">Customer Needs PO</div>
+    </div>
+  </div>
+  <div class="kpi-chip">
+    <div class="kpi-dot" style="background:#06B6D4"></div>
+    <div class="kpi-body">
+      <div class="kpi-value" style="color:#06B6D4">23</div>
+      <div class="kpi-label">At Godown</div>
+    </div>
+  </div>
+  <div class="kpi-chip">
+    <div class="kpi-dot" style="background:#22C55E"></div>
+    <div class="kpi-body">
+      <div class="kpi-value" style="color:#22C55E">18</div>
+      <div class="kpi-label">In Box / Ready</div>
+    </div>
+  </div>
+  <div class="kpi-chip">
+    <div class="kpi-dot" style="background:#10B981"></div>
+    <div class="kpi-body">
+      <div class="kpi-value" style="color:#10B981">31</div>
+      <div class="kpi-label">Dispatched</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Main Layout ─────────────────────────────────────────────────────── -->
+<div class="main-layout">
+
+  <!-- ─── Sidebar ────────────────────────────────────────────────────────── -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-heading">Company Filter</div>
+      <div class="company-filter-item active">
+        <div class="company-checkbox">✓</div>
+        <div class="company-name">Grohe India Pvt Ltd</div>
+        <div class="company-count">8</div>
+      </div>
+      <div class="company-filter-item">
+        <div class="company-checkbox"></div>
+        <div class="company-name">Grohe AG (Import)</div>
+        <div class="company-count">3</div>
+      </div>
+      <div class="company-filter-item">
+        <div class="company-checkbox"></div>
+        <div class="company-name">Hansgrohe India</div>
+        <div class="company-count">5</div>
+      </div>
+      <div class="company-filter-item">
+        <div class="company-checkbox"></div>
+        <div class="company-name">Vitra Tiles Ltd</div>
+        <div class="company-count">2</div>
+      </div>
+      <div class="company-filter-item">
+        <div class="company-checkbox"></div>
+        <div class="company-name">Geberit AG</div>
+        <div class="company-count">2</div>
+      </div>
+    </div>
+
+    <div style="height:1px; background:#1a1a1a; margin: 0 12px;"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-heading">Order Status</div>
+      <div class="status-pill active">
+        <div class="pill-dot" style="background:#6B7280"></div>
+        <div class="pill-label">All</div>
+        <div class="pill-count">47</div>
+      </div>
+      <div class="status-pill">
+        <div class="pill-dot" style="background:#A855F7"></div>
+        <div class="pill-label">Needs PO</div>
+        <div class="pill-count">8</div>
+      </div>
+      <div class="status-pill">
+        <div class="pill-dot" style="background:#F59E0B"></div>
+        <div class="pill-label">Ordered / Pending</div>
+        <div class="pill-count">12</div>
+      </div>
+      <div class="status-pill">
+        <div class="pill-dot" style="background:#06B6D4"></div>
+        <div class="pill-label">At Godown</div>
+        <div class="pill-count">23</div>
+      </div>
+      <div class="status-pill">
+        <div class="pill-dot" style="background:#22C55E"></div>
+        <div class="pill-label">In Box / Ready</div>
+        <div class="pill-count">18</div>
+      </div>
+      <div class="status-pill">
+        <div class="pill-dot" style="background:#10B981"></div>
+        <div class="pill-label">Dispatched</div>
+        <div class="pill-count">31</div>
+      </div>
+    </div>
+
+    <div style="height:1px; background:#1a1a1a; margin: 0 12px;"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-heading">View</div>
+      <div class="status-pill active">
+        <div class="pill-dot" style="background:#00A3E0"></div>
+        <div class="pill-label">Company View</div>
+      </div>
+      <div class="status-pill">
+        <div class="pill-dot" style="background:#6366F1"></div>
+        <div class="pill-label">Customer View</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Code Panel ─────────────────────────────────────────────────────── -->
+  <div class="code-panel">
+    <!-- Toolbar -->
+    <div class="panel-toolbar">
+      <div class="toolbar-view-toggle">
+        <div class="view-btn active">Company View</div>
+        <div class="view-btn">Customer View</div>
+      </div>
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <span>Search SKU or product…</span>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn-outline">Export</button>
+      <button class="btn-primary">+ Mark Received</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table class="code-table">
+        <thead>
+          <tr>
+            <th style="width:36px"></th>
+            <th>Product / SKU</th>
+            <th>Company</th>
+            <th class="num">Qty</th>
+            <th class="num">Ordered</th>
+            <th class="num">Pending</th>
+            <th class="num">In Order</th>
+            <th class="num">In Box</th>
+            <th class="num">Dispatched</th>
+            <th style="width:100px">Customers</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- Row 1 — EXPANDED -->
+          <tr class="row-main expanded" onclick="toggleRow('r1')">
+            <td style="text-align:center; color:#00A3E0; font-size:11px; font-weight:700;">▾</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-img">GT</div>
+                <div>
+                  <div class="product-name">Grohtherm 800 Combi</div>
+                  <div class="product-sku">34567000</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="company-tag">Grohe India</span></td>
+            <td class="num-cell">12</td>
+            <td class="num-cell ordered">12</td>
+            <td class="num-cell pending">4</td>
+            <td class="num-cell in-order">0</td>
+            <td class="num-cell in-box">5</td>
+            <td class="num-cell dispatched">3</td>
+            <td>
+              <div style="display:flex; gap:3px; flex-wrap:wrap;">
+                <span style="font-size:9px; background:#22C55E15; color:#22C55E; padding:2px 5px; border-radius:3px;">MA</span>
+                <span style="font-size:9px; background:#3B82F615; color:#3B82F6; padding:2px 5px; border-radius:3px;">LP</span>
+                <span style="font-size:9px; background:#F59E0B15; color:#F59E0B; padding:2px 5px; border-radius:3px;">OR</span>
+                <span style="font-size:9px; background:#EA580C15; color:#EA580C; padding:2px 5px; border-radius:3px;">+1</span>
+              </div>
+            </td>
+          </tr>
+          <!-- Expanded Customer Boxes -->
+          <tr class="row-expand" id="r1">
+            <td colspan="10">
+              <div class="expand-inner">
+                <div class="expand-header">Customer Boxes — Grohtherm 800 Combi × 12</div>
+                <div class="customer-boxes">
+                  <!-- Box 1: Delivered -->
+                  <div class="customer-box delivered">
+                    <div class="box-customer-name">Mehta Architects</div>
+                    <div class="box-qty delivered">3</div>
+                    <div class="box-status-row">
+                      <span class="box-status-badge delivered">✓ Delivered</span>
+                    </div>
+                    <div class="box-date">Delivered 22 Mar 2026</div>
+                  </div>
+                  <!-- Box 2: In Box -->
+                  <div class="customer-box in-box">
+                    <div class="box-customer-name">Lodha Projects</div>
+                    <div class="box-qty in-box">2</div>
+                    <div class="box-status-row">
+                      <span class="box-status-badge in-box">📦 In Box</span>
+                    </div>
+                    <div class="box-date">Staged 20 Mar 2026</div>
+                  </div>
+                  <!-- Box 3: Delivery Pending -->
+                  <div class="customer-box pending-delivery">
+                    <div class="box-customer-name">Oberoi Realty</div>
+                    <div class="box-qty pending-delivery">3</div>
+                    <div class="box-status-row">
+                      <span class="box-status-badge pending-delivery">🚚 Del. Pending</span>
+                    </div>
+                    <div class="box-date">Sched. 28 Mar 2026</div>
+                  </div>
+                  <!-- Box 4: Given to someone else -->
+                  <div class="customer-box other">
+                    <div class="box-customer-name">Given to Other</div>
+                    <div class="box-qty other">1</div>
+                    <div class="box-status-row">
+                      <span class="box-status-badge other">👤 Other</span>
+                    </div>
+                    <div class="box-note">
+                      <span class="box-note-label">Note: </span>Handed to site plumber for urgent installation — Rahul (9876543210)
+                    </div>
+                  </div>
+                  <!-- Box 5: Needs order -->
+                  <div class="customer-box needs-order">
+                    <div class="box-customer-name">Prestige Realty</div>
+                    <div class="box-qty needs-order">3</div>
+                    <div class="box-status-row">
+                      <span class="box-status-badge needs-order">⏳ Needs PO</span>
+                    </div>
+                    <div class="box-date">Customer order placed, PO pending</div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Row 2 — collapsed -->
+          <tr class="row-main" onclick="toggleRow('r2')">
+            <td style="text-align:center; color:#444; font-size:11px;">▸</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-img">SC</div>
+                <div>
+                  <div class="product-name">SmartControl 300 Duo</div>
+                  <div class="product-sku">29119000</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="company-tag">Grohe India</span></td>
+            <td class="num-cell">6</td>
+            <td class="num-cell ordered">6</td>
+            <td class="num-cell" style="color:#22C55E">0</td>
+            <td class="num-cell in-order">0</td>
+            <td class="num-cell in-box">6</td>
+            <td class="num-cell dispatched">0</td>
+            <td>
+              <div style="display:flex; gap:3px;">
+                <span style="font-size:9px; background:#3B82F615; color:#3B82F6; padding:2px 5px; border-radius:3px;">LP</span>
+                <span style="font-size:9px; background:#6366F115; color:#6366F1; padding:2px 5px; border-radius:3px;">SK</span>
+              </div>
+            </td>
+          </tr>
+          <tr class="row-expand" id="r2" style="display:none">
+            <td colspan="10"><div class="expand-inner"><div class="expand-header">Customer Boxes — SmartControl 300 Duo × 6</div></div></td>
+          </tr>
+
+          <!-- Row 3 — not yet ordered from company -->
+          <tr class="row-main" onclick="toggleRow('r3')">
+            <td style="text-align:center; color:#444; font-size:11px;">▸</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-img" style="border:1px dashed #333;">GT</div>
+                <div>
+                  <div class="product-name">Grohtherm 1000 Set</div>
+                  <div class="product-sku">34144000</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="company-tag">Grohe India</span></td>
+            <td class="num-cell">4</td>
+            <td class="num-cell" style="color:#6B7280">—</td>
+            <td class="num-cell pending">4</td>
+            <td class="num-cell in-order" style="color:#A855F7">4</td>
+            <td class="num-cell" style="color:#6B7280">0</td>
+            <td class="num-cell" style="color:#6B7280">0</td>
+            <td>
+              <div style="display:flex; gap:3px;">
+                <span style="font-size:9px; background:#A855F715; color:#A855F7; padding:2px 5px; border-radius:3px;">SH</span>
+                <span style="font-size:9px; background:#A855F715; color:#A855F7; padding:2px 5px; border-radius:3px;">VP</span>
+              </div>
+            </td>
+          </tr>
+          <tr class="row-expand" id="r3" style="display:none">
+            <td colspan="10"><div class="expand-inner"><div class="expand-header">Customer Boxes — Grohtherm 1000 Set × 4</div></div></td>
+          </tr>
+
+          <!-- Row 4 -->
+          <tr class="row-main" onclick="toggleRow('r4')">
+            <td style="text-align:center; color:#444; font-size:11px;">▸</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-img">RM</div>
+                <div>
+                  <div class="product-name">Rainshower 310 System</div>
+                  <div class="product-sku">27117000</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="company-tag">Grohe AG</span></td>
+            <td class="num-cell">8</td>
+            <td class="num-cell ordered">8</td>
+            <td class="num-cell pending">3</td>
+            <td class="num-cell in-order">0</td>
+            <td class="num-cell in-box">2</td>
+            <td class="num-cell dispatched">3</td>
+            <td>
+              <div style="display:flex; gap:3px; flex-wrap:wrap;">
+                <span style="font-size:9px; background:#22C55E15; color:#22C55E; padding:2px 5px; border-radius:3px;">MA</span>
+                <span style="font-size:9px; background:#F59E0B15; color:#F59E0B; padding:2px 5px; border-radius:3px;">OR</span>
+              </div>
+            </td>
+          </tr>
+          <tr class="row-expand" id="r4" style="display:none">
+            <td colspan="10"><div class="expand-inner"><div class="expand-header">Customer Boxes — Rainshower 310 System × 8</div></div></td>
+          </tr>
+
+          <!-- Row 5 -->
+          <tr class="row-main" onclick="toggleRow('r5')">
+            <td style="text-align:center; color:#444; font-size:11px;">▸</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-img">BF</div>
+                <div>
+                  <div class="product-name">BauFlow Basin Mixer</div>
+                  <div class="product-sku">23761000</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="company-tag">Grohe India</span></td>
+            <td class="num-cell">15</td>
+            <td class="num-cell ordered">15</td>
+            <td class="num-cell" style="color:#22C55E">0</td>
+            <td class="num-cell in-order">0</td>
+            <td class="num-cell in-box">3</td>
+            <td class="num-cell dispatched">12</td>
+            <td>
+              <div style="display:flex; gap:3px; flex-wrap:wrap;">
+                <span style="font-size:9px; background:#22C55E15; color:#22C55E; padding:2px 5px; border-radius:3px;">PG</span>
+                <span style="font-size:9px; background:#10B98115; color:#10B981; padding:2px 5px; border-radius:3px;">VR</span>
+                <span style="font-size:9px; background:#3B82F615; color:#3B82F6; padding:2px 5px; border-radius:3px;">+2</span>
+              </div>
+            </td>
+          </tr>
+          <tr class="row-expand" id="r5" style="display:none">
+            <td colspan="10"><div class="expand-inner"><div class="expand-header">Customer Boxes — BauFlow Basin Mixer × 15</div></div></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── Right Detail Panel ─────────────────────────────────────────────── -->
+  <div class="detail-panel">
+    <div class="detail-header">
+      <div class="detail-product-name">Grohtherm 800 Combi</div>
+      <div class="detail-sku">SKU 34567000 · Grohe India Pvt Ltd</div>
+      <div class="detail-kpis">
+        <div class="detail-kpi">
+          <div class="detail-kpi-val" style="color:#3B82F6">12</div>
+          <div class="detail-kpi-label">Ordered</div>
+        </div>
+        <div class="detail-kpi">
+          <div class="detail-kpi-val" style="color:#F59E0B">4</div>
+          <div class="detail-kpi-label">Pending</div>
+        </div>
+        <div class="detail-kpi">
+          <div class="detail-kpi-val" style="color:#22C55E">5</div>
+          <div class="detail-kpi-label">In Box</div>
+        </div>
+        <div class="detail-kpi">
+          <div class="detail-kpi-val" style="color:#10B981">3</div>
+          <div class="detail-kpi-label">Done</div>
+        </div>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="detail-section-label">Customer Assignments</div>
+
+      <div class="detail-customer-row">
+        <div class="dcr-avatar" style="background:#22C55E20; color:#22C55E">MA</div>
+        <div class="dcr-name">Mehta Architects</div>
+        <div class="dcr-qty" style="color:#22C55E">3</div>
+        <div class="dcr-badge" style="background:#22C55E20; color:#22C55E">Delivered</div>
+      </div>
+      <div class="detail-customer-row">
+        <div class="dcr-avatar" style="background:#3B82F620; color:#3B82F6">LP</div>
+        <div class="dcr-name">Lodha Projects</div>
+        <div class="dcr-qty" style="color:#3B82F6">2</div>
+        <div class="dcr-badge" style="background:#3B82F620; color:#3B82F6">In Box</div>
+      </div>
+      <div class="detail-customer-row">
+        <div class="dcr-avatar" style="background:#F59E0B20; color:#F59E0B">OR</div>
+        <div class="dcr-name">Oberoi Realty</div>
+        <div class="dcr-qty" style="color:#F59E0B">3</div>
+        <div class="dcr-badge" style="background:#F59E0B20; color:#F59E0B">Del. Pending</div>
+      </div>
+      <div class="detail-customer-row" style="border-color:#EA580C30;">
+        <div class="dcr-avatar" style="background:#EA580C20; color:#EA580C">—</div>
+        <div class="dcr-name" style="color:#EA580C">Given to Other</div>
+        <div class="dcr-qty" style="color:#EA580C">1</div>
+        <div class="dcr-badge" style="background:#EA580C20; color:#EA580C">+ Note</div>
+      </div>
+      <div class="detail-customer-row" style="border-style:dashed; border-color:#A855F740;">
+        <div class="dcr-avatar" style="background:#A855F720; color:#A855F7">PR</div>
+        <div class="dcr-name">Prestige Realty</div>
+        <div class="dcr-qty" style="color:#A855F7">3</div>
+        <div class="dcr-badge" style="background:#A855F720; color:#A855F7">Needs PO</div>
+      </div>
+
+      <button class="add-customer-btn">+ Add Customer / Assign Units</button>
+
+      <div style="height:16px;"></div>
+      <div class="detail-section-label">Godown Receipt</div>
+      <div style="background:#111; border:1px solid #1a1a1a; border-radius:6px; padding:10px 12px; margin-bottom:4px;">
+        <div style="font-size:10px; color:#888; margin-bottom:6px;">Mark units received at godown</div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <div style="background:#0a0a0a; border:1px solid #222; border-radius:5px; padding:5px 10px; font-size:12px; font-weight:700; color:#e5e5e5; font-variant-numeric:tabular-nums; flex:1;">8 received</div>
+          <button style="padding:5px 10px; background:#00A3E020; color:#00A3E0; border:1px solid #00A3E040; border-radius:5px; font-size:10px; font-weight:700; cursor:pointer;">Update</button>
+        </div>
+        <div style="font-size:9px; color:#555; margin-top:5px;">4 still pending from Grohe India</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleRow(id) {
+  const el = document.getElementById(id);
+  const isHidden = el.style.display === 'none' || el.style.display === '';
+  el.style.display = isHidden ? 'table-row' : 'none';
+  // Update arrow
+  const row = el.previousElementSibling;
+  const arrow = row.querySelector('td:first-child');
+  if (arrow) {
+    arrow.textContent = isHidden ? '▾' : '▸';
+    arrow.style.color = isHidden ? '#00A3E0' : '#444';
+  }
+  if (isHidden) row.classList.add('expanded');
+  else row.classList.remove('expanded');
+}
+</script>
+
+</body>
+</html>

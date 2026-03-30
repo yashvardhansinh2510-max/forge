@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fonts */
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-ui:      'Geist', sans-serif;
+  --font-mono:    'Geist Mono', monospace;
+
+  /* Radius — Tailwind classes */
+  --radius-xs:  4px;
+  --radius-sm:  6px;
+  --radius-md:  8px;
+  --radius-lg:  10px;
+  --radius-xl:  14px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+}
+
+:root {
+  /* ── NEUTRAL SCALE ─────────────────────────────────── */
+  --n-0:   #FFFFFF;    /* pure white — inputs, active fields */
+  --n-50:  #FAFAF9;    /* warm paper — ALL page backgrounds */
+  --n-100: #F4F4F3;    /* subtle tint — table header, inactive tabs */
+  --n-150: #EBEBEA;    /* border — default card/table edge */
+  --n-200: #D6D6D4;    /* border — hover states, stronger dividers */
+  --n-300: #AEAEA9;    /* text — disabled states, placeholder */
+  --n-400: #8A8A84;    /* text — muted labels, secondary info */
+  --n-500: #636360;    /* text — tertiary, captions */
+  --n-600: #4A4A47;    /* text — secondary body */
+  --n-700: #2E2E2B;    /* text — primary body */
+  --n-800: #1C1C1A;    /* text — headings, strong labels */
+  --n-900: #141414;    /* text — page titles, brand elements */
+
+  /* ── SEMANTIC ALIASES ──────────────────────────────── */
+  --bg:               var(--n-50);
+  --surface:          var(--n-0);
+  --border:           var(--n-150);
+  --border-strong:    var(--n-200);
+  --text-primary:     var(--n-900);
+  --text-secondary:   var(--n-700);
+  --text-tertiary:    var(--n-500);
+  --text-muted:       var(--n-400);
+  --text-placeholder: var(--n-300);
+
+  /* ── THE ONE ACCENT ────────────────────────────────── */
+  --accent:       #2563EB;
+  --accent-dark:  #1D4ED8;
+  --accent-light: #EFF6FF;
+  --accent-text:  #FFFFFF;
+  /* aliases used by existing components */
+  --accent-hover:   #1D4ED8;
+  --accent-pressed: #1D4ED8;
+  --accent-subtle:  #EFF6FF;
+  --accent-border:  rgba(37,99,235,0.22);
+  --accent-fg:      #FFFFFF;
+
+  /* ── SEMANTIC DATA COLORS (numbers only, never chrome) */
+  --positive: #16A34A;
+  --negative: #DC2626;
+  --caution:  #D97706;
+  /* aliases used by existing components */
+  --success:        var(--positive);
+  --success-bg:     rgba(22,163,74,0.08);
+  --success-border: rgba(22,163,74,0.18);
+  --danger:         var(--negative);
+  --danger-bg:      rgba(220,38,38,0.08);
+  --danger-border:  rgba(220,38,38,0.18);
+  --warning:        var(--caution);
+  --warning-bg:     rgba(217,119,6,0.08);
+  --warning-border: rgba(217,119,6,0.18);
+
+  /* ── BACKWARD-COMPAT SURFACE ALIASES ──────────────── */
+  --background:       var(--bg);     /* alias for components using var(--background) */
+  --surface-bg:       var(--bg);
+  --surface-base:     var(--surface);
+  --surface-raised:   var(--surface);
+  --surface-ground:   var(--n-100);
+  --surface-overlay:  rgba(255,255,255,0.94);
+  --surface-tint:     rgba(0,0,0,0.035);
+  --surface-tint-hover: rgba(0,0,0,0.055);
+  --surface-selected: rgba(37,99,235,0.06);
+
+  /* ── BACKWARD-COMPAT BORDER ALIASES ───────────────── */
+  --border-subtle:  rgba(0,0,0,0.04);
+  --border-default: var(--border);
+  --border-focus:   rgba(37,99,235,0.55);
+  --border-error:   rgba(220,38,38,0.55);
+
+  /* ── BACKWARD-COMPAT TEXT ALIASES ─────────────────── */
+  --text-quaternary: var(--n-300);
+  --text-link:       var(--accent);
+
+  /* ── SIDEBAR (dark shell — hardcoded) ─────────────── */
+  --shell-bg:          #141414;
+  --shell-item-hover:  rgba(255,255,255,0.05);
+  --shell-item-active: rgba(255,255,255,0.09);
+  --shell-border:      rgba(255,255,255,0.08);
+  --shell-text:        #E8E8E6;
+  --shell-muted:       #6E6E6B;
+  --shell-icon:        #6E6E6B;
+  --shell-group:       #4A4A47;
+
+  /* ── SHADOWS (2 levels + float) ───────────────────── */
+  --shadow-base:   0 0 0 1px var(--n-150), 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-raised: 0 0 0 1px var(--n-150), 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-float:  0 0 0 1px var(--n-150), 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  /* keep old shadow vars as aliases */
+  --shadow-xs:     var(--shadow-base);
+  --shadow-sm:     var(--shadow-base);
+  --shadow-md:     var(--shadow-raised);
+  --shadow-lg:     var(--shadow-float);
+  --shadow-xl:     var(--shadow-float);
+  --shadow-modal:  var(--shadow-float);
+  --shadow-card-inset: inset 0 1px 0 rgba(255,255,255,0.8);
+
+  /* ── RADIUS CSS VARS (for inline styles) ──────────── */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+
+  /* ── TRANSITIONS ───────────────────────────────────── */
+  --t-fast:     80ms ease;
+  --t-base:     160ms ease;
+  --t-slow:     280ms ease;
+  /* keep old motion vars */
+  --ease-apple:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── TRACKING ALIASES ──────────────────────────────── */
+  --tracking-tight-xl: -0.034em;
+  --tracking-tight-lg: -0.030em;
+  --tracking-tight-md: -0.022em;
+  --tracking-tight-sm: -0.010em;
+  --tracking-normal:   0;
+  --tracking-wide:     0.02em;
+  --tracking-wider:    0.06em;
+
+  /* ── PURPLE / INFO (kept for compat, not used in new UI) */
+  --purple:        #6E40C9;
+  --purple-bg:     rgba(110,64,201,0.08);
+  --purple-border: rgba(110,64,201,0.18);
+  --info:          var(--accent);
+  --info-bg:       var(--accent-light);
+  --info-border:   var(--accent-border);
+}

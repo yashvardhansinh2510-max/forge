@@ -1,0 +1,463 @@
+// prisma/schema.prisma — Forge Backend v2
+// Project → Quotation → Revision → Room → Item hierarchy
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  SALES
+}
+
+enum RevisionStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  LOCKED
+  FINALIZED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum InventoryStatus {
+  QUOTED
+  IN_BOX
+  PARTIALLY_DISPATCHED
+  FULLY_DISPATCHED
+}
+
+enum ProductBrand {
+  GROHE
+  HANSGROHE
+  AXOR       // Axor is a Hansgrohe subsidiary; grouped under Hansgrohe tab in UI
+  VITRA
+  GEBERIT
+  OTHER
+}
+
+enum ProductCategory {
+  SHOWERS
+  WCS
+  THERMOSTATS
+  FAUCETS
+  BASINS
+  BATHTUBS
+  ACCESSORIES
+  CONCEALED
+  KITCHEN
+}
+
+// ─── Auth & RBAC ───────────────────────────────────────────────────────────────
+
+model User {
+  id               String            @id @default(cuid())
+  clerkId          String?           @unique  // optional Clerk integration
+  name             String
+  email            String            @unique
+  passwordHash     String?
+  role             UserRole          @default(SALES)
+  maxDiscountPct   Float             @default(15.0)
+  createdAt        DateTime          @default(now())
+  quotations       Quotation[]       @relation("CreatedBy")
+  approvalRequests ApprovalRequest[] @relation("RequestedBy")
+  approvedRequests ApprovalRequest[] @relation("ReviewedBy")
+  purchaseOrders   PurchaseOrder[]   @relation("CreatedPurchaseOrders")
+  stageMovements   StageMovement[]   @relation("StageMovements")
+}
+
+// ─── CRM ───────────────────────────────────────────────────────────────────────
+
+model Contact {
+  id        String      @id @default(cuid())
+  name      String
+  role      String
+  companyId String?
+  company   Company?    @relation(fields: [companyId], references: [id])
+  email     String?
+  phone     String?
+  type      ContactType @default(ARCHITECT)
+  tags      String[]
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+}
+
+enum ContactType {
+  ARCHITECT
+  INTERIOR_DESIGNER
+  BUILDER
+  CONTRACTOR
+  RETAIL
+  INSTITUTIONAL
+}
+
+model Company {
+  id        String    @id @default(cuid())
+  name      String
+  industry  String
+  website   String?
+  address   String?
+  contacts  Contact[]
+  projects  Project[]
+  createdAt DateTime  @default(now())
+}
+
+// ─── Project ───────────────────────────────────────────────────────────────────
+
+model Project {
+  id            String      @id @default(cuid())
+  clientName    String
+  clientPhone   String?
+  clientEmail   String?
+  siteAddress   String?
+  architectName String?
+  plumberName   String?
+  companyId     String?
+  company       Company?    @relation(fields: [companyId], references: [id])
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  quotations     Quotation[]
+  purchaseOrders PurchaseOrder[]
+  inventoryBoxes InventoryBox[]
+}
+
+// ─── Quotation (container — never mutated after creation) ──────────────────────
+
+model Quotation {
+  id            String              @id @default(cuid())
+  number        String              @unique  // e.g. Q-2026-0045, auto-generated
+  projectId     String
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdById   String
+  createdBy     User                @relation("CreatedBy", fields: [createdById], references: [id])
+  currentStatus RevisionStatus      @default(DRAFT)
+  createdAt     DateTime            @default(now())
+  revisions     QuotationRevision[]
+}
+
+// ─── Quotation Revision (immutable once locked) ────────────────────────────────
+
+model QuotationRevision {
+  id                String            @id @default(cuid())
+  quotationId       String
+  quotation         Quotation         @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revisionNumber    Int               @default(0)  // 0 = original, 1 = Rev 1, etc.
+  status            RevisionStatus    @default(DRAFT)
+  globalDiscountPct Float             @default(0.0)
+  isLocked          Boolean           @default(false)
+  lockedAt          DateTime?
+  snapshot          Json?             // Immutable deep copy written at lock time
+  notes             String?
+  createdAt         DateTime          @default(now())
+  rooms             QuotationRoom[]
+  approvalRequests  ApprovalRequest[]
+  purchaseOrders    PurchaseOrder[]
+
+  @@unique([quotationId, revisionNumber])
+}
+
+// ─── Room ──────────────────────────────────────────────────────────────────────
+
+model QuotationRoom {
+  id         String            @id @default(cuid())
+  revisionId String
+  revision   QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  roomName   String
+  order      Int               @default(0)
+  items      QuotationItem[]
+}
+
+// ─── Line Item ─────────────────────────────────────────────────────────────────
+
+model QuotationItem {
+  id              String          @id @default(cuid())
+  roomId          String
+  room            QuotationRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  quantity        Int             @default(1)
+  selectedFinish  String?
+  selectedColor   String?
+  mrp             Float           // snapshot at time of adding
+  discountPct     Float           @default(0.0)
+  offerRate       Float           // mrp * (1 - discountPct/100)
+  totalOffer      Float           // offerRate * quantity
+  isAutoAdded     Boolean         @default(false)
+  sortOrder       Int             @default(0)
+  // Inventory tracking
+  stockOrdered    Int             @default(0)
+  stockInBox      Int             @default(0)
+  stockDispatched Int             @default(0)
+  inventoryStatus InventoryStatus @default(QUOTED)
+  createdAt       DateTime        @default(now())
+  poLineItems     POLineItem[]
+  boxItems        BoxItem[]
+}
+
+// ─── Product ───────────────────────────────────────────────────────────────────
+
+model Product {
+  id              String          @id @default(cuid())
+  brand           ProductBrand
+  category        ProductCategory
+  sku             String          @unique
+  name            String
+  description     String?
+  mrp             Float
+  gstRate         Float           @default(18)
+  unit            String          @default("pcs")
+  imageUrl        String?
+  tier            String          @default("premium")  // luxury | premium | mid
+  isActive        Boolean         @default(true)
+  stockAvailable  Int             @default(0)
+  variants        Json?           // { finishes: [{name, code, color, priceAdj}] }
+  // Self-referential concealed part dependency
+  concealedPartId String?
+  concealedPart   Product?        @relation("ConcealedParts", fields: [concealedPartId], references: [id])
+  requiredBy      Product[]       @relation("ConcealedParts")
+  quotationItems  QuotationItem[]
+  stockItems      StockItem[]
+  movements       StockMovement[]
+  poLineItems     POLineItem[]
+  boxItems        BoxItem[]
+  stockOnOrder    Int             @default(0)   // sum of qty on open POs
+  stockCommitted  Int             @default(0)   // sum of qty in LOCKED revisions not yet boxed
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+// ─── Approval Request ──────────────────────────────────────────────────────────
+
+model ApprovalRequest {
+  id            String            @id @default(cuid())
+  revisionId    String
+  revision      QuotationRevision @relation(fields: [revisionId], references: [id])
+  requestedById String
+  requestedBy   User              @relation("RequestedBy", fields: [requestedById], references: [id])
+  requestedPct  Float
+  reviewedById  String?
+  reviewedBy    User?             @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  status        ApprovalStatus    @default(PENDING)
+  note          String?
+  createdAt     DateTime          @default(now())
+  resolvedAt    DateTime?
+}
+
+// ─── Inventory ─────────────────────────────────────────────────────────────────
+
+model Warehouse {
+  id          String          @id @default(cuid())
+  name        String
+  shortName   String
+  type        WarehouseType
+  address     String
+  city        String
+  state       String          @default("Maharashtra")
+  managerName String
+  phone       String?
+  isActive    Boolean         @default(true)
+  stockItems  StockItem[]
+  movements   StockMovement[]
+  createdAt   DateTime        @default(now())
+}
+
+enum WarehouseType {
+  SHOWROOM
+  GODOWN
+  DISPATCH
+}
+
+model StockItem {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  quantity    Int       @default(0)
+  reserved    Int       @default(0)
+
+  @@unique([productId, warehouseId])
+}
+
+model StockMovement {
+  id              String        @id @default(cuid())
+  type            MovementType
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  fromWarehouseId String?
+  fromWarehouse   Warehouse?    @relation(fields: [fromWarehouseId], references: [id])
+  toWarehouseId   String?
+  quantity        Int
+  reference       String
+  reason          String?
+  performedByName String
+  createdAt       DateTime      @default(now())
+}
+
+enum MovementType {
+  IN
+  OUT
+  TRANSFER
+  ADJUST
+  RETURN
+}
+
+// ─── Procurement Enums ─────────────────────────────────────────────────────────
+
+enum POStatus {
+  DRAFT
+  SUBMITTED
+  PARTIALLY_RECEIVED
+  FULLY_RECEIVED
+  CANCELLED
+}
+
+enum POMode {
+  PROJECT_LINKED
+  BULK_COMPANY
+}
+
+enum POLineStatus {
+  PENDING
+  PARTIALLY_RECEIVED
+  FULLY_RECEIVED
+}
+
+enum BoxItemStatus {
+  STAGED
+  PARTIALLY_DISPATCHED
+  FULLY_DISPATCHED
+}
+
+// ─── Purchase Order ─────────────────────────────────────────────────────────────
+
+model PurchaseOrder {
+  id               String             @id @default(cuid())
+  poNumber         String             @unique  // e.g. "PO-2025-0042"
+  mode             POMode
+  status           POStatus           @default(DRAFT)
+  projectId        String?
+  project          Project?           @relation(fields: [projectId], references: [id])
+  revisionId       String?
+  revision         QuotationRevision? @relation(fields: [revisionId], references: [id])
+  createdById      String
+  createdBy        User               @relation("CreatedPurchaseOrders", fields: [createdById], references: [id])
+  vendorName       String?
+  expectedDelivery DateTime?
+  notes            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  lineItems        POLineItem[]
+  inventoryBoxes   InventoryBox[]
+}
+
+// ─── PO Line Item ────────────────────────────────────────────────────────────────
+
+model POLineItem {
+  id              String         @id @default(cuid())
+  poId            String
+  po              PurchaseOrder  @relation(fields: [poId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product        @relation(fields: [productId], references: [id])
+  quotationItemId String?
+  quotationItem   QuotationItem? @relation(fields: [quotationItemId], references: [id])
+  qtyOrdered        Int
+  qtyReceived       Int            @default(0)
+  // Stage-by-stage quantity tracking (invariant: sum <= qtyOrdered)
+  qtyPendingCo      Int            @default(0)
+  qtyPendingDist    Int            @default(0)
+  qtyAtGodown       Int            @default(0)
+  qtyInBox          Int            @default(0)
+  qtyDispatched     Int            @default(0)
+  qtyNotDisplayed   Int            @default(0)
+  landingCost       Float?
+  clientOfferRate   Float?
+  status            POLineStatus   @default(PENDING)
+  createdAt         DateTime       @default(now())
+  stageMovements    StageMovement[]
+}
+
+// ─── Stage Movement (append-only audit log) ─────────────────────────────────────
+
+model StageMovement {
+  id           String     @id @default(cuid())
+  poLineItemId String
+  poLineItem   POLineItem @relation(fields: [poLineItemId], references: [id])
+  fromStage    String
+  toStage      String
+  qty          Int
+  movedById    String
+  movedBy      User       @relation("StageMovements", fields: [movedById], references: [id])
+  note         String?
+  movedAt      DateTime   @default(now())
+}
+
+// ─── Inventory Box ───────────────────────────────────────────────────────────────
+
+model InventoryBox {
+  id        String         @id @default(cuid())
+  boxCode   String         @unique  // e.g. "BOX-SMITH-001"
+  projectId String
+  project   Project        @relation(fields: [projectId], references: [id])
+  poId      String?
+  po        PurchaseOrder? @relation(fields: [poId], references: [id])
+  createdAt DateTime       @default(now())
+  items     BoxItem[]
+}
+
+// ─── Box Item ────────────────────────────────────────────────────────────────────
+
+model BoxItem {
+  id              String         @id @default(cuid())
+  boxId           String
+  box             InventoryBox   @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product        @relation(fields: [productId], references: [id])
+  quotationItemId String?
+  quotationItem   QuotationItem? @relation(fields: [quotationItemId], references: [id])
+  qtyTotal        Int
+  qtyDispatched   Int            @default(0)
+  status          BoxItemStatus  @default(STAGED)
+  lastUpdated     DateTime       @updatedAt
+}
+
+// ─── Activity Log ──────────────────────────────────────────────────────────────
+
+model Activity {
+  id          String       @id @default(cuid())
+  type        ActivityType
+  description String
+  userId      String?
+  contactId   String?
+  companyId   String?
+  projectId   String?
+  quotationId String?
+  value       Float?
+  createdAt   DateTime     @default(now())
+}
+
+enum ActivityType {
+  CALL
+  WHATSAPP
+  EMAIL
+  MEETING
+  SITE_VISIT
+  SHOWROOM_VISIT
+  NOTE
+  QUOTE_CREATED
+  QUOTE_SENT
+  QUOTE_APPROVED
+}

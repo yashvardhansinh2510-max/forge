@@ -1,0 +1,20 @@
+[    5730ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/pos:0
+[    6193ms] TypeError: __webpack_modules__[moduleId] is not a function
+    at Object.__webpack_require__ [as require] (file:///Users/yashvardhansinhjhala/forge/apps/web/.next/server/webpack-runtime.js:25:42)
+    at Object.require (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:39:28541)
+    at globalThis.__next_require__ (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:39:29364)
+    at requireModule (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:318257)
+    at initializeModuleChunk (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:347649)
+    at getOutlinedModel (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:357408)
+    at <unknown> (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:365361)
+    at ResponseInstance._fromJSON (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:365452)
+    at JSON.parse (<anonymous>)
+    at initializeModelChunk (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:347040)
+    at resolveModelChunk (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:345328)
+    at processFullStringRow (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:384472)
+    at <unknown> (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:386875)
+    at processBinaryChunk (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:386947)
+    at progress (file:///Users/yashvardhansinhjhala/forge/node_modules/.pnpm/next@15.5.14_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:2:388475)
+[    6211ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
+[    9536ms] [WARNING] The resource http://localhost:3000/_next/static/media/78fec81b34c4a365.p.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/pos:0
+[    9536ms] [WARNING] The resource http://localhost:3000/_next/static/media/27834908180db20f-s.p.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/pos:0
