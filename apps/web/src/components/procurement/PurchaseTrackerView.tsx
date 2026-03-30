@@ -15,7 +15,7 @@ export function PurchaseTrackerView() {
     <div style={{
       display: 'flex', flexDirection: 'column',
       height: '100%', overflow: 'hidden',
-      background: '#f5f5f5',
+      background: '#FAFAF8',
     }}>
       {/* Brand tab bar */}
       <TrackerBrandTabBar />

@@ -3,31 +3,39 @@
 import { useState } from 'react'
 import { useProcurementStore } from '@/lib/procurement-store'
 import { usePurchasesStore }   from '@/lib/usePurchasesStore'
-import { MOCK_CUSTOMERS, BRAND_COLORS, BRANDS_ORDERED } from '@/lib/mock/procurement-data'
-import type { BoxAllocationStatus } from '@/lib/mock/procurement-data'
-import { getLinesForCustomer, getInitials, getAvatarColor } from '@/lib/tracker-utils'
+import { MOCK_CUSTOMERS, BRAND_COLORS } from '@/lib/mock/procurement-data'
+import { getLinesForCustomer, getCustomerStageCounts, getInitials, getAvatarColor } from '@/lib/tracker-utils'
 import { OrderRow } from './OrderRow'
+import type { KPICardKey } from '@/lib/usePurchasesStore'
 
 const NUM: React.CSSProperties = { fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }
 
-// ─── Status filter key → which BoxAllocationStatus values it matches ──────────
+// ─── Stage stat config ────────────────────────────────────────────────────────
 
-type CustomerStatKey = 'products' | 'pending' | 'inBox' | 'delivered'
+type StageStatKey = KPICardKey
 
-const CUST_STAT_ALLOCS: Record<Exclude<CustomerStatKey, 'products'>, BoxAllocationStatus[]> = {
-  pending:   ['ORDERED'],
-  inBox:     ['IN_BOX', 'DEL_PENDING'],
-  delivered: ['DELIVERED', 'GIVEN_OTHER'],
-}
+const STAGE_STAT_CONFIG: Array<{
+  key:   StageStatKey
+  label: string
+  short: string
+  color: string
+  bg:    string
+}> = [
+  { key: 'totalOrdered',    label: 'Total Ordered',     short: 'Ordered',   color: '#2563eb', bg: 'rgba(37,99,235,0.07)'   },
+  { key: 'pendingFromCo',   label: 'Pend. from Co.',    short: 'Pend. Co',  color: '#F5A623', bg: 'rgba(245,166,35,0.07)'  },
+  { key: 'pendingFromDist', label: 'Pend. from Dist.',  short: 'Pend. Dist',color: '#E8762C', bg: 'rgba(232,118,44,0.07)'  },
+  { key: 'atGodown',        label: 'At Godown',         short: 'Godown',    color: '#4A90D9', bg: 'rgba(74,144,217,0.07)'  },
+  { key: 'inBox',           label: 'In Box',            short: 'In Box',    color: '#7B68EE', bg: 'rgba(123,104,238,0.07)' },
+  { key: 'dispatched',      label: 'Dispatched',        short: 'Dispatched',color: '#27AE60', bg: 'rgba(39,174,96,0.07)'   },
+  { key: 'notDisplayed',    label: 'Not Displayed',     short: 'Not Disp',  color: '#95A5A6', bg: 'rgba(149,165,166,0.07)' },
+]
 
 export function CustomerDetailPanel() {
   const activeCustomerId = usePurchasesStore((s) => s.activeCustomerId)
-  const toggleKPICard    = usePurchasesStore((s) => s.toggleKPICard)
   const orders           = useProcurementStore((s) => s.orders)
   const [brandFilter, setBrandFilter] = useState('ALL')
-  const [statusFilter, setStatusFilter] = useState<CustomerStatKey>('products')
-  const [editingDelivery, setEditingDelivery] = useState(false)
-  const [deliveryDate, setDeliveryDate] = useState('')
+  const [stageFilter, setStageFilter] = useState<StageStatKey | null>(null)
+  const [exporting, setExporting]     = useState(false)
 
   if (!activeCustomerId) {
     return (
@@ -36,8 +44,15 @@ export function CustomerDetailPanel() {
         flexDirection: 'column', gap: 8,
         color: '#9ca3af', fontFamily: 'var(--font-ui)',
       }}>
-        <span style={{ fontSize: 32 }}>👥</span>
-        <span style={{ fontSize: 13 }}>Select a customer to view their orders</span>
+        <div style={{ fontSize: 32, opacity: 0.4 }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 500 }}>Select a customer to view their orders</span>
+        <span style={{ fontSize: 11, color: '#d1d5db' }}>Choose from the list on the left</span>
       </div>
     )
   }
@@ -51,45 +66,48 @@ export function CustomerDetailPanel() {
   // All lines for this customer (brand-filtered)
   const allLines = getLinesForCustomer(orders, activeCustomerId, brandFilter)
 
-  // Compute live KPIs from all lines (no status filter applied yet)
-  let pendingCount   = 0
-  let inBoxCount     = 0
-  let deliveredCount = 0
+  // Live stage counts from tracker-utils
+  const counts = getCustomerStageCounts(orders, activeCustomerId, brandFilter)
 
-  for (const { alloc } of allLines) {
-    if (alloc.boxStatus === 'ORDERED')                                         pendingCount  += alloc.qty
-    if (alloc.boxStatus === 'IN_BOX' || alloc.boxStatus === 'DEL_PENDING')     inBoxCount    += alloc.qty
-    if (alloc.boxStatus === 'DELIVERED' || alloc.boxStatus === 'GIVEN_OTHER')  deliveredCount += alloc.qty
-  }
-
-  // Apply status filter on top of brand filter
-  const filteredLines = statusFilter === 'products'
-    ? allLines
-    : allLines.filter(({ alloc }) =>
-        CUST_STAT_ALLOCS[statusFilter].includes(alloc.boxStatus)
-      )
+  // Filtered lines based on active stage filter
+  const filteredLines = stageFilter
+    ? allLines.filter(({ alloc }) => {
+        // Map stage filter key to relevant boxStatuses or stage fields
+        switch (stageFilter) {
+          case 'totalOrdered':    return true
+          case 'pendingFromCo':   return alloc.boxStatus === 'ORDERED'
+          case 'pendingFromDist': return alloc.boxStatus === 'ORDERED'
+          case 'atGodown':        return alloc.boxStatus === 'AT_GODOWN'
+          case 'inBox':           return alloc.boxStatus === 'IN_BOX' || alloc.boxStatus === 'DEL_PENDING'
+          case 'dispatched':      return alloc.boxStatus === 'DELIVERED' || alloc.boxStatus === 'GIVEN_OTHER'
+          case 'notDisplayed':    return false
+          default:                return true
+        }
+      })
+    : allLines
 
   const customerBrands = Array.from(new Set(allLines.map((l) => l.line.productBrand)))
 
-  function handleStatClick(key: CustomerStatKey) {
-    setStatusFilter((prev) => prev === key ? 'products' : key)
+  async function handleExport() {
+    if (!customer || exporting) return
+    setExporting(true)
+    try {
+      const { exportCustomerLines } = await import('@/lib/excelExporter')
+      const stageLabel = stageFilter
+        ? (STAGE_STAT_CONFIG.find((s) => s.key === stageFilter)?.label ?? 'All')
+        : 'All'
+      const rows = filteredLines.map(({ order, line, alloc }) => ({
+        order,
+        line,
+        customerName: customer.clientName,
+        allocQty:     alloc.qty,
+        stage:        alloc.boxStatus,
+      }))
+      await exportCustomerLines(rows, customer.clientName, stageLabel)
+    } finally {
+      setExporting(false)
+    }
   }
-
-  const statsConfig: Array<{
-    key:   CustomerStatKey
-    label: string
-    value: number
-    color: string
-    bg:    string
-  }> = [
-    { key: 'products',  label: 'Products',  value: allLines.length, color: '#374151', bg: '#f3f4f6'               },
-    { key: 'pending',   label: 'Pending',   value: pendingCount,    color: '#d97706', bg: 'rgba(217,119,6,0.08)'  },
-    { key: 'inBox',     label: 'In Box',    value: inBoxCount,      color: '#059669', bg: 'rgba(5,150,105,0.08)'  },
-    { key: 'delivered', label: 'Delivered', value: deliveredCount,  color: '#16a34a', bg: 'rgba(22,163,74,0.08)'  },
-  ]
-
-  const pendingTotal = pendingCount + inBoxCount
-  const nextDelivery = deliveryDate || customer.expectedDelivery
 
   return (
     <div style={{
@@ -103,87 +121,116 @@ export function CustomerDetailPanel() {
         borderBottom: '1px solid #e5e7eb',
         flexShrink: 0,
       }}>
+        {/* Customer identity row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
           <div style={{
             width: 44, height: 44, borderRadius: '50%',
             background: avatarColor, color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-ui)',
+            flexShrink: 0,
           }}>
             {initials}
           </div>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontFamily: 'var(--font-ui)' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: '#111827', fontFamily: 'var(--font-ui)' }}>
               {customer.clientName}
             </div>
-            <div style={{ fontSize: 12, color: '#6b7280', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: '#6b7280', fontFamily: 'var(--font-ui)', marginTop: 1 }}>
               {customer.projectName}
             </div>
-            <div style={{ fontSize: 11, color: '#9ca3af', fontFamily: 'var(--font-ui)', marginTop: 1 }}>
-              {customer.siteAddress}
-            </div>
+            {customer.architectName && (
+              <div style={{ fontSize: 11, color: '#9ca3af', fontFamily: 'var(--font-ui)', marginTop: 1 }}>
+                Architect: {customer.architectName}
+              </div>
+            )}
           </div>
+
+          {/* Export button */}
+          <button
+            onClick={handleExport}
+            disabled={exporting || filteredLines.length === 0}
+            data-testid="customer-export-excel"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '6px 12px', borderRadius: 7,
+              border: '1px solid #d1fae5', background: '#ecfdf5',
+              color: '#059669', fontSize: 11, fontWeight: 700,
+              fontFamily: 'var(--font-ui)', cursor: filteredLines.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: filteredLines.length === 0 ? 0.5 : 1,
+              transition: 'all 0.1s',
+              flexShrink: 0,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
+              <path d="M14 2H5.5L2 5.5V14a1 1 0 001 1h11a1 1 0 001-1V3a1 1 0 00-1-1zM5 2v3H2M8 7v6M5 10l3 3 3-3"/>
+            </svg>
+            {exporting ? 'Exporting…' : 'Export'}
+          </button>
         </div>
 
-        {/* KPI stat boxes — now clickable toggle buttons */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          {statsConfig.map(({ key, label, value, color, bg }) => {
-            const active = statusFilter === key
+        {/* 7 Stage stat boxes */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
+          {STAGE_STAT_CONFIG.map(({ key, short, color, bg }) => {
+            const value  = counts[key] ?? 0
+            const active = stageFilter === key
             return (
               <button
                 key={key}
-                onClick={() => handleStatClick(key)}
-                title={active ? `Show all products` : `Filter to ${label} only`}
+                onClick={() => setStageFilter((prev) => prev === key ? null : key)}
+                data-testid={`customer-stat-${key}`}
                 style={{
-                  flex: 1, padding: '8px 10px', borderRadius: 8,
+                  padding: '7px 6px', borderRadius: 8,
                   background: active ? bg : '#f9fafb',
-                  border: active
-                    ? `1.5px solid ${color}55`
-                    : '1.5px solid transparent',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  outline: 'none',
+                  border: active ? `1.5px solid ${color}55` : '1.5px solid #e5e7eb',
+                  textAlign: 'center', cursor: 'pointer',
+                  transition: 'all 0.15s', outline: 'none',
                   boxShadow: active ? `0 0 0 2px ${color}18` : 'none',
+                  position: 'relative', overflow: 'hidden',
                 }}
               >
-                <div style={{ ...NUM, fontSize: 18, fontWeight: 700, color: active ? color : '#6b7280' }}>
+                {/* Top color bar */}
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                  background: color, opacity: active ? 1 : 0.3,
+                  borderRadius: '8px 8px 0 0',
+                }} />
+                <div style={{ ...NUM, fontSize: 17, fontWeight: 800, color: active ? color : '#374151', lineHeight: 1 }}>
                   {value}
                 </div>
                 <div style={{
-                  fontSize: 9, color: active ? color : '#9ca3af',
-                  fontFamily: 'var(--font-ui)', marginTop: 2,
-                  fontWeight: active ? 700 : 400,
-                  transition: 'color 0.15s',
+                  fontSize: 8, fontWeight: 600,
+                  color: active ? color : '#9ca3af',
+                  fontFamily: 'var(--font-ui)', marginTop: 3,
+                  letterSpacing: '0.02em',
                 }}>
-                  {label}
+                  {short}
                 </div>
               </button>
             )
           })}
         </div>
 
-        {/* Active filter indicator */}
-        {statusFilter !== 'products' && (
+        {/* Active stage filter indicator */}
+        {stageFilter && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            marginTop: 10,
-            padding: '5px 10px', borderRadius: 6,
-            background: '#fef3c7',
-            border: '1px solid #fde68a',
+            marginTop: 8, padding: '5px 10px', borderRadius: 6,
+            background: '#f0f9ff', border: '1px solid #bfdbfe',
           }}>
-            <span style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: '#92400e', fontWeight: 500 }}>
-              Showing: <strong>{statsConfig.find((s) => s.key === statusFilter)?.label}</strong> items only
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: '#1d4ed8', fontWeight: 500 }}>
+              Showing: <strong>{STAGE_STAT_CONFIG.find((s) => s.key === stageFilter)?.label}</strong> only
+              &nbsp;({filteredLines.length} item{filteredLines.length !== 1 ? 's' : ''})
             </span>
             <button
-              onClick={() => setStatusFilter('products')}
+              onClick={() => setStageFilter(null)}
               style={{
-                fontSize: 10, fontFamily: 'var(--font-ui)', color: '#92400e',
+                fontSize: 10, fontFamily: 'var(--font-ui)', color: '#1d4ed8',
                 background: 'none', border: 'none', cursor: 'pointer',
                 textDecoration: 'underline', padding: 0,
               }}
             >
-              Clear filter
+              Clear
             </button>
           </div>
         )}
@@ -192,14 +239,14 @@ export function CustomerDetailPanel() {
       {/* Brand filter bar */}
       {customerBrands.length > 1 && (
         <div style={{
-          padding: '10px 20px',
-          background: '#fafafa',
+          padding: '8px 20px',
+          background: '#FAFAF8',
           borderBottom: '1px solid #e5e7eb',
           display: 'flex', gap: 6, alignItems: 'center',
           flexShrink: 0,
         }}>
           <span style={{
-            fontSize: 10, color: '#9ca3af', fontFamily: 'var(--font-ui)',
+            fontSize: 9, color: '#9ca3af', fontFamily: 'var(--font-ui)',
             fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 4,
           }}>
             Brand:
@@ -235,102 +282,17 @@ export function CustomerDetailPanel() {
             padding: '32px 20px', textAlign: 'center',
             fontSize: 13, color: '#9ca3af', fontFamily: 'var(--font-ui)',
           }}>
-            {statusFilter !== 'products'
-              ? `No ${statsConfig.find((s) => s.key === statusFilter)?.label.toLowerCase()} items${brandFilter !== 'ALL' ? ` for ${brandFilter}` : ''}.`
+            {stageFilter
+              ? `No items at "${STAGE_STAT_CONFIG.find((s) => s.key === stageFilter)?.label}"${brandFilter !== 'ALL' ? ` for ${brandFilter}` : ''}.`
               : `No orders for this customer${brandFilter !== 'ALL' ? ` under ${brandFilter}` : ''}.`
             }
           </div>
         ) : (
           filteredLines.map(({ order, line, alloc }) => (
-            <OrderRow key={line.id} order={order} line={line} alloc={alloc} />
+            <OrderRow key={`${order.id}-${line.id}`} order={order} line={line} alloc={alloc} />
           ))
         )}
       </div>
-
-      {/* Footer — interactive */}
-      {pendingTotal > 0 && (
-        <div style={{
-          padding: '10px 20px',
-          background: '#fef9ec',
-          borderTop: '1px solid #fde68a',
-          flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          {/* "X units pending" — click to open Pending KPI drill-down */}
-          <button
-            onClick={() => toggleKPICard('pendingFromCo')}
-            title="View all pending items in drill-down panel"
-            style={{
-              fontSize: 12, fontFamily: 'var(--font-ui)', color: '#92400e', fontWeight: 500,
-              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-              textDecoration: 'underline dotted', textUnderlineOffset: 2,
-            }}
-          >
-            {pendingTotal} units pending delivery ↗
-          </button>
-
-          {/* "Next: date" — click to reschedule */}
-          {!editingDelivery ? (
-            <button
-              onClick={() => {
-                setDeliveryDate(
-                  nextDelivery
-                    ? new Date(nextDelivery).toISOString().slice(0, 10)
-                    : ''
-                )
-                setEditingDelivery(true)
-              }}
-              title="Reschedule next delivery"
-              style={{
-                fontSize: 11, fontFamily: 'var(--font-ui)', color: '#b45309',
-                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                textDecoration: 'underline dotted', textUnderlineOffset: 2,
-              }}
-            >
-              {nextDelivery
-                ? `Next: ${new Date(nextDelivery).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} ✎`
-                : 'Set delivery date ✎'
-              }
-            </button>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input
-                type="date"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                autoFocus
-                style={{
-                  fontSize: 11, fontFamily: 'var(--font-ui)', color: '#111827',
-                  border: '1px solid #d1d5db', borderRadius: 5,
-                  padding: '3px 6px', background: '#fff', outline: 'none',
-                }}
-              />
-              <button
-                onClick={() => setEditingDelivery(false)}
-                style={{
-                  fontSize: 10, padding: '3px 8px',
-                  background: '#111827', color: '#fff',
-                  border: 'none', borderRadius: 5,
-                  fontFamily: 'var(--font-ui)', cursor: 'pointer',
-                }}
-              >
-                Done
-              </button>
-              <button
-                onClick={() => { setDeliveryDate(''); setEditingDelivery(false) }}
-                style={{
-                  fontSize: 10, padding: '3px 6px',
-                  background: '#f3f4f6', color: '#374151',
-                  border: 'none', borderRadius: 5,
-                  fontFamily: 'var(--font-ui)', cursor: 'pointer',
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

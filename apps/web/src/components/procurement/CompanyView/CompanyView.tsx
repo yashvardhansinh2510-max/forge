@@ -1,6 +1,9 @@
 'use client'
 
+import { useState } from 'react'
+import { useProcurementStore } from '@/lib/procurement-store'
 import { usePurchasesStore } from '@/lib/usePurchasesStore'
+import { getFilteredLines } from '@/lib/tracker-utils'
 import { TrackerSidebar }    from '../TrackerSidebar'
 import { CodeTable }         from './CodeTable'
 import { SkuDetailPanel }    from './SkuDetailPanel'
@@ -13,6 +16,22 @@ export function CompanyView() {
   const setViewMode    = usePurchasesStore((s) => s.setViewMode)
   const viewMode       = usePurchasesStore((s) => s.viewMode)
   const selectedLineId = usePurchasesStore((s) => s.selectedLineId)
+  const activeBrand    = usePurchasesStore((s) => s.activeBrand)
+  const activeCompanies = usePurchasesStore((s) => s.activeCompanies)
+  const orders         = useProcurementStore((s) => s.orders)
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const { exportTrackerLines } = await import('@/lib/excelExporter')
+      const lines = getFilteredLines(orders, activeBrand, activeCompanies, searchQuery)
+      await exportTrackerLines(lines, activeBrand)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -96,15 +115,24 @@ export function CompanyView() {
           <div style={{ flex: 1 }} />
 
           {/* Export button */}
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '6px 12px',
-            border: '1px solid #e5e7eb',
-            background: '#fff', borderRadius: 7,
-            fontSize: 11, fontFamily: 'var(--font-ui)',
-            color: '#6b7280', cursor: 'pointer',
-          }}>
-            <span>↓</span> Export
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            data-testid="tracker-export-excel"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '6px 12px',
+              border: '1px solid #d1fae5',
+              background: '#ecfdf5', borderRadius: 7,
+              fontSize: 11, fontFamily: 'var(--font-ui)',
+              color: '#059669', cursor: 'pointer', fontWeight: 700,
+              transition: 'all 0.1s',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M14 2H5.5L2 5.5V14a1 1 0 001 1h11a1 1 0 001-1V3a1 1 0 00-1-1zM5 2v3H2M8 7v6M5 10l3 3 3-3"/>
+            </svg>
+            {exporting ? 'Exporting…' : 'Export'}
           </button>
 
           {/* Mark Received */}

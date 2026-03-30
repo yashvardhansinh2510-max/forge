@@ -7,6 +7,7 @@ import { BRAND_COLORS, BRANDS_ORDERED } from '@/lib/mock/procurement-data'
 import type { MockPOLineItem } from '@/lib/mock/procurement-data'
 import { getLinesForKPIDrillDown } from '@/lib/tracker-utils'
 import type { KPICardKey } from '@/lib/usePurchasesStore'
+import { exportStageLines } from '@/lib/excelExporter'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -56,11 +57,22 @@ export function StatDrillDownPanel() {
 
   const [search, setSearch]         = useState('')
   const [localBrand, setLocalBrand] = useState('ALL')
+  const [exporting, setExporting]   = useState(false)
 
   useEffect(() => {
     setSearch('')
     setLocalBrand('ALL')
   }, [openKPICard])
+
+  async function handleExport() {
+    if (!openKPICard) return
+    setExporting(true)
+    try {
+      await exportStageLines(lines, openKPICard)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (!openKPICard) return null
 
@@ -91,11 +103,18 @@ export function StatDrillDownPanel() {
 
       {/* Panel header */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
+        display: 'flex', alignItems: 'center', gap: 10,
         padding: '10px 20px',
         borderBottom: '1px solid #f3f4f6',
         flexShrink: 0,
+        background: `linear-gradient(135deg, ${accent}08 0%, transparent 60%)`,
       }}>
+        {/* Color dot */}
+        <div style={{
+          width: 8, height: 8, borderRadius: '50%',
+          background: accent, flexShrink: 0,
+        }} />
+
         {/* Title + count */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flex: 1 }}>
           <span style={{
@@ -154,6 +173,29 @@ export function StatDrillDownPanel() {
             background: '#f9fafb', outline: 'none', width: 180,
           }}
         />
+
+        {/* Excel export */}
+        <button
+          onClick={handleExport}
+          disabled={exporting || lines.length === 0}
+          data-testid="drilldown-export-excel"
+          title="Export to Excel"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '5px 10px', borderRadius: 6,
+            border: '1px solid #d1fae5',
+            background: exporting ? '#f0fdf4' : '#ecfdf5',
+            color: '#059669', fontSize: 10, fontWeight: 700,
+            fontFamily: 'var(--font-ui)', cursor: lines.length === 0 ? 'not-allowed' : 'pointer',
+            opacity: lines.length === 0 ? 0.5 : 1,
+            transition: 'all 0.1s',
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 2h8l4 4v8a1 1 0 01-1 1H2a1 1 0 01-1-1V3a1 1 0 011-1zm7 0v4h4M8 9v4M6 11l2 2 2-2"/>
+          </svg>
+          {exporting ? 'Exporting…' : 'Export'}
+        </button>
 
         {/* Close */}
         <button

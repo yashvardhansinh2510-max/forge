@@ -47,13 +47,13 @@ export function CodeTable() {
       <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: 36 }} />
-          <col style={{ width: 230 }} />
-          <col style={{ width: 120 }} />
-          <col style={{ width: 64 }} />
-          <col style={{ width: 76 }} />
+          <col style={{ width: 240 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 50 }} />
           <col style={{ width: 72 }} />
-          <col style={{ width: 80 }} />
-          <col style={{ width: 68 }} />
+          <col style={{ width: 78 }} />
+          <col style={{ width: 76 }} />
+          <col style={{ width: 64 }} />
           <col style={{ width: 80 }} />
           <col style={{ width: 110 }} />
         </colgroup>
@@ -63,11 +63,11 @@ export function CodeTable() {
             <th style={TH}>Product / Code</th>
             <th style={TH}>Company</th>
             <th style={TH_R}>Qty</th>
-            <th style={TH_R}>Ordered</th>
-            <th style={TH_R}>Pending</th>
-            <th style={{ ...TH_R, color: '#7c3aed' }}>Cust. Order</th>
-            <th style={{ ...TH_R, color: '#059669' }}>In Box</th>
-            <th style={{ ...TH_R, color: '#16a34a' }}>Done</th>
+            <th style={{ ...TH_R, color: '#F5A623' }}>Pend. Co.</th>
+            <th style={{ ...TH_R, color: '#E8762C' }}>Pend. Dist.</th>
+            <th style={{ ...TH_R, color: '#4A90D9' }}>Godown</th>
+            <th style={{ ...TH_R, color: '#7B68EE' }}>In Box</th>
+            <th style={{ ...TH_R, color: '#27AE60' }}>Dispatched</th>
             <th style={TH}>Customers</th>
           </tr>
         </thead>
