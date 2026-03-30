@@ -38,6 +38,9 @@ export function CustomerDetailPanel() {
   const [stageFilter, setStageFilter] = useState<StageStatKey | null>(null)
   const [exporting, setExporting]     = useState(false)
 
+  // IMPORTANT: Call hooks unconditionally before any early returns (React Rules of Hooks)
+  const { data: apiCounts } = useCustomerStageTotals(activeCustomerId)
+
   if (!activeCustomerId) {
     return (
       <div style={{
@@ -66,9 +69,6 @@ export function CustomerDetailPanel() {
 
   // All lines for this customer (brand-filtered)
   const allLines = getLinesForCustomer(orders, activeCustomerId, brandFilter)
-
-  // Live stage counts from API via SWR
-  const { data: apiCounts } = useCustomerStageTotals(activeCustomerId)
   const counts: Record<string, number> = {
     totalOrdered:    apiCounts?.ordered      ?? 0,
     pendingFromCo:   apiCounts?.pendingCo    ?? 0,

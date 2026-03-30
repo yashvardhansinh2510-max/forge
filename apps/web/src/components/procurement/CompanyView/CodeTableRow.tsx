@@ -1,7 +1,7 @@
 'use client'
 
 import { usePurchasesStore }   from '@/lib/usePurchasesStore'
-import { BRAND_COLORS, STAGE_COLORS } from '@/lib/mock/procurement-data'
+import { BRAND_COLORS, STAGE_COLORS, LEGAL_TRANSITIONS } from '@/lib/mock/procurement-data'
 import type { POStage, MockPurchaseOrder, MockPOLineItem } from '@/lib/mock/procurement-data'
 import { getLineAggregates, getInitials, getAvatarColor } from '@/lib/tracker-utils'
 import { CustomerBoxGrid }     from './CustomerBoxGrid'
@@ -55,6 +55,10 @@ export function CodeTableRow({ order, line }: Props) {
 
   // Active pipeline stages (qty > 0) — for dot strip
   const activeDots = PIPELINE.filter((s) => (line[s.field] as number) > 0)
+
+  // Check if any active stage has valid next transitions (hide Move button if not)
+  const hasLegalMoves = unallocated > 0 ||
+    activeDots.some((d) => (LEGAL_TRANSITIONS[d.stage] ?? []).length > 0)
 
   function handleRowClick() { setSelectedLine(isSelected ? null : line.id) }
   function handleExpandClick(e: React.MouseEvent) {
@@ -153,6 +157,7 @@ export function CodeTableRow({ order, line }: Props) {
             </div>
 
             {/* Move Stage button (appears on hover via parent row hover) */}
+            {hasLegalMoves && (
             <button
               onClick={handleMoveClick}
               title="Move stage qty"
@@ -173,6 +178,7 @@ export function CodeTableRow({ order, line }: Props) {
             >
               Move
             </button>
+            )}
           </div>
         </td>
 
