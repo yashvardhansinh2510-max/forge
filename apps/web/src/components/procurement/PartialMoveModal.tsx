@@ -9,6 +9,7 @@ import {
   STAGE_COLORS,
   type POStage,
 } from '@/lib/mock/procurement-data'
+import { revalidateAfterMove } from '@/lib/swr-helpers'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -82,17 +83,39 @@ export function PartialMoveModal() {
     setError(null)
   }
 
-  const handleSubmit = useCallback(() => {
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = useCallback(async () => {
     if (!modal || !toStage) return
     setError(null)
+    setLoading(true)
 
-    const result = moveStage(modal.poId, modal.lineId, fromStage, toStage as POStage, qty)
-    if (result) {
-      setError(result)
-    } else {
+    try {
+      const res = await fetch(`/api/purchase-orders/lines/${modal.lineId}/move-stage`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromStage, toStage, qty, note: note || undefined }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        setError(err.message || err.error || 'Move failed')
+        return
+      }
+
+      // Optimistic local update so UI reflects immediately
+      moveStage(modal.poId, modal.lineId, fromStage, toStage as POStage, qty)
+
+      // Revalidate SWR caches for stat cards
+      await revalidateAfterMove()
+
       closeMoveStageModal()
+    } catch {
+      setError('Network error — please try again')
+    } finally {
+      setLoading(false)
     }
-  }, [modal, fromStage, toStage, qty, moveStage, closeMoveStageModal])
+  }, [modal, fromStage, toStage, qty, note, moveStage, closeMoveStageModal])
 
   if (!modal || !line) return null
 
@@ -350,18 +373,20 @@ export function PartialMoveModal() {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!toStage || available === 0 || legalToList.length === 0}
+            disabled={!toStage || available === 0 || legalToList.length === 0 || loading}
+            data-testid="move-stage-confirm-btn"
             style={{
               height: 34, padding: '0 18px', borderRadius: 7,
               border: 'none',
               background: toStage ? toColor : '#e5e7eb',
               color: toStage ? '#fff' : '#9ca3af',
               fontSize: 12, fontWeight: 700,
-              fontFamily: 'var(--font-ui)', cursor: toStage ? 'pointer' : 'not-allowed',
+              fontFamily: 'var(--font-ui)', cursor: (toStage && !loading) ? 'pointer' : 'not-allowed',
               transition: 'background 0.15s',
+              opacity: loading ? 0.6 : 1,
             }}
           >
-            Move {qty} unit{qty !== 1 ? 's' : ''}{toStage ? ` → ${STAGE_LABELS[toStage as POStage]}` : ''}
+            {loading ? 'Moving…' : `Move ${qty} unit${qty !== 1 ? 's' : ''}${toStage ? ` → ${STAGE_LABELS[toStage as POStage]}` : ''}`}
           </button>
         </div>
       </div>

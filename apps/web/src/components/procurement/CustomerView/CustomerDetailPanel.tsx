@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useProcurementStore } from '@/lib/procurement-store'
 import { usePurchasesStore }   from '@/lib/usePurchasesStore'
 import { MOCK_CUSTOMERS, BRAND_COLORS } from '@/lib/mock/procurement-data'
-import { getLinesForCustomer, getCustomerStageCounts, getInitials, getAvatarColor } from '@/lib/tracker-utils'
+import { getLinesForCustomer, getInitials, getAvatarColor } from '@/lib/tracker-utils'
+import { useCustomerStageTotals } from '@/lib/swr-helpers'
 import { OrderRow } from './OrderRow'
 import type { KPICardKey } from '@/lib/usePurchasesStore'
 
@@ -66,8 +67,17 @@ export function CustomerDetailPanel() {
   // All lines for this customer (brand-filtered)
   const allLines = getLinesForCustomer(orders, activeCustomerId, brandFilter)
 
-  // Live stage counts from tracker-utils
-  const counts = getCustomerStageCounts(orders, activeCustomerId, brandFilter)
+  // Live stage counts from API via SWR
+  const { data: apiCounts } = useCustomerStageTotals(activeCustomerId)
+  const counts: Record<string, number> = {
+    totalOrdered:    apiCounts?.ordered      ?? 0,
+    pendingFromCo:   apiCounts?.pendingCo    ?? 0,
+    pendingFromDist: apiCounts?.pendingDist  ?? 0,
+    atGodown:        apiCounts?.godown       ?? 0,
+    inBox:           apiCounts?.inBox        ?? 0,
+    dispatched:      apiCounts?.dispatched   ?? 0,
+    notDisplayed:    apiCounts?.notDisplayed ?? 0,
+  }
 
   // Filtered lines based on active stage filter
   const filteredLines = stageFilter

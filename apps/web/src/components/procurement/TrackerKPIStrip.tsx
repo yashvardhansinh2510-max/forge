@@ -1,8 +1,7 @@
 'use client'
 
-import { useProcurementStore } from '@/lib/procurement-store'
 import { usePurchasesStore }   from '@/lib/usePurchasesStore'
-import { getFilteredLines, computeKPIs } from '@/lib/tracker-utils'
+import { useStageTotals }      from '@/lib/swr-helpers'
 import type { KPICardKey } from '@/lib/usePurchasesStore'
 
 const NUM: React.CSSProperties = {
@@ -125,27 +124,26 @@ function KPICard({ label, value, color, bg, isOpen, pct, isTotal, onClick }: KPI
 }
 
 export function TrackerKPIStrip() {
-  const orders          = useProcurementStore((s) => s.orders)
-  const activeBrand     = usePurchasesStore((s) => s.activeBrand)
-  const activeCompanies = usePurchasesStore((s) => s.activeCompanies)
   const openKPICard     = usePurchasesStore((s) => s.openKPICard)
   const toggleKPICard   = usePurchasesStore((s) => s.toggleKPICard)
 
-  const lines = getFilteredLines(orders, activeBrand, activeCompanies, '')
-  const kpis  = computeKPIs(lines)
-  const total = kpis.totalOrdered || 1  // avoid divide by zero
+  const { data: totals } = useStageTotals()
+
+  // Fallback to zeros while loading
+  const t = totals ?? { ordered: 0, pendingCo: 0, pendingDist: 0, godown: 0, inBox: 0, dispatched: 0, notDisplayed: 0 }
+  const total = t.ordered || 1  // avoid divide by zero
 
   const cards: Array<{
     label: string; value: number; color: string; bg: string
     cardKey: KPICardKey; isTotal: boolean
   }> = [
-    { label: 'Total Ordered',      value: kpis.totalOrdered,    color: '#2563eb', bg: 'rgba(37,99,235,0.06)',   cardKey: 'totalOrdered',    isTotal: true  },
-    { label: 'Pend. from Co.',     value: kpis.pendingFromCo,   color: '#F5A623', bg: 'rgba(245,166,35,0.07)',  cardKey: 'pendingFromCo',   isTotal: false },
-    { label: 'Pend. from Dist.',   value: kpis.pendingFromDist, color: '#E8762C', bg: 'rgba(232,118,44,0.07)',  cardKey: 'pendingFromDist', isTotal: false },
-    { label: 'At Godown',          value: kpis.atGodown,        color: '#4A90D9', bg: 'rgba(74,144,217,0.07)',  cardKey: 'atGodown',        isTotal: false },
-    { label: 'In Box',             value: kpis.inBox,           color: '#7B68EE', bg: 'rgba(123,104,238,0.07)', cardKey: 'inBox',           isTotal: false },
-    { label: 'Dispatched',         value: kpis.dispatched,      color: '#27AE60', bg: 'rgba(39,174,96,0.07)',   cardKey: 'dispatched',      isTotal: false },
-    { label: 'Not Displayed',      value: kpis.notDisplayed,    color: '#95A5A6', bg: 'rgba(149,165,166,0.07)', cardKey: 'notDisplayed',    isTotal: false },
+    { label: 'Total Ordered',      value: t.ordered,      color: '#2563eb', bg: 'rgba(37,99,235,0.06)',   cardKey: 'totalOrdered',    isTotal: true  },
+    { label: 'Pend. from Co.',     value: t.pendingCo,    color: '#F5A623', bg: 'rgba(245,166,35,0.07)',  cardKey: 'pendingFromCo',   isTotal: false },
+    { label: 'Pend. from Dist.',   value: t.pendingDist,  color: '#E8762C', bg: 'rgba(232,118,44,0.07)',  cardKey: 'pendingFromDist', isTotal: false },
+    { label: 'At Godown',          value: t.godown,       color: '#4A90D9', bg: 'rgba(74,144,217,0.07)',  cardKey: 'atGodown',        isTotal: false },
+    { label: 'In Box',             value: t.inBox,        color: '#7B68EE', bg: 'rgba(123,104,238,0.07)', cardKey: 'inBox',           isTotal: false },
+    { label: 'Dispatched',         value: t.dispatched,   color: '#27AE60', bg: 'rgba(39,174,96,0.07)',   cardKey: 'dispatched',      isTotal: false },
+    { label: 'Not Displayed',      value: t.notDisplayed, color: '#95A5A6', bg: 'rgba(149,165,166,0.07)', cardKey: 'notDisplayed',    isTotal: false },
   ]
 
   return (

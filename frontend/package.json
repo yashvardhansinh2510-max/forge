@@ -1,0 +1,7 @@
+{
+  "name": "frontend",
+  "private": true,
+  "scripts": {
+    "start": "bash start.sh"
+  }
+}
