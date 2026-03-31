@@ -11,7 +11,6 @@ export async function GET(
   try {
     const { customerId } = await params
 
-    // customerId maps to projectId in our data model
     const items = await prisma.pOLineItem.findMany({
       where: {
         po: { projectId: customerId },
@@ -30,14 +29,24 @@ export async function GET(
     const sum = (field: keyof (typeof items)[0]) =>
       items.reduce((acc, i) => acc + (i[field] as number), 0)
 
+    const ordered = sum('qtyOrdered')
+    const pendingCo = sum('qtyPendingCo')
+    const pendingDist = sum('qtyPendingDist')
+    const godown = sum('qtyAtGodown')
+    const inBox = sum('qtyInBox')
+    const dispatched = sum('qtyDispatched')
+    const notDisplayed = sum('qtyNotDisplayed')
+    const staged = pendingCo + pendingDist + godown + inBox + dispatched + notDisplayed
+    const unallocated = Math.max(0, ordered - staged)
+
     return NextResponse.json({
-      ordered: sum('qtyOrdered'),
-      pendingCo: sum('qtyPendingCo'),
-      pendingDist: sum('qtyPendingDist'),
-      godown: sum('qtyAtGodown'),
-      inBox: sum('qtyInBox'),
-      dispatched: sum('qtyDispatched'),
-      notDisplayed: sum('qtyNotDisplayed'),
+      unallocated,
+      pendingCo,
+      pendingDist,
+      godown,
+      inBox,
+      dispatched,
+      notDisplayed,
     })
   } catch (err) {
     console.error('[customer-stage-totals]', err)

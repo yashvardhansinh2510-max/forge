@@ -22,7 +22,7 @@ const STAGE_STAT_CONFIG: Array<{
   color: string
   bg:    string
 }> = [
-  { key: 'totalOrdered',    label: 'Total Ordered',     short: 'Ordered',   color: '#2563eb', bg: 'rgba(37,99,235,0.07)'   },
+  { key: 'totalOrdered',    label: 'Unallocated',       short: 'Unalloc.',  color: '#64748b', bg: 'rgba(100,116,139,0.07)' },
   { key: 'pendingFromCo',   label: 'Pend. from Co.',    short: 'Pend. Co',  color: '#F5A623', bg: 'rgba(245,166,35,0.07)'  },
   { key: 'pendingFromDist', label: 'Pend. from Dist.',  short: 'Pend. Dist',color: '#E8762C', bg: 'rgba(232,118,44,0.07)'  },
   { key: 'atGodown',        label: 'At Godown',         short: 'Godown',    color: '#4A90D9', bg: 'rgba(74,144,217,0.07)'  },
@@ -70,7 +70,7 @@ export function CustomerDetailPanel() {
   // All lines for this customer (brand-filtered)
   const allLines = getLinesForCustomer(orders, activeCustomerId, brandFilter)
   const counts: Record<string, number> = {
-    totalOrdered:    apiCounts?.ordered      ?? 0,
+    totalOrdered:    apiCounts?.unallocated  ?? 0,
     pendingFromCo:   apiCounts?.pendingCo    ?? 0,
     pendingFromDist: apiCounts?.pendingDist  ?? 0,
     atGodown:        apiCounts?.godown       ?? 0,

@@ -10,7 +10,7 @@ export const fetcher = (url: string) => fetch(url).then((r) => {
 
 /** Stage totals shape returned by both endpoints */
 export interface StageTotals {
-  ordered: number
+  unallocated: number
   pendingCo: number
   pendingDist: number
   godown: number

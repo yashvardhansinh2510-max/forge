@@ -1,0 +1,92 @@
+{
+  "theme_and_archetype": {
+    "archetype": "Archetype 1: Organic & Earthy mixed with Archetype 5 (Jewel & Luxury)",
+    "theme": "Light Theme",
+    "vibe": "Premium, tactile, calm, architectural. Avoid clinical SaaS looks. Aim for 'Old Money Tech' using natural textures, stone greys, and bronze/copper accents."
+  },
+  "typography": {
+    "strategy": "Old Money Tech",
+    "instructions_to_main_agent": "Use Cormorant Garamond for all headings and KPI numbers to give an editorial, luxury catalog feel. Use Manrope for table data and UI labels for crisp legibility.",
+    "headings": {
+      "font": "Cormorant Garamond",
+      "classes": "font-serif tracking-tight text-[#1C1F1D]"
+    },
+    "body": {
+      "font": "Manrope",
+      "classes": "font-sans leading-relaxed text-[#4A4F4C]"
+    },
+    "scales": {
+      "h1": "text-4xl sm:text-5xl font-serif tracking-tight",
+      "h2": "text-2xl sm:text-3xl font-serif tracking-tight",
+      "kpi_number": "text-3xl sm:text-4xl lg:text-5xl font-serif tracking-tight text-[#1C1F1D]",
+      "overline": "text-xs font-sans uppercase tracking-[0.2em] font-semibold text-[#8F9691]",
+      "body": "text-sm sm:text-base font-sans"
+    }
+  },
+  "color_palette": {
+    "background": {
+      "base": "#F6F5F2", 
+      "surface": "#FFFFFF",
+      "surface_hover": "#F0EFEB"
+    },
+    "text": {
+      "primary": "#1C1F1D",
+      "secondary": "#5C635E",
+      "tertiary": "#8F9691"
+    },
+    "accents": {
+      "copper": "#B87333",
+      "bronze_light": "#D4A373",
+      "sage": "#8A9A86",
+      "slate": "#4A5D5E"
+    },
+    "brand_colors": {
+      "grohe": "#1E5B8A",
+      "hansgrohe": "#2A6A4E",
+      "axor": "#1C1F1D",
+      "vitra": "#A33232",
+      "geberit": "#1D4E75"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous Spacing (p-6 to p-12) to create breathing room. The Grid Borders ('Technical' Look) for the table and sidebar.",
+    "page_structure": "A dashboard layout with a top Global Nav, below that a Header containing the KPI Strip. Below that, a split layout: left sticky sidebar (Company Filter) spanning 2-3 columns, and a main content area spanning 9-10 columns.",
+    "kpi_grid": "To fit 7 cards elegantly, use a scrollable flex row on mobile, and a grid `grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4` on desktop."
+  },
+  "surfaces": {
+    "kpi_cards": "Neumorphism (Tactile) variant. Background #FFFFFF, 1px border border-[#E8E6E1], soft shadow shadow-[0_8px_30px_rgba(28,31,29,0.04)], rounded-xl. The text inside should be left-aligned with ample p-6 padding.",
+    "table_container": "Cardless, pure structural HTML. Use border-collapse with subtle bottom borders border-b border-[#E8E6E1] for rows. No outer borders.",
+    "modal": "Glassmorphism (Crystal Variant). bg-white/70 backdrop-blur-2xl backdrop-saturate-150 border border-white/40 shadow-2xl. Inside modal use crisp solid elements."
+  },
+  "components_instructions": {
+    "global_navigation": "Include a top navigation bar with Brand Logo (Text: 'LUXE BATH' in serif), 3-5 links (e.g., Dashboard, Purchases, Inventory, Reports), and a 'New Order' CTA button in dark slate. The nav should have a solid or glassmorphic background.",
+    "header_and_kpi_strip": "Create an elegant Top Header section with the marble background image overlay. The KPI strip should sit inside this area. KPI values MUST use the serif font.",
+    "brand_tab_bar": "Design an 'Editorial Ribbon' style tab bar above the table. Use pill-shaped buttons with `rounded-full px-5 py-2 text-sm`. For the active state, use the brand's specific color (from color_palette.brand_colors) as the text color and a very low opacity background of that color (e.g., bg-opacity-10). For inactive, use text-secondary with transparent background.",
+    "company_filter_sidebar": "Left sidebar for Company filtering. Do not use standard Shadcn cards. Use pure HTML structural text links with generous spacing (`gap-4`, `py-2.5`). Add a tiny copper dot (`bg-[#B87333] w-1.5 h-1.5 rounded-full`) next to the active company.",
+    "product_table": "Minimalist grid. Column headers in uppercase tracking-[0.1em] overline style, text-xs. Rows should have generous padding (`py-5`). Add an action menu (Move Stage) at the end of each row.",
+    "pipeline_dots": "Instead of basic colored circles, draw a literal pipeline line (`h-[2px] w-full bg-[#E8E6E1]`) in the cell and place 7 small nodes on it. The active node is an oversized copper dot `w-3 h-3 rounded-full bg-[#B87333] ring-4 ring-[#B87333]/20`. Completed nodes are solid sage `#8A9A86`. Future nodes are hollow `w-2 h-2 border-2 border-[#E8E6E1] bg-white rounded-full`.",
+    "move_stage_modal": "Use Shadcn Dialog but overwrite the content classes to use the Crystal Glassmorphism surface. The primary CTA button should be a dark luxury button (`bg-[#1C1F1D] text-white hover:bg-[#2C302D] rounded-none` or `rounded-sm`)."
+  },
+  "media_assets": {
+    "images": [
+      {
+        "category": "header_background",
+        "url": "https://images.unsplash.com/photo-1566041510394-cf7c8fe21800?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwxfHxtYXJibGUlMjB0ZXh0dXJlJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzQ5MzkyMTF8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Subtle white marble texture. Use this in the top header section behind the KPIs. Give it a white overlay (bg-[#F6F5F2]/80 or 90) so it provides just a hint of texture and text remains perfectly readable."
+      }
+    ]
+  },
+  "icons": {
+    "library": "lucide-react",
+    "instructions": "Use sophisticated, thin-stroke icons (strokeWidth={1.5}). Avoid filled icons. Use them sparingly as accents."
+  },
+  "motion_and_interactions": {
+    "hover_states": "Rows in table slightly change background to #F0EFEB. Tab bar items smoothly transition background and text color.",
+    "modal_entrance": "Dialog should slide up slightly and fade in (Framer Motion or Shadcn default animation)."
+  },
+  "accessibility": {
+    "contrast": "Ensure serif KPI numbers (#1C1F1D) have at least 4.5:1 against card backgrounds.",
+    "focus_states": "Use focus:ring-1 focus:ring-[#B87333] focus:outline-none for inputs and buttons.",
+    "test_ids": "Every interactive element (tabs, filter links, table rows, modal trigger, modal submit) MUST have a data-testid attribute in kebab-case."
+  }
+}
