@@ -44,32 +44,33 @@ export function CompanyView() {
         {/* Toolbar */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 16px',
-          background: '#ffffff',
-          borderBottom: '1px solid #e5e7eb',
+          padding: '10px 20px',
+          background: '#FFFFFF',
+          borderBottom: '1px solid #E8E6E1',
           flexShrink: 0,
         }}>
           {/* View toggle */}
           <div style={{
             display: 'flex',
-            background: '#f3f4f6',
-            borderRadius: 7, padding: 2, marginRight: 4,
+            background: '#F0EFEB',
+            borderRadius: 8, padding: 2, marginRight: 4,
           }}>
             {(['company', 'customer'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 style={{
-                  padding: '4px 12px',
-                  border: 'none', borderRadius: 5,
+                  padding: '5px 14px',
+                  border: 'none', borderRadius: 6,
                   fontSize: 11, fontWeight: 600,
-                  fontFamily: 'var(--font-ui)',
+                  fontFamily: "'Manrope', sans-serif",
                   cursor: 'pointer',
-                  background: viewMode === mode ? '#ffffff' : 'transparent',
-                  color: viewMode === mode ? '#111827' : '#6b7280',
-                  boxShadow: viewMode === mode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  background: viewMode === mode ? '#FFFFFF' : 'transparent',
+                  color: viewMode === mode ? '#1C1F1D' : '#5C635E',
+                  boxShadow: viewMode === mode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                   transition: 'all 0.15s',
                   textTransform: 'capitalize',
+                  letterSpacing: '0.02em',
                 }}
               >
                 {mode === 'company' ? 'Company View' : 'Customer View'}
@@ -79,24 +80,28 @@ export function CompanyView() {
 
           {/* Search */}
           <div style={{ position: 'relative', flex: 1, maxWidth: 280 }}>
-            <span style={{
-              position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 13, color: '#9ca3af', pointerEvents: 'none',
-            }}>
-              🔍
-            </span>
+            <svg style={{
+              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+              width: 14, height: 14, color: '#8F9691', pointerEvents: 'none',
+            }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.3-4.3"/>
+            </svg>
             <input
               type="text"
               placeholder="Search SKU or product name…"
               value={searchQuery}
               onChange={(e) => setSearch(e.target.value)}
               style={{
-                width: '100%', padding: '6px 10px 6px 30px',
-                border: '1px solid #e5e7eb', borderRadius: 7,
-                fontSize: 12, fontFamily: 'var(--font-ui)', color: '#111827',
-                background: '#f9fafb', outline: 'none',
+                width: '100%', padding: '7px 12px 7px 32px',
+                border: '1px solid #E8E6E1', borderRadius: 8,
+                fontSize: 12, fontFamily: "'Manrope', sans-serif", color: '#1C1F1D',
+                background: '#F6F5F2', outline: 'none',
                 boxSizing: 'border-box',
+                transition: 'border-color 0.15s',
               }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = '#B87333' }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = '#E8E6E1' }}
             />
             {searchQuery && (
               <button
@@ -120,30 +125,38 @@ export function CompanyView() {
             disabled={exporting}
             data-testid="tracker-export-excel"
             style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '6px 12px',
-              border: '1px solid #d1fae5',
-              background: '#ecfdf5', borderRadius: 7,
-              fontSize: 11, fontFamily: 'var(--font-ui)',
-              color: '#059669', cursor: 'pointer', fontWeight: 700,
-              transition: 'all 0.1s',
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 14px',
+              border: '1px solid #E8E6E1',
+              background: '#FFFFFF', borderRadius: 8,
+              fontSize: 11, fontFamily: "'Manrope', sans-serif",
+              color: '#2A6A4E', cursor: 'pointer', fontWeight: 700,
+              transition: 'all 0.15s',
+              letterSpacing: '0.02em',
             }}
           >
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M14 2H5.5L2 5.5V14a1 1 0 001 1h11a1 1 0 001-1V3a1 1 0 00-1-1zM5 2v3H2M8 7v6M5 10l3 3 3-3"/>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
             {exporting ? 'Exporting…' : 'Export'}
           </button>
 
           {/* Mark Received */}
           <button style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '6px 12px',
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 14px',
             border: 'none',
-            background: '#111827', borderRadius: 7,
-            fontSize: 11, fontFamily: 'var(--font-ui)',
+            background: '#1C1F1D', borderRadius: 8,
+            fontSize: 11, fontFamily: "'Manrope', sans-serif",
             color: '#fff', cursor: 'pointer', fontWeight: 600,
-          }}>
+            letterSpacing: '0.02em',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#2C302D' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1C1F1D' }}
+          >
             + Mark Received
           </button>
         </div>

@@ -38,10 +38,10 @@ export function TrackerBrandTabBar() {
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 2,
-      padding: '0 20px',
-      background: '#ffffff',
-      borderBottom: '1px solid #E8E4DF',
+      display: 'flex', alignItems: 'center', gap: 3,
+      padding: '0 24px',
+      background: '#FFFFFF',
+      borderBottom: '1px solid #E8E6E1',
       overflowX: 'auto',
       flexShrink: 0,
     }}>
@@ -55,9 +55,9 @@ export function TrackerBrandTabBar() {
       >
         <span style={{
           fontSize: 11, fontWeight: 700,
-          color: activeBrand === 'ALL' ? '#1A1A1A' : '#6B6560',
-          fontFamily: 'var(--font-ui)',
-          letterSpacing: '0.06em',
+          color: activeBrand === 'ALL' ? '#1C1F1D' : '#5C635E',
+          fontFamily: "'Manrope', sans-serif",
+          letterSpacing: '0.08em',
         }}>
           ALL
         </span>
@@ -134,12 +134,13 @@ function TabButton({
         ...NUM_STYLE,
         fontSize: 10,
         fontWeight: 600,
-        padding: '1px 6px',
+        padding: '2px 7px',
         borderRadius: 10,
-        background: active ? color : '#F0EDE9',
-        color: active ? '#fff' : '#6B6560',
+        background: active ? color : '#F0EFEB',
+        color: active ? '#fff' : '#5C635E',
         minWidth: 18,
         textAlign: 'center',
+        fontFamily: "'Manrope', sans-serif",
       }}>
         {count}
       </span>
