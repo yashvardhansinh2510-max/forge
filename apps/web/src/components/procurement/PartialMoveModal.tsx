@@ -10,7 +10,7 @@ import {
   STAGE_COLORS,
   type POStage,
 } from '@/lib/mock/procurement-data'
-import { revalidateAfterMove, fetcher } from '@/lib/swr-helpers'
+import { revalidateAfterMove, fetcher, useStageTotals, type StageTotals } from '@/lib/swr-helpers'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -56,12 +56,22 @@ export function PartialMoveModal() {
   const closeMoveStageModal = usePurchasesStore((s) => s.closeMoveStageModal)
   const moveStageLocal     = useProcurementStore((s) => s.moveStage)
 
-  const [fromStage, setFromStage] = useState<AllFromStage>('ORDERED')
-  const [toStage,   setToStage]   = useState<POStage | ''>('')
-  const [qty,       setQty]       = useState(1)
-  const [note,      setNote]      = useState('')
-  const [error,     setError]     = useState<string | null>(null)
-  const [loading,   setLoading]   = useState(false)
+  const [fromStage,   setFromStage]   = useState<AllFromStage>('ORDERED')
+  const [toStage,     setToStage]     = useState<POStage | ''>('')
+  const [qty,         setQty]         = useState(1)
+  const [note,        setNote]        = useState('')
+  const [customerId,  setCustomerId]  = useState<string | null>(null)
+  const [error,       setError]       = useState<string | null>(null)
+  const [loading,     setLoading]     = useState(false)
+
+  const { mutate: mutateStageTotals } = useStageTotals()
+
+  // Customers who have QuotationItems for this product
+  const { data: customers = [] } = useSWR<Array<{ id: string; name: string }>>(
+    line?.productId ? `/api/products/${line.productId}/customers-who-ordered` : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  )
 
   // Fetch line data from DB (live, not from stale Zustand store)
   const { data: line, mutate: mutateLine } = useSWR<DBLineItem>(
@@ -79,6 +89,7 @@ export function PartialMoveModal() {
     setToStage(legalNext[0] ?? '')
     setQty(1)
     setNote('')
+    setCustomerId(null)
     setError(null)
     setLoading(false)
   }, [modal?.poId, modal?.lineId, line]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,7 +111,11 @@ export function PartialMoveModal() {
       const res = await fetch(`/api/purchase-orders/lines/${modal.lineId}/move-stage`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromStage, toStage, qty, note: note || undefined }),
+        body: JSON.stringify({
+          fromStage, toStage, qty,
+          note:       note || undefined,
+          customerId: customerId ?? undefined,
+        }),
       })
 
       if (!res.ok) {
@@ -109,14 +124,18 @@ export function PartialMoveModal() {
         return
       }
 
+      const data = await res.json()
+
+      // Instant KPI header update — no second round-trip needed
+      if (data.stageTotals) {
+        mutateStageTotals(data.stageTotals as StageTotals, false)
+      }
+
       // Optimistic local update for Zustand (drill-down panels still read from there)
       moveStageLocal(modal.poId, modal.lineId, fromStage, toStage as POStage, qty)
 
-      // Revalidate all SWR caches
-      await Promise.all([
-        revalidateAfterMove(),
-        mutateLine(),
-      ])
+      // Revalidate line-level SWR cache
+      await mutateLine()
 
       closeMoveStageModal()
     } catch {
@@ -124,7 +143,7 @@ export function PartialMoveModal() {
     } finally {
       setLoading(false)
     }
-  }, [modal, fromStage, toStage, qty, note, moveStageLocal, closeMoveStageModal, mutateLine])
+  }, [modal, fromStage, toStage, qty, note, customerId, moveStageLocal, closeMoveStageModal, mutateLine, mutateStageTotals])
 
   // ── render ────────────────────────────────────────────────────────────────
 
@@ -344,6 +363,16 @@ export function PartialMoveModal() {
             </div>
           </div>
 
+          {/* Remaining qty hint */}
+          {available > qty && (
+            <div style={{ fontSize: 11, color: '#6b7280', marginTop: -10, fontFamily: 'var(--font-ui)' }}>
+              {available - qty} will stay at{' '}
+              <span style={{ fontWeight: 600 }}>
+                {fromStage === 'ORDERED' ? 'Unallocated' : STAGE_LABELS[fromStage]}
+              </span>
+            </div>
+          )}
+
           {/* NOTE */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6, letterSpacing: '0.02em' }}>
@@ -364,6 +393,32 @@ export function PartialMoveModal() {
               }}
             />
           </div>
+
+          {/* CUSTOMER ASSIGNMENT */}
+          {customers.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6, letterSpacing: '0.02em' }}>
+                ASSIGN TO CUSTOMER <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+              </div>
+              <select
+                value={customerId ?? ''}
+                onChange={(e) => setCustomerId(e.target.value || null)}
+                data-testid="customer-select"
+                style={{
+                  width: '100%', height: 34, borderRadius: 7,
+                  border: '1px solid #e5e7eb', padding: '0 10px',
+                  fontSize: 12, color: '#111827', fontFamily: 'var(--font-ui)',
+                  background: '#ffffff', cursor: 'pointer', outline: 'none',
+                  boxSizing: 'border-box' as const,
+                }}
+              >
+                <option value="">— No specific customer —</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Error */}
           {error && (

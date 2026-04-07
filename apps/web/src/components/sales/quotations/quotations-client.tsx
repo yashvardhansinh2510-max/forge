@@ -4,6 +4,8 @@ import * as React from 'react'
 import { motion } from 'framer-motion'
 import { Search, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import useSWR from 'swr'
 import { Button } from '@forge/ui'
 import { PageContainer } from '@/components/layout/page-container'
 import { SalesNav } from '../shared/sales-nav'
@@ -11,15 +13,55 @@ import { QuotationTable } from './quotation-table'
 import { QuotationBuilder } from './quotation-builder'
 import { quotations, calcDocumentTotals, type Quotation } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
+import { fetcher } from '@/lib/swr-helpers'
+
+interface PendingRevision {
+  id: string
+  number: string
+  revisionNumber: number
+  clientName: string
+  itemCount: number
+  lockedAt: string | null
+}
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
 const STATUS_FILTERS = ['all', 'draft', 'sent', 'viewed', 'accepted', 'declined'] as const
 
 export function QuotationsClient() {
+  const router = useRouter()
   const [search, setSearch] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<string>('all')
   const [selectedQuotation, setSelectedQuotation] = React.useState<Quotation | null>(null)
+  const [creatingPoId, setCreatingPoId] = React.useState<string | null>(null)
+
+  const { data: pendingRevisions = [] } = useSWR<PendingRevision[]>(
+    '/api/quotations/pending-po',
+    fetcher,
+    { revalidateOnFocus: false },
+  )
+
+  async function handleCreatePO(revisionId: string) {
+    setCreatingPoId(revisionId)
+    try {
+      const res = await fetch(`/api/purchase-orders/from-revision/${revisionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        toast.error(err.message || 'Failed to create PO')
+        return
+      }
+      toast.success('Purchase Order created — redirecting to Tracker')
+      router.push('/purchases')
+    } catch {
+      toast.error('Network error — please try again')
+    } finally {
+      setCreatingPoId(null)
+    }
+  }
 
   const openCount = quotations.filter(q => q.status === 'sent' || q.status === 'viewed').length
   const pipelineValue = quotations
@@ -127,6 +169,39 @@ export function QuotationsClient() {
           ))}
         </div>
       </div>
+
+      {/* Ready to Order — locked DB revisions awaiting PO creation */}
+      {pendingRevisions.length > 0 && (
+        <div style={{ marginBottom: 16, padding: '12px 14px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 10, letterSpacing: '0.05em' }}>
+            READY TO ORDER — {pendingRevisions.length} revision{pendingRevisions.length !== 1 ? 's' : ''} approved
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {pendingRevisions.map((rev) => (
+              <div key={rev.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', borderRadius: 8, padding: '8px 12px', boxShadow: 'var(--shadow-sm)' }}>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-ui)' }}>
+                    {rev.number}
+                  </span>
+                  {rev.revisionNumber > 0 && (
+                    <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 6 }}>Rev {rev.revisionNumber}</span>
+                  )}
+                  <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 10 }}>
+                    {rev.clientName} · {rev.itemCount} item{rev.itemCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleCreatePO(rev.id)}
+                  disabled={creatingPoId === rev.id}
+                  style={{ height: 28, padding: '0 14px', borderRadius: 6, border: 'none', background: '#0071e3', color: 'white', fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-ui)', cursor: creatingPoId === rev.id ? 'not-allowed' : 'pointer', opacity: creatingPoId === rev.id ? 0.6 : 1 }}
+                >
+                  {creatingPoId === rev.id ? 'Creating…' : 'Create PO'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <QuotationTable data={filtered} globalFilter={search} onRowClick={setSelectedQuotation} />
 

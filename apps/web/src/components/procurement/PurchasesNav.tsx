@@ -5,9 +5,10 @@ import { usePathname } from 'next/navigation'
 import { useDraftLineCount } from '@/lib/procurement-store'
 
 const TABS = [
-  { href: '/purchases',       label: 'Tracker'     },
-  { href: '/purchases/new',   label: 'New PO'      },
-  { href: '/purchases/boxes', label: 'Box Tracker' },
+  { href: '/purchases',            label: 'Tracker'     },
+  { href: '/purchases/new',        label: 'New PO'      },
+  { href: '/purchases/boxes',      label: 'Box Tracker' },
+  { href: '/purchases/follow-up',  label: 'Follow-Up'   },
 ]
 
 export function PurchasesNav() {
