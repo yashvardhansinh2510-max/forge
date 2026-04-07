@@ -29,10 +29,11 @@ const ALL_STAGES = [
 type AnyStage = typeof ALL_STAGES[number]
 
 const MoveStageSchema = z.object({
-  fromStage: z.enum(ALL_STAGES),
-  toStage:   z.enum(['PENDING_CO', 'PENDING_DIST', 'AT_GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED']),
-  qty:       z.number().int().min(1),
-  note:      z.string().max(500).optional(),
+  fromStage:  z.enum(ALL_STAGES),
+  toStage:    z.enum(['PENDING_CO', 'PENDING_DIST', 'AT_GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED']),
+  qty:        z.number().int().min(1),
+  note:       z.string().max(500).optional(),
+  customerId: z.string().optional(),
 })
 
 // ─── Stage qty field mapping ──────────────────────────────────────────────────
@@ -56,7 +57,7 @@ export async function PATCH(
   return withErrorHandling(async () => {
     const { lineId } = await params
     const body = MoveStageSchema.parse(await req.json())
-    const { fromStage, toStage, qty, note } = body
+    const { fromStage, toStage, qty, note, customerId } = body
 
     // 1. Validate legal transition
     const legalNextStages = LEGAL_TRANSITIONS[fromStage as 'ORDERED' | POStage] ?? []
@@ -125,7 +126,8 @@ export async function PATCH(
           toStage,
           qty,
           movedById,
-          note: note ?? null,
+          note:       note ?? null,
+          customerId: customerId ?? null,
         },
       }),
     ])
@@ -151,6 +153,25 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json({ line: finalLine ?? updatedLine })
+    // 8. Compute global stage totals for instant KPI header update
+    const agg = await prisma.pOLineItem.aggregate({
+      _sum: {
+        qtyOrdered: true, qtyPendingCo: true, qtyPendingDist: true,
+        qtyAtGodown: true, qtyInBox: true, qtyDispatched: true, qtyNotDisplayed: true,
+      },
+    })
+    const pendingCo    = agg._sum.qtyPendingCo    ?? 0
+    const pendingDist  = agg._sum.qtyPendingDist  ?? 0
+    const godown       = agg._sum.qtyAtGodown     ?? 0
+    const inBox        = agg._sum.qtyInBox        ?? 0
+    const dispatched   = agg._sum.qtyDispatched   ?? 0
+    const notDisplayed = agg._sum.qtyNotDisplayed ?? 0
+    const staged       = pendingCo + pendingDist + godown + inBox + dispatched + notDisplayed
+    const unallocated  = Math.max(0, (agg._sum.qtyOrdered ?? 0) - staged)
+
+    return NextResponse.json({
+      lineItem:    finalLine ?? updatedLine,
+      stageTotals: { unallocated, pendingCo, pendingDist, godown, inBox, dispatched, notDisplayed },
+    })
   })
 }

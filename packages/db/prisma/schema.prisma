@@ -109,9 +109,10 @@ model Company {
   industry  String
   website   String?
   address   String?
-  contacts  Contact[]
-  projects  Project[]
-  createdAt DateTime  @default(now())
+  contacts       Contact[]
+  projects       Project[]
+  stageMovements StageMovement[] @relation("StageMovementCustomer")
+  createdAt      DateTime        @default(now())
 }
 
 // ─── Project ───────────────────────────────────────────────────────────────────
@@ -386,6 +387,7 @@ model POLineItem {
   landingCost       Float?
   clientOfferRate   Float?
   status            POLineStatus   @default(PENDING)
+  followUpStatus    String?        @default("AWAITING")
   createdAt         DateTime       @default(now())
   stageMovements    StageMovement[]
 }
@@ -402,6 +404,8 @@ model StageMovement {
   movedById    String
   movedBy      User       @relation("StageMovements", fields: [movedById], references: [id])
   note         String?
+  customerId   String?
+  customer     Company?   @relation("StageMovementCustomer", fields: [customerId], references: [id])
   movedAt      DateTime   @default(now())
 }
 
