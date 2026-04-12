@@ -13,8 +13,9 @@ datasource db {
 // ─── Enums ─────────────────────────────────────────────────────────────────────
 
 enum UserRole {
-  ADMIN
-  SALES
+  OWNER
+  MANAGER
+  WORKER
 }
 
 enum RevisionStatus {
@@ -68,7 +69,7 @@ model User {
   name             String
   email            String            @unique
   passwordHash     String?
-  role             UserRole          @default(SALES)
+  role             UserRole          @default(WORKER)
   maxDiscountPct   Float             @default(15.0)
   createdAt        DateTime          @default(now())
   quotations       Quotation[]       @relation("CreatedBy")
@@ -139,8 +140,10 @@ model Project {
 model Quotation {
   id            String              @id @default(cuid())
   number        String              @unique  // e.g. Q-2026-0045, auto-generated
-  projectId     String
-  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  customerName  String?
+  siteAddress   String?
   createdById   String
   createdBy     User                @relation("CreatedBy", fields: [createdById], references: [id])
   currentStatus RevisionStatus      @default(DRAFT)
@@ -355,10 +358,13 @@ model PurchaseOrder {
   revision         QuotationRevision? @relation(fields: [revisionId], references: [id])
   createdById      String
   createdBy        User               @relation("CreatedPurchaseOrders", fields: [createdById], references: [id])
-  vendorName       String?
-  expectedDelivery DateTime?
-  notes            String?
-  createdAt        DateTime           @default(now())
+  vendorName          String?
+  customerName        String?
+  customerSiteAddress String?
+  quotationNumber     String?
+  expectedDelivery    DateTime?
+  notes               String?
+  createdAt           DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   lineItems        POLineItem[]
   inventoryBoxes   InventoryBox[]
@@ -386,6 +392,7 @@ model POLineItem {
   landingCost       Float?
   clientOfferRate   Float?
   status            POLineStatus   @default(PENDING)
+  followUpStatus    String?        @default("AWAITING")
   createdAt         DateTime       @default(now())
   stageMovements    StageMovement[]
 }
@@ -432,6 +439,134 @@ model BoxItem {
   qtyDispatched   Int            @default(0)
   status          BoxItemStatus  @default(STAGED)
   lastUpdated     DateTime       @updatedAt
+}
+
+// ─── Sales Orders & Customer Payments ─────────────────────────────────────────
+
+enum SalesOrderStatus {
+  CONFIRMED
+  PROCESSING
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+enum CustomerPaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  CREDIT_CARD
+}
+
+model SalesOrder {
+  id              String            @id @default(cuid())
+  number          String            @unique
+  customerId      String
+  customerName    String
+  customerPhone   String?
+  status          SalesOrderStatus  @default(CONFIRMED)
+  projectName     String?
+  deliveryAddress String?
+  notes           String?
+  mrpTotal        Float             @default(0)
+  offerTotal      Float             @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  lineItems       SalesOrderLine[]
+  payments        CustomerPayment[]
+}
+
+model SalesOrderLine {
+  id        String     @id @default(cuid())
+  orderId   String
+  order     SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sku       String
+  name      String
+  brand     String     @default("")
+  qty       Int
+  mrp       Float
+  offerRate Float
+  createdAt DateTime   @default(now())
+}
+
+model CustomerPayment {
+  id         String                @id @default(cuid())
+  orderId    String
+  order      SalesOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount     Float
+  method     CustomerPaymentMethod @default(CASH)
+  reference  String?
+  notes      String?
+  receivedAt DateTime
+  recordedBy String               @default("System")
+  createdAt  DateTime             @default(now())
+}
+
+// ─── Follow-ups ────────────────────────────────────────────────────────────────
+
+enum FollowUpType {
+  WALK_IN
+  QUOTATION
+}
+
+enum FollowUpStatus {
+  PENDING
+  CONTACTED
+  INTERESTED
+  NEGOTIATING
+  WON
+  LOST
+}
+
+enum FollowUpCustomerType {
+  ARCHITECT
+  INTERIOR_DESIGNER
+  BUILDER
+  RETAIL
+  OTHER
+}
+
+enum FollowUpResponseMethod {
+  CALL
+  WHATSAPP
+  EMAIL
+  VISIT
+}
+
+model FollowUp {
+  id               String               @id @default(cuid())
+  type             FollowUpType         @default(WALK_IN)
+  customerName     String
+  customerPhone    String
+  customerType     FollowUpCustomerType @default(RETAIL)
+  brandsInterested String[]
+  productsNoted    String?
+  estimatedBudget  Float?
+  projectName      String?
+  quotationId      String?
+  quotationNumber  String?
+  quotationValue   Float?
+  status           FollowUpStatus       @default(PENDING)
+  nextFollowUpDate DateTime
+  lastContactedAt  DateTime?
+  notes            String?
+  assignedTo       String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  responses        FollowUpResponse[]
+}
+
+model FollowUpResponse {
+  id          String                 @id @default(cuid())
+  followUpId  String
+  followUp    FollowUp               @relation(fields: [followUpId], references: [id], onDelete: Cascade)
+  date        DateTime
+  method      FollowUpResponseMethod @default(CALL)
+  outcome     String
+  nextAction  String?
+  staffMember String
+  createdAt   DateTime               @default(now())
 }
 
 // ─── Activity Log ──────────────────────────────────────────────────────────────
