@@ -1,0 +1,162 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e5]
+        - generic [ref=e104]: Forge
+      - generic [ref=e8] [cursor=pointer]:
+        - generic [ref=e9]: PE
+        - generic [ref=e10]:
+          - generic [ref=e11]: Personal
+          - img [ref=e12]
+      - button "New" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e105]: New
+      - navigation [ref=e18]:
+        - generic [ref=e20]:
+          - link "Dashboard" [ref=e21] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e22]
+            - generic [ref=e27]: Dashboard
+          - link "Quotation Builder" [ref=e28] [cursor=pointer]:
+            - /url: /pos
+            - img [ref=e29]
+            - generic [ref=e32]: Quotation Builder
+          - link "Purchases" [ref=e33] [cursor=pointer]:
+            - /url: /purchases
+            - img [ref=e34]
+            - generic [ref=e37]: Purchases
+          - link "Payments" [ref=e38] [cursor=pointer]:
+            - /url: /payments
+            - img [ref=e40]
+            - generic [ref=e43]: Payments
+          - link "Follow-ups 1" [ref=e44] [cursor=pointer]:
+            - /url: /follow-ups
+            - img [ref=e45]
+            - generic [ref=e49]: Follow-ups
+            - generic [ref=e50]: "1"
+        - generic [ref=e51]:
+          - generic [ref=e52]: CRM
+          - link "CRM" [ref=e54] [cursor=pointer]:
+            - /url: /crm/contacts
+            - img [ref=e55]
+            - generic [ref=e60]: CRM
+        - generic [ref=e61]:
+          - generic [ref=e62]: Configure
+          - generic [ref=e63]:
+            - link "Catalogue" [ref=e64] [cursor=pointer]:
+              - /url: /catalogue
+              - img [ref=e65]
+              - generic [ref=e67]: Catalogue
+            - link "Price Lists" [ref=e68] [cursor=pointer]:
+              - /url: /settings/price-lists
+              - img [ref=e69]
+              - generic [ref=e72]: Price Lists
+            - link "Settings" [ref=e73] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e74]
+              - generic [ref=e77]: Settings
+      - generic [ref=e78]:
+        - generic [ref=e79]: ⌘K to search anywhere
+        - button "U User" [ref=e81] [cursor=pointer]:
+          - generic [ref=e82]: U
+          - generic [ref=e84]: User
+        - button "Collapse" [ref=e86] [cursor=pointer]:
+          - img [ref=e87]
+          - generic [ref=e89]: Collapse
+    - main [ref=e91]:
+      - generic [ref=e106]:
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: Buildcon House
+          - heading "Payments" [level=1] [ref=e112]
+          - paragraph [ref=e113]: Customer collection tracker — see what's owed, record payments, and send reminders instantly.
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - paragraph [ref=e116]: Total Outstanding
+            - paragraph [ref=e117]: ₹4,26,400
+          - generic [ref=e118]:
+            - paragraph [ref=e119]: Collected This Month
+            - paragraph [ref=e120]: ₹0
+          - generic [ref=e121]:
+            - paragraph [ref=e122]: Active Orders
+            - paragraph [ref=e123]: "6"
+          - generic [ref=e124]:
+            - paragraph [ref=e125]: Fully Paid
+            - paragraph [ref=e126]: 1 ✓
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - textbox "Search orders..." [ref=e130]
+            - generic [ref=e131]:
+              - button "Lodha Developers Ltd ₹77K due SO-2025-0022 · 8 Apr 2025 0% collected" [ref=e132]:
+                - generic [ref=e133]:
+                  - generic [ref=e134]: Lodha Developers Ltd
+                  - generic [ref=e135]: ₹77K due
+                - paragraph [ref=e136]: SO-2025-0022 · 8 Apr 2025
+                - paragraph [ref=e138]: 0% collected
+              - button "Sanjay Patil Interior Works ₹60K due SO-2025-0031 · 5 Apr 2025 0% collected" [ref=e139]:
+                - generic [ref=e140]:
+                  - generic [ref=e141]: Sanjay Patil Interior Works
+                  - generic [ref=e142]: ₹60K due
+                - paragraph [ref=e143]: SO-2025-0031 · 5 Apr 2025
+                - paragraph [ref=e145]: 0% collected
+              - button "Lodha Developers Ltd ₹40K due SO-2025-0042 · 2 Apr 2025 60% collected" [active] [ref=e146]:
+                - generic [ref=e147]:
+                  - generic [ref=e148]: Lodha Developers Ltd
+                  - generic [ref=e149]: ₹40K due
+                - paragraph [ref=e150]: SO-2025-0042 · 2 Apr 2025
+                - paragraph [ref=e153]: 60% collected
+              - button "Rajesh Constructions Pvt Ltd ₹2.1L due SO-2025-0039 · 28 Mar 2025 32% collected" [ref=e154]:
+                - generic [ref=e155]:
+                  - generic [ref=e156]: Rajesh Constructions Pvt Ltd
+                  - generic [ref=e157]: ₹2.1L due
+                - paragraph [ref=e158]: SO-2025-0039 · 28 Mar 2025
+                - paragraph [ref=e161]: 32% collected
+              - button "Prestige Group (Mumbai) ✓ Paid SO-2025-0035 · 15 Mar 2025 100% — fully paid" [ref=e162]:
+                - generic [ref=e163]:
+                  - generic [ref=e164]: Prestige Group (Mumbai)
+                  - generic [ref=e165]: ✓ Paid
+                - paragraph [ref=e166]: SO-2025-0035 · 15 Mar 2025
+                - paragraph [ref=e169]: 100% — fully paid
+              - button "Green Earth Homes LLP ₹42K due SO-2025-0028 · 20 Feb 2025 78% collected" [ref=e170]:
+                - generic [ref=e171]:
+                  - generic [ref=e172]: Green Earth Homes LLP
+                  - generic [ref=e173]: ₹42K due
+                - paragraph [ref=e174]: SO-2025-0028 · 20 Feb 2025
+                - paragraph [ref=e177]: 78% collected
+          - generic [ref=e195]:
+            - generic [ref=e196]:
+              - generic [ref=e197]:
+                - generic [ref=e198]:
+                  - heading "Lodha Developers Ltd" [level=2] [ref=e199]
+                  - generic [ref=e200]: CONFIRMED
+                - paragraph [ref=e202]: SO-2025-0042 · Confirmed 2 Apr 2025 · Lodha Supremus — Luxury Bathroom Package
+              - generic [ref=e203]:
+                - link "📲 WhatsApp" [ref=e204] [cursor=pointer]:
+                  - /url: https://wa.me/919876544321?text=Dear%20Lodha%20Developers%20Ltd%2C%0A%0AThis%20is%20a%20gentle%20reminder%20for%20order%20SO-2025-0042.%0A%0A%F0%9F%A7%BE%20Order%20Total%3A%20%E2%82%B91%2C00%2C000%0A%E2%9C%85%20Received%3A%20%E2%82%B960%2C000%0A%E2%8F%B3%20Outstanding%3A%20%E2%82%B940%2C000%0A%0AKindly%20arrange%20payment%20at%20your%20earliest%20convenience.%0A%0AThank%20you%2C%0ABuildcon%20House
+                - link "📞 Call" [ref=e205] [cursor=pointer]:
+                  - /url: tel:+91 98765 44321
+            - generic [ref=e206]:
+              - generic [ref=e207]:
+                - paragraph [ref=e208]: MRP
+                - paragraph [ref=e209]: ₹1,30,000
+                - paragraph [ref=e210]: Catalogue price
+              - generic [ref=e211]:
+                - paragraph [ref=e212]: Disc. Rate
+                - paragraph [ref=e213]: ₹1,00,000
+                - paragraph [ref=e214]: Save ₹30,000
+              - generic [ref=e215]:
+                - paragraph [ref=e216]: Paid
+                - paragraph [ref=e217]: ₹60,000
+                - paragraph [ref=e218]: 60% of order
+              - generic [ref=e219]:
+                - paragraph [ref=e220]: Outstanding
+                - paragraph [ref=e221]: ₹40,000
+                - paragraph [ref=e222]: Remaining
+            - paragraph [ref=e225]: Payment History
+            - button "+ Record Payment" [ref=e229]
+    - region "Notifications alt+T"
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e190] [cursor=pointer]:
+    - img [ref=e191]
+  - alert [ref=e194]

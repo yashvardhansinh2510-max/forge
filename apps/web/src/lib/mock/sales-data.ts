@@ -22,13 +22,16 @@ export interface LineItem {
 
 export interface Quotation {
   id: string
+  revisionId?: string          // set after first DB save
   number: string
   customerId: string
   customerName: string
   customerGST: string
   billingAddress: string
   siteAddress: string
+  revisionStatus?: 'DRAFT' | 'LOCKED'
   projectName: string
+  grandTotal?: number          // pre-computed when loaded from DB
   status: QuotationStatus
   validUntil: Date
   lineItems: LineItem[]
@@ -260,17 +263,18 @@ export const quotations: Quotation[] = [
     siteAddress: 'Client Flat: 1204B, Runwal Greens, Mulund West',
     projectName: 'Runwal Greens — 2BHK Bathroom Renovation',
     status: 'accepted',
+    revisionStatus: 'DRAFT',
     validUntil: new Date(Date.now() + 1000*60*60*24*4),
     lineItems: [
-      { id: 'li11', productId: 'p02', productName: 'Hindware Opus Floor-Mount WC', sku: 'HW-WC-OPUS-WH',
-        description: 'Floor-mount WC with soft-close seat', unit: 'pcs',
-        qty: 2, unitPrice: 12800, discount: 5, gstRate: 18 },
-      { id: 'li12', productId: 'p07', productName: 'RAK Metro Grey Wall Tile', sku: 'RAK-WT-METRO-300',
-        description: '300×600mm subway wall tile, matte grey', unit: 'box',
-        qty: 18, unitPrice: 980, discount: 0, gstRate: 28 },
-      { id: 'li13', productId: 'p10', productName: 'Jaguar Florentine Rain Shower 300mm', sku: 'JAG-OS-FLOR-300',
-        description: 'Round overhead shower with arm, chrome', unit: 'set',
-        qty: 2, unitPrice: 7200, discount: 0, gstRate: 18 },
+      { id: 'li11', productId: 'vtr-s50-wc', productName: 'Vitra S50 Rimless WC', sku: 'VTR-S50-RWC',
+        description: 'Rimless wall-hung WC, dual flush, soft-close seat', unit: 'pcs',
+        qty: 2, unitPrice: 18500, discount: 5, gstRate: 18 },
+      { id: 'li12', productId: 'vtr-sento', productName: 'Vitra Sento Basin 55cm', sku: 'VTR-SENTO-55',
+        description: 'Wall-hung ceramic basin 550mm with overflow', unit: 'pcs',
+        qty: 2, unitPrice: 11000, discount: 5, gstRate: 18 },
+      { id: 'li13', productId: 'grh-rain-310', productName: 'Grohe Rainshower 310 SmartActive', sku: 'GRH-RAIN-310',
+        description: 'Overhead shower 310mm with SmartActive technology', unit: 'set',
+        qty: 2, unitPrice: 46200, discount: 8, gstRate: 18 },
     ],
     notes: 'Call Sanjay before delivery — 98765 99001. Site access only on weekdays.',
     termsAndConditions: '100% advance for renovation orders.',

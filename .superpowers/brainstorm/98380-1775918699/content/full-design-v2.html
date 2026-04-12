@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payments Page — Design v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0f0f0f;
+    color: #141414;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #8A8A84;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 16px;
+  }
+
+  /* ── SECTION WRAPPER ─────────────────────────── */
+  .section {
+    margin-bottom: 32px;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8A8A84;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 10px;
+  }
+
+  /* ── APP FRAME ───────────────────────────────── */
+  .app-frame {
+    background: #FAFAF9;
+    border-radius: 20px;
+    border: 1px solid #EBEBEA;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+
+  /* ── PAGE HEADER ─────────────────────────────── */
+  .page-header {
+    background: #FFFFFF;
+    border-bottom: 1px solid #EBEBEA;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .page-header-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #141414;
+    letter-spacing: -0.03em;
+  }
+  .page-header-sub {
+    font-size: 12px;
+    color: #8A8A84;
+    margin-top: 1px;
+  }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-ghost {
+    background: #F4F4F3;
+    border: 1px solid #EBEBEA;
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4A4A47;
+    cursor: pointer;
+  }
+
+  /* ── KPI BAR ─────────────────────────────────── */
+  .kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: #FFFFFF;
+    border-bottom: 1px solid #EBEBEA;
+  }
+  .kpi-cell {
+    padding: 14px 20px;
+    border-right: 1px solid #EBEBEA;
+  }
+  .kpi-cell:last-child { border-right: none; }
+  .kpi-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #8A8A84;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 4px;
+  }
+  .kpi-value {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── SPLIT PANE ──────────────────────────────── */
+  .split-pane {
+    display: flex;
+    height: 440px;
+  }
+
+  /* LEFT LIST */
+  .order-list {
+    width: 260px;
+    flex-shrink: 0;
+    background: #FFFFFF;
+    border-right: 1px solid #EBEBEA;
+    overflow-y: auto;
+  }
+  .list-header {
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid #EBEBEA;
+  }
+  .list-search {
+    background: #F4F4F3;
+    border: 1px solid #EBEBEA;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #8A8A84;
+    width: 100%;
+  }
+  .order-row {
+    padding: 12px 14px;
+    border-bottom: 1px solid #F4F4F3;
+    cursor: pointer;
+    transition: background 0.12s;
+    border-left: 3px solid transparent;
+  }
+  .order-row:hover { background: #FAFAF9; }
+  .order-row.selected {
+    background: #EFF6FF;
+    border-left-color: #2563EB;
+  }
+  .order-row-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #141414;
+    margin-bottom: 2px;
+  }
+  .order-row-meta {
+    font-size: 11px;
+    color: #8A8A84;
+    margin-bottom: 8px;
+  }
+  .progress-track {
+    height: 4px;
+    background: #EBEBEA;
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 3px;
+  }
+  .progress-fill { height: 100%; border-radius: 99px; }
+  .progress-label {
+    font-size: 10px;
+    color: #8A8A84;
+  }
+  .badge {
+    display: inline-block;
+    border-radius: 99px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .badge-danger  { background: rgba(220,38,38,0.08);  color: #DC2626; }
+  .badge-warning { background: rgba(217,119,6,0.08);  color: #D97706; }
+  .badge-success { background: rgba(22,163,74,0.08);  color: #16A34A; }
+  .order-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2px;
+  }
+
+  /* RIGHT DETAIL */
+  .detail-panel {
+    flex: 1;
+    background: #FAFAF9;
+    overflow-y: auto;
+    padding: 18px 20px;
+  }
+  .detail-customer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .detail-customer-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #141414;
+    letter-spacing: -0.02em;
+    margin-bottom: 2px;
+  }
+  .detail-customer-meta {
+    font-size: 12px;
+    color: #8A8A84;
+  }
+  .contact-btns {
+    display: flex;
+    gap: 6px;
+  }
+  .btn-whatsapp {
+    background: #16A34A;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 7px 13px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-call {
+    background: #FFFFFF;
+    border: 1px solid #EBEBEA;
+    border-radius: 10px;
+    padding: 7px 13px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #4A4A47;
+    cursor: pointer;
+  }
+
+  /* FINANCIAL BOXES */
+  .fin-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .fin-box {
+    background: #FFFFFF;
+    border: 1px solid #EBEBEA;
+    border-radius: 14px;
+    padding: 12px;
+    text-align: center;
+  }
+  .fin-box-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #8A8A84;
+    margin-bottom: 4px;
+  }
+  .fin-box-value {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .fin-box-sub {
+    font-size: 10px;
+    margin-top: 2px;
+  }
+
+  /* PAYMENT HISTORY */
+  .history-header {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #8A8A84;
+    margin-bottom: 10px;
+  }
+  .history-card {
+    background: #FFFFFF;
+    border: 1px solid #EBEBEA;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .history-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-bottom: 1px solid #F4F4F3;
+  }
+  .history-row:last-child { border-bottom: none; }
+  .history-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .history-amount {
+    font-size: 13px;
+    font-weight: 700;
+    color: #141414;
+    font-variant-numeric: tabular-nums;
+    flex: 1;
+  }
+  .history-meta {
+    font-size: 11px;
+    color: #8A8A84;
+  }
+  .history-date {
+    font-size: 11px;
+    color: #8A8A84;
+    text-align: right;
+  }
+  .history-pending-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: rgba(220,38,38,0.03);
+  }
+  .history-pending-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1.5px dashed #AEAEA9;
+    flex-shrink: 0;
+  }
+  .history-pending-text {
+    font-size: 12px;
+    color: #DC2626;
+    font-weight: 500;
+  }
+
+  /* RECORD PAYMENT BTN */
+  .record-btn {
+    background: #141414;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 12px;
+    padding: 11px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── MODAL ───────────────────────────────────── */
+  .modal-frame {
+    background: #FFFFFF;
+    border: 1px solid #EBEBEA;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.20);
+    max-width: 380px;
+  }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #EBEBEA;
+  }
+  .modal-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #141414;
+    letter-spacing: -0.02em;
+  }
+  .modal-sub {
+    font-size: 12px;
+    color: #8A8A84;
+    margin-top: 2px;
+  }
+  .modal-body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4A4A47;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .field-input {
+    background: #FAFAF9;
+    border: 1.5px solid #EBEBEA;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #141414;
+    font-variant-numeric: tabular-nums;
+    width: 100%;
+  }
+  .field-input.focused { border-color: #2563EB; background: #fff; }
+  .field-hint {
+    font-size: 11px;
+    color: #8A8A84;
+    margin-top: 4px;
+  }
+  .method-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .method-chip {
+    background: #F4F4F3;
+    border: 1px solid #EBEBEA;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4A4A47;
+    cursor: pointer;
+  }
+  .method-chip.active {
+    background: #141414;
+    border-color: #141414;
+    color: #fff;
+    font-weight: 600;
+  }
+  .field-textarea {
+    background: #FAFAF9;
+    border: 1.5px solid #EBEBEA;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #8A8A84;
+    width: 100%;
+    resize: none;
+    font-family: inherit;
+  }
+  .modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid #EBEBEA;
+    display: flex;
+    gap: 8px;
+  }
+  .btn-primary {
+    flex: 1;
+    background: #141414;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-secondary {
+    background: #F4F4F3;
+    border: 1px solid #EBEBEA;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4A4A47;
+    cursor: pointer;
+  }
+
+  /* ── WHATSAPP PREVIEW ────────────────────────── */
+  .wa-bubble {
+    background: #DCF8C6;
+    border-radius: 14px 14px 0 14px;
+    padding: 14px 16px;
+    max-width: 320px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #1C1C1A;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .wa-bubble strong { font-weight: 700; }
+  .wa-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #8A8A84;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<p class="page-title">Payments Page — Exact Theme Match</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION 1: FULL PAGE -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-label">1 — Full page (split pane)</p>
+
+  <div class="app-frame">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <div class="page-header-title">Payments</div>
+        <div class="page-header-sub">Customer collection tracker</div>
+      </div>
+      <div class="header-actions">
+        <div class="btn-ghost">All orders ▾</div>
+        <div class="btn-ghost">🔍 Search</div>
+      </div>
+    </div>
+
+    <!-- KPI bar -->
+    <div class="kpi-bar">
+      <div class="kpi-cell">
+        <div class="kpi-label">Total Outstanding</div>
+        <div class="kpi-value" style="color:#DC2626;">₹4,20,000</div>
+      </div>
+      <div class="kpi-cell">
+        <div class="kpi-label">Collected This Month</div>
+        <div class="kpi-value" style="color:#16A34A;">₹1,80,000</div>
+      </div>
+      <div class="kpi-cell">
+        <div class="kpi-label">Active Orders</div>
+        <div class="kpi-value" style="color:#141414;">12</div>
+      </div>
+      <div class="kpi-cell">
+        <div class="kpi-label">Fully Paid</div>
+        <div class="kpi-value" style="color:#16A34A;">3</div>
+      </div>
+    </div>
+
+    <!-- Split pane -->
+    <div class="split-pane">
+
+      <!-- LEFT: Order list -->
+      <div class="order-list">
+        <div class="list-header">
+          <div class="list-search">Search orders...</div>
+        </div>
+
+        <!-- Selected -->
+        <div class="order-row selected">
+          <div class="order-row-top">
+            <div class="order-row-name">Lodha Supremus</div>
+            <span class="badge badge-danger">₹40k due</span>
+          </div>
+          <div class="order-row-meta">SO-2025-042 · 2 Apr 2025</div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:60%;background:#16A34A;"></div>
+          </div>
+          <div class="progress-label">60% collected</div>
+        </div>
+
+        <!-- Unpaid -->
+        <div class="order-row">
+          <div class="order-row-top">
+            <div class="order-row-name">Mehta Architects</div>
+            <span class="badge badge-danger">₹75k due</span>
+          </div>
+          <div class="order-row-meta">SO-2025-039 · 28 Mar 2025</div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:0%;background:#16A34A;"></div>
+          </div>
+          <div class="progress-label">Not started</div>
+        </div>
+
+        <!-- Partial -->
+        <div class="order-row">
+          <div class="order-row-top">
+            <div class="order-row-name">Oberoi Realty</div>
+            <span class="badge badge-warning">₹12k due</span>
+          </div>
+          <div class="order-row-meta">SO-2025-035 · 20 Mar 2025</div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:85%;background:#D97706;"></div>
+          </div>
+          <div class="progress-label">85% collected</div>
+        </div>
+
+        <!-- Fully paid -->
+        <div class="order-row" style="opacity:0.65;">
+          <div class="order-row-top">
+            <div class="order-row-name">Prestige Group</div>
+            <span class="badge badge-success">✓ Paid</span>
+          </div>
+          <div class="order-row-meta">SO-2025-031 · 15 Mar 2025</div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:100%;background:#16A34A;"></div>
+          </div>
+          <div class="progress-label" style="color:#16A34A;">100% — fully paid</div>
+        </div>
+
+        <div class="order-row">
+          <div class="order-row-top">
+            <div class="order-row-name">Raheja Corp</div>
+            <span class="badge badge-danger">₹1.2L due</span>
+          </div>
+          <div class="order-row-meta">SO-2025-028 · 10 Mar 2025</div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:30%;background:#DC2626;"></div>
+          </div>
+          <div class="progress-label">30% collected</div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Detail panel -->
+      <div class="detail-panel">
+
+        <div class="detail-customer-row">
+          <div>
+            <div class="detail-customer-name">Lodha Supremus</div>
+            <div class="detail-customer-meta">SO-2025-042 · Confirmed 2 Apr 2025 · Grohe, Axor</div>
+          </div>
+          <div class="contact-btns">
+            <button class="btn-whatsapp">📲 WhatsApp</button>
+            <button class="btn-call">📞 Call</button>
+          </div>
+        </div>
+
+        <!-- Financial boxes -->
+        <div class="fin-grid">
+          <div class="fin-box">
+            <div class="fin-box-label">MRP</div>
+            <div class="fin-box-value" style="color:#141414;">₹1,30,000</div>
+            <div class="fin-box-sub" style="color:#8A8A84;">Catalogue price</div>
+          </div>
+          <div class="fin-box">
+            <div class="fin-box-label">Disc. Rate</div>
+            <div class="fin-box-value" style="color:#2563EB;">₹1,00,000</div>
+            <div class="fin-box-sub" style="color:#2563EB;">Save ₹30,000</div>
+          </div>
+          <div class="fin-box">
+            <div class="fin-box-label">Paid</div>
+            <div class="fin-box-value" style="color:#16A34A;">₹60,000</div>
+            <div class="fin-box-sub" style="color:#16A34A;">60% of order</div>
+          </div>
+          <div class="fin-box">
+            <div class="fin-box-label">Outstanding</div>
+            <div class="fin-box-value" style="color:#DC2626;">₹40,000</div>
+            <div class="fin-box-sub" style="color:#DC2626;">Remaining</div>
+          </div>
+        </div>
+
+        <!-- Payment history -->
+        <div class="history-header">Payment History</div>
+        <div class="history-card">
+          <div class="history-row">
+            <div class="history-dot" style="background:#16A34A;"></div>
+            <div>
+              <div class="history-amount">₹30,000</div>
+              <div class="history-meta">UPI · Ref: UTR8842221</div>
+            </div>
+            <div class="history-date">15 Mar 2025</div>
+          </div>
+          <div class="history-row">
+            <div class="history-dot" style="background:#16A34A;"></div>
+            <div>
+              <div class="history-amount">₹30,000</div>
+              <div class="history-meta">Bank Transfer · NEFT09922</div>
+            </div>
+            <div class="history-date">28 Mar 2025</div>
+          </div>
+          <div class="history-pending-row">
+            <div class="history-pending-dot"></div>
+            <div class="history-pending-text">₹40,000 still outstanding</div>
+          </div>
+        </div>
+
+        <button class="record-btn">+ Record Payment</button>
+
+      </div>
+    </div><!-- end split-pane -->
+  </div><!-- end app-frame -->
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION 2: RECORD PAYMENT MODAL -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-label">2 — Record Payment modal</p>
+
+  <div class="modal-frame">
+    <div class="modal-header">
+      <div class="modal-title">Record Payment</div>
+      <div class="modal-sub">Lodha Supremus · SO-2025-042 · ₹40,000 outstanding</div>
+    </div>
+    <div class="modal-body">
+      <div>
+        <div class="field-label">Amount Received (₹)</div>
+        <div class="field-input focused">40,000</div>
+        <div class="field-hint">Outstanding: ₹40,000</div>
+      </div>
+      <div>
+        <div class="field-label">Date Received</div>
+        <div class="field-input">11 Apr 2025</div>
+        <div class="field-hint">Defaults to today</div>
+      </div>
+      <div>
+        <div class="field-label">Payment Method</div>
+        <div class="method-row">
+          <div class="method-chip active">Cash</div>
+          <div class="method-chip">UPI</div>
+          <div class="method-chip">Bank Transfer</div>
+          <div class="method-chip">Cheque</div>
+        </div>
+      </div>
+      <div>
+        <div class="field-label">Notes / Reference (optional)</div>
+        <div class="field-textarea" style="height:60px;line-height:1.5;color:#8A8A84;">Cheque no., UTR, or any note...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary">Save Payment</button>
+      <button class="btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION 3: WHATSAPP REMINDER -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-label">3 — WhatsApp reminder (auto-generated)</p>
+  <div class="wa-label">Tapping "WhatsApp" opens this message pre-filled in WhatsApp</div>
+  <div class="wa-bubble">
+    Dear Lodha Supremus,<br><br>
+    This is a gentle reminder for order <strong>SO-2025-042</strong>.<br><br>
+    🧾 Order Total: <strong>₹1,00,000</strong><br>
+    ✅ Received: <strong>₹60,000</strong><br>
+    ⏳ Outstanding: <strong>₹40,000</strong><br><br>
+    Please arrange payment at your earliest convenience.<br><br>
+    Thank you,<br>
+    <strong>Buildcon House</strong>
+  </div>
+</div>
+
+</body>
+</html>

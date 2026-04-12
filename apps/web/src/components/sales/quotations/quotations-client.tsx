@@ -9,25 +9,109 @@ import { PageContainer } from '@/components/layout/page-container'
 import { SalesNav } from '../shared/sales-nav'
 import { QuotationTable } from './quotation-table'
 import { QuotationBuilder } from './quotation-builder'
-import { quotations, calcDocumentTotals, type Quotation } from '@/lib/mock/sales-data'
+import useSWR from 'swr'
+import { type Quotation } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
+import { getFollowUpByQuotationNumber, createFollowUpForQuotation } from '@/lib/mock/followup-data'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
 const STATUS_FILTERS = ['all', 'draft', 'sent', 'viewed', 'accepted', 'declined'] as const
+
+interface ApiQuotation {
+  id: string
+  revisionId: string
+  quotationNumber: string
+  status: string
+  customerName: string | null
+  siteAddress: string | null
+  grandTotal: number
+  createdAt: string
+  lineItemCount: number
+  isLocked: boolean
+}
+
+function mapStatus(dbStatus: string): 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired' {
+  const map: Record<string, 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired'> = {
+    DRAFT: 'draft',
+    PENDING_APPROVAL: 'sent',
+    APPROVED: 'accepted',
+    REJECTED: 'declined',
+    LOCKED: 'accepted',
+    FINALIZED: 'accepted',
+  }
+  return map[dbStatus] ?? 'draft'
+}
+
+function apiToQuotation(q: ApiQuotation): Quotation {
+  return {
+    id: q.id,
+    revisionId: q.revisionId,
+    number: q.quotationNumber,
+    customerId: '',
+    customerName: q.customerName ?? '',
+    customerGST: '',
+    billingAddress: '',
+    siteAddress: q.siteAddress ?? '',
+    projectName: q.siteAddress ?? '',
+    revisionStatus: q.isLocked ? 'LOCKED' : 'DRAFT',
+    status: mapStatus(q.status),
+    grandTotal: q.grandTotal,
+    lineItems: [],
+    notes: '',
+    termsAndConditions: '',
+    createdBy: '',
+    createdAt: new Date(q.createdAt),
+    validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  }
+}
 
 export function QuotationsClient() {
   const [search, setSearch] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<string>('all')
   const [selectedQuotation, setSelectedQuotation] = React.useState<Quotation | null>(null)
 
+  const { data: apiQuotations = [], isLoading, mutate } = useSWR<ApiQuotation[]>(
+    '/api/quotations',
+    (url: string) => fetch(url).then(r => r.json()),
+  )
+
+  const quotations = apiQuotations.map(apiToQuotation)
+
+  // Auto-create follow-ups for sent/viewed quotations that don't have one yet
+  const processedRef = React.useRef<Set<string>>(new Set())
+  React.useEffect(() => {
+    quotations.forEach((q) => {
+      if (!q.id || processedRef.current.has(q.id)) return
+      if (q.status === 'sent' || q.status === 'viewed') {
+        const existing = getFollowUpByQuotationNumber(q.number)
+        if (!existing) {
+          processedRef.current.add(q.id)
+          createFollowUpForQuotation({
+            quotationId: q.id,
+            quotationNumber: q.number,
+            quotationValue: q.grandTotal ?? 0,
+            customerName: q.customerName,
+            customerPhone: '',
+            brandsInterested: [],
+            projectName: q.projectName,
+            assignedTo: 'Suresh Iyer',
+          })
+          toast.success(`Follow-up created for ${q.customerName}`)
+        } else {
+          processedRef.current.add(q.id)
+        }
+      }
+    })
+  }, [quotations])
+
   const openCount = quotations.filter(q => q.status === 'sent' || q.status === 'viewed').length
   const pipelineValue = quotations
-    .filter(q => q.status !== 'declined' && q.status !== 'draft')
-    .reduce((sum, q) => sum + calcDocumentTotals(q.lineItems).grandTotal, 0)
+    .filter(q => q.status !== 'declined')
+    .reduce((sum, q) => sum + (q.grandTotal ?? 0), 0)
   const acceptedValue = quotations
     .filter(q => q.status === 'accepted')
-    .reduce((sum, q) => sum + calcDocumentTotals(q.lineItems).grandTotal, 0)
+    .reduce((sum, q) => sum + (q.grandTotal ?? 0), 0)
   const conversionRate = Math.round(
     (quotations.filter(q => q.status === 'accepted').length /
       Math.max(1, quotations.filter(q => q.status !== 'draft').length)) * 100
@@ -37,8 +121,7 @@ export function QuotationsClient() {
     const matchStatus = statusFilter === 'all' || q.status === statusFilter
     const matchSearch = !search ||
       q.number.toLowerCase().includes(search.toLowerCase()) ||
-      q.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      q.projectName.toLowerCase().includes(search.toLowerCase())
+      q.customerName.toLowerCase().includes(search.toLowerCase())
     return matchStatus && matchSearch
   })
 
@@ -59,7 +142,7 @@ export function QuotationsClient() {
   return (
     <PageContainer
       title="Sales"
-      subtitle={`${quotations.length} quotations · ${formatINR(pipelineValue, true)} in pipeline`}
+      subtitle={isLoading ? 'Loading…' : `${quotations.length} quotations · ${formatINR(pipelineValue, true)} in pipeline`}
       actions={actions}
     >
       <SalesNav />
@@ -132,7 +215,7 @@ export function QuotationsClient() {
 
       <QuotationBuilder
         quotation={selectedQuotation}
-        onClose={() => setSelectedQuotation(null)}
+        onClose={() => { setSelectedQuotation(null); void mutate() }}
         onConvertToOrder={() => {}}
       />
     </PageContainer>

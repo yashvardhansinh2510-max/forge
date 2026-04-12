@@ -37,9 +37,14 @@ export default function HeaderCards({
                 : 'hover:-translate-y-0.5 hover:shadow-[0_14px_26px_rgba(15,23,42,0.06)]',
             ].join(' ')}
             style={{
-              borderColor: active ? `${accent}55` : 'var(--border)',
-              borderLeftWidth: 5,
+              borderTopColor: active ? `${accent}55` : 'var(--border)',
+              borderRightColor: active ? `${accent}55` : 'var(--border)',
+              borderBottomColor: active ? `${accent}55` : 'var(--border)',
               borderLeftColor: accent,
+              borderLeftWidth: 5,
+              borderTopWidth: 1,
+              borderRightWidth: 1,
+              borderBottomWidth: 1,
             }}
           >
             <div

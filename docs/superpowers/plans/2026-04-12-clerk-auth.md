@@ -482,7 +482,7 @@ export function SettingsUsersClient() {
       .then((data) => { setUsers(data); setLoading(false) })
   }, [])
 
-  async function handleRoleChange(userId: string, newRole: AppRole) {
+  async function handleRoleChange(userId: string, newRole: Role) {
     setUpdating(userId)
     await fetch(`/api/settings/users/${userId}`, {
       method: 'PATCH',

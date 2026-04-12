@@ -11,17 +11,18 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  X, GripVertical, Plus, Send, Check, ChevronRight, Search, Trash2,
+  X, GripVertical, Plus, Send, Check, ChevronRight, Search, Trash2, Lock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import { useRouter } from 'next/navigation'
 import { StatusBadge } from '../shared/status-badge'
 import { DocumentTotals } from '../shared/document-totals'
+import useSWR from 'swr'
 import {
-  calcDocumentTotals, customers, type Quotation, type LineItem, type QuotationStatus,
+  calcDocumentTotals, type Quotation, type LineItem, type QuotationStatus,
 } from '@/lib/mock/sales-data'
-import { formatINR } from '@/lib/mock/dashboard-data'
-import { products } from '@/lib/mock/inventory-data'
+import { formatINR } from '@/lib/format'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -118,7 +119,15 @@ function InlineNumberInput({
   )
 }
 
-function ProductSearchCell({ item, onUpdate }: { item: LineItem; onUpdate: (updates: Partial<LineItem>) => void }) {
+type LiveProduct = { id: string; sku: string; name: string; brand: string; mrp: number; unit: string }
+
+function ProductSearchCell({
+  item, onUpdate, products,
+}: {
+  item: LineItem
+  onUpdate: (updates: Partial<LineItem>) => void
+  products: LiveProduct[]
+}) {
   const [editing, setEditing] = React.useState(false)
   const [search, setSearch] = React.useState('')
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -179,7 +188,7 @@ function ProductSearchCell({ item, onUpdate }: { item: LineItem; onUpdate: (upda
             key={p.id}
             type="button"
             onMouseDown={() => {
-              onUpdate({ productId: p.id, productName: p.name, sku: p.sku, unit: p.unit, unitPrice: p.unitPrice })
+              onUpdate({ productId: p.id, productName: p.name, sku: p.sku, unit: p.unit, unitPrice: p.mrp })
               setEditing(false)
               setSearch('')
             }}
@@ -192,7 +201,7 @@ function ProductSearchCell({ item, onUpdate }: { item: LineItem; onUpdate: (upda
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'white' }}
           >
             <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 1 }}>{p.name}</div>
-            <div style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{p.sku} · {p.brand} · {formatINR(p.unitPrice)}</div>
+            <div style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{p.sku} · {p.brand} · {formatINR(p.mrp)}</div>
           </button>
         ))}
         {filtered.length === 0 && (
@@ -204,8 +213,8 @@ function ProductSearchCell({ item, onUpdate }: { item: LineItem; onUpdate: (upda
 }
 
 function SortableRow({
-  item, onUpdate, onDelete, isLast,
-}: { item: LineItem; onUpdate: (updates: Partial<LineItem>) => void; onDelete: () => void; isLast: boolean }) {
+  item, onUpdate, onDelete, isLast, products,
+}: { item: LineItem; onUpdate: (updates: Partial<LineItem>) => void; onDelete: () => void; isLast: boolean; products: LiveProduct[] }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const [hovered, setHovered] = React.useState(false)
 
@@ -241,7 +250,7 @@ function SortableRow({
       </td>
       {/* Product */}
       <td style={{ padding: '8px 8px', verticalAlign: 'top', minWidth: 200 }}>
-        <ProductSearchCell item={item} onUpdate={onUpdate} />
+        <ProductSearchCell item={item} onUpdate={onUpdate} products={products} />
       </td>
       {/* Qty */}
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
@@ -303,16 +312,27 @@ interface QuotationBuilderProps {
 }
 
 export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: QuotationBuilderProps) {
+  const router = useRouter()
   const [lineItems, setLineItems] = React.useState<LineItem[]>([])
   const [status, setStatus] = React.useState<QuotationStatus>('draft')
   const [showConvertModal, setShowConvertModal] = React.useState(false)
   const [deliveryAddress, setDeliveryAddress] = React.useState('')
+  const [revisionStatus, setRevisionStatus] = React.useState<'DRAFT' | 'LOCKED'>('DRAFT')
+  const [revisionId, setRevisionId] = React.useState<string | null>(null)
+  const [creating, setCreating] = React.useState(false)
+
+  const { data: liveProducts = [] } = useSWR<LiveProduct[]>(
+    '/api/products',
+    (url: string) => fetch(url).then(r => r.json()),
+  )
 
   React.useEffect(() => {
     if (quotation) {
       setLineItems(quotation.lineItems)
       setStatus(quotation.status)
       setDeliveryAddress(quotation.siteAddress)
+      setRevisionStatus(quotation.revisionStatus ?? 'DRAFT')
+      setRevisionId(quotation.revisionId ?? null)
     }
   }, [quotation?.id])
 
@@ -348,9 +368,113 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
     toast.success(`Quotation ${quotation?.number} sent to ${quotation?.customerName}`)
   }
 
-  function handleSave() {
-    toast.success('Quotation saved')
-    onClose()
+  async function handleSave(): Promise<string | null> {
+    if (!quotation) return null
+    try {
+      const payload = {
+        customerName: quotation.customerName,
+        siteAddress: quotation.siteAddress,
+        projectName: quotation.projectName,
+        notes: quotation.notes,
+        lineItems: lineItems
+          .filter(li => li.sku)
+          .map(li => ({
+            sku: li.sku,
+            productName: li.productName,
+            qty: li.qty,
+            unitPrice: li.unitPrice,
+            discount: li.discount,
+            gstRate: li.gstRate,
+          })),
+      }
+
+      let savedRevisionId = revisionId
+
+      if (!revisionId) {
+        const res = await fetch('/api/quotations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const err = await res.json() as { message?: string }
+          throw new Error(err.message ?? 'Failed to save quotation')
+        }
+        const data = await res.json() as { id: string; quotationNumber: string; revisionId: string }
+        savedRevisionId = data.revisionId
+        setRevisionId(savedRevisionId)
+      } else {
+        const res = await fetch(`/api/quotations/${revisionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const err = await res.json() as { message?: string }
+          throw new Error(err.message ?? 'Failed to save quotation')
+        }
+      }
+
+      toast.success('Quotation saved')
+      return savedRevisionId
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save quotation')
+      return null
+    }
+  }
+
+  async function handleCreatePO() {
+    if (!quotation || creating) return
+    setCreating(true)
+    try {
+      // Ensure quotation is saved to DB first
+      let activeRevisionId = revisionId
+      if (!activeRevisionId) {
+        activeRevisionId = await handleSave()
+        if (!activeRevisionId) throw new Error('Could not save quotation before creating PO')
+      }
+
+      // Step A — lock the revision
+      const lockRes = await fetch(`/api/quotations/${activeRevisionId}/lock`, { method: 'PATCH' })
+      if (!lockRes.ok) {
+        const err = await lockRes.json() as { message?: string }
+        throw new Error(err.message ?? 'Could not lock quotation')
+      }
+
+      // Step B — create the PO from the locked revision
+      const res = await fetch(`/api/purchase-orders/from-revision/${activeRevisionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineItems: lineItems
+            .filter(li => li.sku)
+            .map(li => ({
+              sku: li.sku,
+              productName: li.productName,
+              qty: li.qty,
+              clientOfferRate: li.unitPrice,
+            })),
+          customerName: quotation.customerName,
+          projectName: quotation.projectName,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json() as { message?: string }
+        throw new Error(err.message ?? 'Failed to create PO')
+      }
+      const data = await res.json() as { poNumber: string; lineItems?: unknown[] }
+      const lineCount = Array.isArray(data.lineItems) ? data.lineItems.length : lineItems.length
+      setRevisionStatus('LOCKED')
+      toast.success(`${data.poNumber} created (${lineCount} lines) — view in Purchases`)
+      setTimeout(() => {
+        onClose()
+        router.push('/purchases')
+      }, 800)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create PO')
+    } finally {
+      setCreating(false)
+    }
   }
 
   if (!quotation) return null
@@ -390,16 +514,24 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
                     <StatusBadge status={status} size="md" />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button onClick={handleSave} style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid var(--border-default)', background: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    <button onClick={() => void handleSave()} style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid var(--border-default)', background: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)' }}>
                       Save Draft
                     </button>
                     {canConvert ? (
-                      <button
-                        onClick={() => setShowConvertModal(true)}
-                        style={{ height: 30, padding: '0 12px', borderRadius: 7, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
-                      >
-                        Convert to Order <ChevronRight size={12} />
-                      </button>
+                      revisionStatus === 'LOCKED' ? (
+                        <div style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Check size={12} /> PO Created
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => void handleCreatePO()}
+                          disabled={creating}
+                          style={{ height: 30, padding: '0 12px', borderRadius: 7, border: 'none', background: creating ? '#6B7280' : '#111827', color: 'white', fontSize: 12, fontWeight: 600, cursor: creating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: creating ? 0.8 : 1 }}
+                        >
+                          <Lock size={11} />
+                          {creating ? 'Creating PO…' : 'Lock & Create PO'}
+                        </button>
+                      )
                     ) : (
                       <button
                         onClick={handleSend}
@@ -493,6 +625,7 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
                                 onUpdate={(u) => updateLineItem(item.id, u)}
                                 onDelete={() => deleteLineItem(item.id)}
                                 isLast={idx === lineItems.length - 1}
+                                products={liveProducts}
                               />
                             ))}
                           </tbody>

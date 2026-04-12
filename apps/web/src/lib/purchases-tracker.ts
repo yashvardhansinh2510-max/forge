@@ -90,6 +90,7 @@ export interface PurchaseTrackerLine {
   qtyOrdered: number
   qtyReceived: number
   stages: HeaderCounts
+  followUpStatus?: string | null
 }
 
 export interface PurchaseLinesResponse {

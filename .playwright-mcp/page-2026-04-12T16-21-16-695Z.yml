@@ -1,0 +1,381 @@
+- generic:
+  - generic:
+    - complementary:
+      - generic:
+        - img
+        - generic: Forge
+      - generic:
+        - generic:
+          - generic: PE
+          - generic:
+            - generic: Personal
+            - img
+      - generic:
+        - button:
+          - img
+          - generic: New
+      - navigation:
+        - generic:
+          - generic:
+            - link:
+              - /url: /dashboard
+              - img
+              - generic: Dashboard
+            - link:
+              - /url: /pos
+              - img
+              - generic: Quotation Builder
+            - link:
+              - /url: /purchases
+              - img
+              - generic: Purchases
+            - link:
+              - /url: /follow-ups
+              - img
+              - generic: Follow-ups
+              - generic: "2"
+        - generic:
+          - generic: CRM
+          - generic:
+            - link:
+              - /url: /crm/contacts
+              - img
+              - generic: CRM
+        - generic:
+          - generic: Configure
+          - generic:
+            - link:
+              - /url: /catalogue
+              - img
+              - generic: Catalogue
+            - link:
+              - /url: /settings/price-lists
+              - img
+              - generic: Price Lists
+            - link:
+              - /url: /settings
+              - img
+              - generic: Settings
+      - generic:
+        - generic: ⌘K to search anywhere
+        - generic:
+          - button [expanded]:
+            - generic:
+              - img
+            - generic: Worker
+            - img
+        - generic:
+          - button:
+            - generic: U
+            - generic:
+              - generic: User
+        - generic:
+          - button:
+            - img
+            - generic: Collapse
+    - generic:
+      - banner:
+        - navigation:
+          - link:
+            - /url: /dashboard
+            - img
+          - img
+          - generic: Dashboard
+        - generic:
+          - button:
+            - img
+            - generic: Search...
+            - generic: ⌘K
+          - button:
+            - img
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - heading [level=1]:
+                  - generic: Good evening, Buildcon
+                - paragraph: Here's your Buildcon House overview for today.
+              - generic:
+                - button:
+                  - img
+                  - text: Apr 2026
+                - button:
+                  - img
+                  - text: Refresh
+                - button:
+                  - img
+                  - text: Export
+            - generic:
+              - generic: "Last updated: less than a minute ago"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - img
+                  - generic: —
+                  - generic:
+                    - generic:
+                      - generic: Active Follow-ups
+                    - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - img
+                  - generic: —
+                  - generic:
+                    - generic:
+                      - generic: Open Quotations
+                    - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - img
+                  - generic: —
+                  - generic:
+                    - generic:
+                      - generic: Overdue Follow-ups
+                    - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - img
+                  - generic: "27"
+                  - generic:
+                    - generic:
+                      - generic: PO Lines In Transit
+                      - generic: Pending CO + Dist + Godown
+                    - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                    - generic:
+                      - img
+                  - generic: ₹4,26,240
+                  - generic:
+                    - generic:
+                      - generic: Outstanding
+                      - generic: ₹97K collected MTD
+                    - img
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Revenue Trend
+                        - generic:
+                          - text: Last 12 months ·
+                          - generic: ₹97K collected
+                      - generic:
+                        - generic: Collected
+                    - generic:
+                      - generic:
+                        - application:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic: May
+                              - generic:
+                                - generic: Jun
+                              - generic:
+                                - generic: Jul
+                              - generic:
+                                - generic: Aug
+                              - generic:
+                                - generic: Sep
+                              - generic:
+                                - generic: Oct
+                              - generic:
+                                - generic: Nov
+                              - generic:
+                                - generic: Dec
+                              - generic:
+                                - generic: Jan
+                              - generic:
+                                - generic: Feb
+                              - generic:
+                                - generic: Mar
+                              - generic:
+                                - generic: Apr
+                            - generic:
+                              - generic:
+                                - generic: ₹0
+                              - generic:
+                                - generic: ₹25K
+                              - generic:
+                                - generic: ₹50K
+                              - generic:
+                                - generic: ₹75K
+                              - generic:
+                                - generic: ₹1.0L
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Purchase Pipeline
+                        - generic: Live stage quantities
+                      - generic: 35 units
+                    - generic:
+                      - generic:
+                        - application:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic: Pending CO
+                              - generic:
+                                - generic: PendingDist
+                              - generic:
+                                - generic: At Godown
+                              - generic:
+                                - generic: In Box
+                              - generic:
+                                - generic: Dispatched
+                            - generic:
+                              - generic: 25 units
+                              - generic: 2 units
+                              - generic: 5 units
+                              - generic: 3 units
+                    - generic:
+                      - generic:
+                        - generic: In transit
+                        - generic: 32 units
+                      - generic:
+                        - generic: Dispatched
+                        - generic: "3"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: No activity yet. Start by adding a contact or creating a quotation.
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Top Customers
+                        - generic: By revenue · all time
+                      - button: View all →
+                    - table:
+                      - rowgroup:
+                        - row:
+                          - columnheader: "#"
+                          - columnheader: Customer
+                          - columnheader: Revenue
+                          - columnheader: Orders
+                          - columnheader: Outstanding
+                          - columnheader
+                      - rowgroup:
+                        - row:
+                          - cell: "1"
+                          - cell:
+                            - generic:
+                              - generic: RC
+                              - generic: Rajesh Constructions Pvt Ltd
+                          - cell:
+                            - generic:
+                              - generic: ₹3.1L
+                          - cell: "1"
+                          - cell: ₹2.1L
+                          - cell:
+                            - img
+                        - row:
+                          - cell: "2"
+                          - cell:
+                            - generic:
+                              - generic: GE
+                              - generic: Green Earth Homes LLP
+                          - cell:
+                            - generic:
+                              - generic: ₹1.9L
+                          - cell: "1"
+                          - cell: ₹42K
+                          - cell:
+                            - img
+                        - row:
+                          - cell: "3"
+                          - cell:
+                            - generic:
+                              - generic: LD
+                              - generic: Lodha Developers Ltd
+                          - cell:
+                            - generic:
+                              - generic: ₹1.8L
+                          - cell: "2"
+                          - cell: ₹20K
+                          - cell:
+                            - img
+                        - row:
+                          - cell: "4"
+                          - cell:
+                            - generic:
+                              - generic: PG
+                              - generic: Prestige Group (Mumbai)
+                          - cell:
+                            - generic:
+                              - generic: ₹99K
+                          - cell: "1"
+                          - cell: Cleared
+                          - cell:
+                            - img
+                        - row:
+                          - cell: "5"
+                          - cell:
+                            - generic:
+                              - generic: "N"
+                              - generic: nikhil
+                          - cell:
+                            - generic:
+                              - generic: ₹87K
+                          - cell: "1"
+                          - cell: ₹87K
+                          - cell:
+                            - img
+              - generic:
+                - generic: Quick Actions
+                - generic:
+                  - button:
+                    - generic:
+                      - img
+                    - generic: New Contact
+                  - button:
+                    - generic:
+                      - img
+                    - generic: New Deal
+                  - button:
+                    - generic:
+                      - img
+                    - generic: New Quotation
+                  - button:
+                    - generic:
+                      - img
+                    - generic: View Purchases
+                  - button:
+                    - generic:
+                      - img
+                    - generic: Open ⌘K
+    - region "Notifications alt+T"
+  - list
+  - button "Open Next.js Dev Tools" [ref=e580] [cursor=pointer]:
+    - img [ref=e581]
+  - alert
+  - generic: Pending CO
+  - menu "Worker" [active] [ref=e586]:
+    - generic [ref=e587]: Switch Role
+    - menuitem "Owner" [ref=e588] [cursor=pointer]:
+      - img [ref=e590]
+      - text: Owner
+    - menuitem "Manager" [ref=e593] [cursor=pointer]:
+      - img [ref=e595]
+      - text: Manager
+    - menuitem "Worker current" [ref=e601] [cursor=pointer]:
+      - img [ref=e603]
+      - text: Worker
+      - generic [ref=e606]: current

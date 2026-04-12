@@ -49,15 +49,15 @@ export type POStage =
   | 'DISPATCHED'
   | 'NOT_DISPLAYED'
 
-/** Legal next stages for each stage (enforced in move-stage API + PartialMoveModal) */
+/** Legal next stages for each stage — includes backward moves for corrections */
 export const LEGAL_TRANSITIONS: Record<'ORDERED' | POStage, POStage[]> = {
-  ORDERED:       ['PENDING_CO', 'PENDING_DIST'],
+  ORDERED:       ['PENDING_CO', 'PENDING_DIST', 'AT_GODOWN'],  // direct-to-godown shortcut
   PENDING_CO:    ['PENDING_DIST', 'AT_GODOWN'],
-  PENDING_DIST:  ['AT_GODOWN'],
-  AT_GODOWN:     ['IN_BOX'],
-  IN_BOX:        ['DISPATCHED'],
-  DISPATCHED:    ['NOT_DISPLAYED'],
-  NOT_DISPLAYED: [],
+  PENDING_DIST:  ['AT_GODOWN', 'PENDING_CO'],                  // ← back to co
+  AT_GODOWN:     ['IN_BOX', 'PENDING_DIST'],                   // ← back to dist
+  IN_BOX:        ['DISPATCHED', 'AT_GODOWN'],                  // ← back to godown
+  DISPATCHED:    ['NOT_DISPLAYED', 'IN_BOX'],                  // ← back to box
+  NOT_DISPLAYED: ['DISPATCHED'],                               // ← back to dispatched
 }
 
 export const STAGE_LABELS: Record<'ORDERED' | POStage, string> = {

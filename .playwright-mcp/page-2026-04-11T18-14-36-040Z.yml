@@ -1,0 +1,488 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e5]
+        - generic [ref=e547]: Forge
+      - generic [ref=e8] [cursor=pointer]:
+        - generic [ref=e9]: PE
+        - generic [ref=e10]:
+          - generic [ref=e11]: Personal
+          - img [ref=e12]
+      - button "New" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e548]: New
+      - navigation [ref=e18]:
+        - generic [ref=e20]:
+          - link "Dashboard" [ref=e21] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e22]
+            - generic [ref=e27]: Dashboard
+          - link "Quotation Builder" [ref=e28] [cursor=pointer]:
+            - /url: /pos
+            - img [ref=e30]
+            - generic [ref=e33]: Quotation Builder
+          - link "Purchases" [ref=e34] [cursor=pointer]:
+            - /url: /purchases
+            - img [ref=e35]
+            - generic [ref=e38]: Purchases
+          - link "Payments" [ref=e39] [cursor=pointer]:
+            - /url: /payments
+            - img [ref=e40]
+            - generic [ref=e43]: Payments
+          - link "Follow-ups 1" [ref=e44] [cursor=pointer]:
+            - /url: /follow-ups
+            - img [ref=e45]
+            - generic [ref=e49]: Follow-ups
+            - generic [ref=e50]: "1"
+        - generic [ref=e51]:
+          - generic [ref=e52]: CRM
+          - link "CRM" [ref=e54] [cursor=pointer]:
+            - /url: /crm/contacts
+            - img [ref=e55]
+            - generic [ref=e60]: CRM
+        - generic [ref=e61]:
+          - generic [ref=e62]: Configure
+          - generic [ref=e63]:
+            - link "Catalogue" [ref=e64] [cursor=pointer]:
+              - /url: /catalogue
+              - img [ref=e65]
+              - generic [ref=e67]: Catalogue
+            - link "Price Lists" [ref=e68] [cursor=pointer]:
+              - /url: /settings/price-lists
+              - img [ref=e69]
+              - generic [ref=e72]: Price Lists
+            - link "Settings" [ref=e73] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e74]
+              - generic [ref=e77]: Settings
+      - generic [ref=e78]:
+        - generic [ref=e79]: ⌘K to search anywhere
+        - button "U User" [ref=e81] [cursor=pointer]:
+          - generic [ref=e82]: U
+          - generic [ref=e84]: User
+        - button "Collapse" [ref=e86] [cursor=pointer]:
+          - img [ref=e87]
+          - generic [ref=e89]: Collapse
+    - main [ref=e91]:
+      - generic [ref=e93]:
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - generic [ref=e98]: B
+            - generic [ref=e99]:
+              - generic [ref=e100]: Buildcon House
+              - generic [ref=e101]: Quotation Builder
+          - generic [ref=e103]:
+            - generic [ref=e104]: Client
+            - textbox "Client name…" [active] [ref=e105]
+          - generic [ref=e106]:
+            - generic [ref=e107]:
+              - img [ref=e108]
+              - text: Phone
+            - textbox "+91 …" [ref=e110]
+          - generic [ref=e111]:
+            - generic [ref=e112]: Reference
+            - textbox "Referred by…" [ref=e113]
+          - button "Site" [ref=e114] [cursor=pointer]:
+            - img [ref=e115]
+            - text: Site
+            - img [ref=e118]
+          - generic [ref=e121]:
+            - img [ref=e122]
+            - generic [ref=e126]:
+              - generic [ref=e127]: Global %
+              - spinbutton [ref=e128]: "0"
+          - button "Reset" [ref=e129] [cursor=pointer]:
+            - img [ref=e130]
+            - text: Reset
+          - button "Save" [ref=e133] [cursor=pointer]:
+            - img [ref=e134]
+            - text: Save
+          - button "Quotation" [ref=e138] [cursor=pointer]:
+            - img [ref=e139]
+            - text: Quotation
+        - generic [ref=e142]:
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - generic [ref=e145]: Brands
+              - button "Collapse brand panel" [ref=e146] [cursor=pointer]:
+                - img [ref=e147]
+            - generic [ref=e149]:
+              - button "Grohe 23" [ref=e150] [cursor=pointer]:
+                - generic [ref=e153]: Grohe
+                - generic [ref=e154]: "23"
+              - button "Hansgrohe 15" [ref=e155] [cursor=pointer]:
+                - generic [ref=e157]: Hansgrohe
+                - generic [ref=e158]: "15"
+              - button "Axor 11" [ref=e159] [cursor=pointer]:
+                - generic [ref=e161]: Axor
+                - generic [ref=e162]: "11"
+              - button "Vitra 14" [ref=e163] [cursor=pointer]:
+                - generic [ref=e165]: Vitra
+                - generic [ref=e166]: "14"
+              - button "Geberit 5" [ref=e167] [cursor=pointer]:
+                - generic [ref=e169]: Geberit
+                - generic [ref=e170]: "5"
+            - generic [ref=e172]: Category
+            - button "All Grohe" [ref=e173] [cursor=pointer]:
+              - generic [ref=e174]: All Grohe
+            - generic [ref=e175]:
+              - button "Showers 8" [ref=e176] [cursor=pointer]:
+                - generic [ref=e177]: Showers
+                - generic [ref=e178]: "8"
+              - button "Basin Mixers 6" [ref=e179] [cursor=pointer]:
+                - generic [ref=e180]: Basin Mixers
+                - generic [ref=e181]: "6"
+              - button "Thermostats 3" [ref=e182] [cursor=pointer]:
+                - generic [ref=e183]: Thermostats
+                - generic [ref=e184]: "3"
+              - button "Bath Mixers 2" [ref=e185] [cursor=pointer]:
+                - generic [ref=e186]: Bath Mixers
+                - generic [ref=e187]: "2"
+              - button "Kitchen 2" [ref=e188] [cursor=pointer]:
+                - generic [ref=e189]: Kitchen
+                - generic [ref=e190]: "2"
+              - button "Accessories 2" [ref=e191] [cursor=pointer]:
+                - generic [ref=e192]: Accessories
+                - generic [ref=e193]: "2"
+          - generic [ref=e194]:
+            - generic [ref=e195]:
+              - generic [ref=e196]: 23 products · Grohe
+              - generic [ref=e197]: — click to configure & add
+            - generic [ref=e198]:
+              - button "🚿 GROHE Premium Rainshower 310 SmartActive Overhead Showers ₹48,500MRP Chrome Hard Graphite Moon White" [ref=e199] [cursor=pointer]:
+                - generic [ref=e200]:
+                  - generic [ref=e201]: 🚿
+                  - generic [ref=e202]:
+                    - generic [ref=e203]: GROHE
+                    - generic [ref=e204]: Premium
+                - generic [ref=e205]:
+                  - generic [ref=e206]: Rainshower 310 SmartActive
+                  - generic [ref=e207]: Overhead Showers
+                  - generic [ref=e208]: ₹48,500MRP
+                  - generic [ref=e209]:
+                    - generic "Chrome" [ref=e210]
+                    - generic "Hard Graphite" [ref=e211]
+                    - generic "Moon White" [ref=e212]
+              - button "🚿 GROHE Premium Euphoria Shower System 260 Shower Systems ₹84,000MRP Chrome Hard Graphite" [ref=e213] [cursor=pointer]:
+                - generic [ref=e214]:
+                  - generic [ref=e215]: 🚿
+                  - generic [ref=e216]:
+                    - generic [ref=e217]: GROHE
+                    - generic [ref=e218]: Premium
+                - generic [ref=e219]:
+                  - generic [ref=e220]: Euphoria Shower System 260
+                  - generic [ref=e221]: Shower Systems
+                  - generic [ref=e222]: ₹84,000MRP
+                  - generic [ref=e223]:
+                    - generic "Chrome" [ref=e224]
+                    - generic "Hard Graphite" [ref=e225]
+              - button "🚰 GROHE Premium Essence Basin Mixer S-Size Single Lever ₹14,800MRP Chrome Hard Graphite Brushed Cool Sunrise Moon White" [ref=e226] [cursor=pointer]:
+                - generic [ref=e227]:
+                  - generic [ref=e228]: 🚰
+                  - generic [ref=e229]:
+                    - generic [ref=e230]: GROHE
+                    - generic [ref=e231]: Premium
+                - generic [ref=e232]:
+                  - generic [ref=e233]: Essence Basin Mixer S-Size
+                  - generic [ref=e234]: Single Lever
+                  - generic [ref=e235]: ₹14,800MRP
+                  - generic [ref=e236]:
+                    - generic "Chrome" [ref=e237]
+                    - generic "Hard Graphite" [ref=e238]
+                    - generic "Brushed Cool Sunrise" [ref=e239]
+                    - generic "Moon White" [ref=e240]
+              - button "🚰 GROHE Mid Eurosmart Basin Mixer Single Lever ₹9,400MRP Chrome" [ref=e241] [cursor=pointer]:
+                - generic [ref=e242]:
+                  - generic [ref=e243]: 🚰
+                  - generic [ref=e244]:
+                    - generic [ref=e245]: GROHE
+                    - generic [ref=e246]: Mid
+                - generic [ref=e247]:
+                  - generic [ref=e248]: Eurosmart Basin Mixer
+                  - generic [ref=e249]: Single Lever
+                  - generic [ref=e250]: ₹9,400MRP
+                  - generic "Chrome" [ref=e252]
+              - button "🌡️ GROHE Premium SmartControl Round Thermostat 2 Outlets SmartControl ₹52,000MRP Chrome Hard Graphite Moon White" [ref=e253] [cursor=pointer]:
+                - generic [ref=e254]:
+                  - generic [ref=e255]: 🌡️
+                  - generic [ref=e256]:
+                    - generic [ref=e257]: GROHE
+                    - generic [ref=e258]: Premium
+                - generic [ref=e259]:
+                  - generic [ref=e260]: SmartControl Round Thermostat 2 Outlets
+                  - generic [ref=e261]: SmartControl
+                  - generic [ref=e262]: ₹52,000MRP
+                  - generic [ref=e263]:
+                    - generic "Chrome" [ref=e264]
+                    - generic "Hard Graphite" [ref=e265]
+                    - generic "Moon White" [ref=e266]
+              - button "🌡️ GROHE Premium Grohtherm Cube Thermostat Grohtherm ₹38,500MRP Chrome Moon White" [ref=e267] [cursor=pointer]:
+                - generic [ref=e268]:
+                  - generic [ref=e269]: 🌡️
+                  - generic [ref=e270]:
+                    - generic [ref=e271]: GROHE
+                    - generic [ref=e272]: Premium
+                - generic [ref=e273]:
+                  - generic [ref=e274]: Grohtherm Cube Thermostat
+                  - generic [ref=e275]: Grohtherm
+                  - generic [ref=e276]: ₹38,500MRP
+                  - generic [ref=e277]:
+                    - generic "Chrome" [ref=e278]
+                    - generic "Moon White" [ref=e279]
+              - button "🛁 GROHE Premium Essence Bath Floor-Mounted Filler Floor-Standing ₹68,500MRP Chrome Hard Graphite Brushed Cool Sunrise Moon White" [ref=e280] [cursor=pointer]:
+                - generic [ref=e281]:
+                  - generic [ref=e282]: 🛁
+                  - generic [ref=e283]:
+                    - generic [ref=e284]: GROHE
+                    - generic [ref=e285]: Premium
+                - generic [ref=e286]:
+                  - generic [ref=e287]: Essence Bath Floor-Mounted Filler
+                  - generic [ref=e288]: Floor-Standing
+                  - generic [ref=e289]: ₹68,500MRP
+                  - generic [ref=e290]:
+                    - generic "Chrome" [ref=e291]
+                    - generic "Hard Graphite" [ref=e292]
+                    - generic "Brushed Cool Sunrise" [ref=e293]
+                    - generic "Moon White" [ref=e294]
+              - button "🛁 GROHE Mid Eurosmart Bath/Shower Mixer Wall-Mounted ₹24,800MRP Chrome" [ref=e295] [cursor=pointer]:
+                - generic [ref=e296]:
+                  - generic [ref=e297]: 🛁
+                  - generic [ref=e298]:
+                    - generic [ref=e299]: GROHE
+                    - generic [ref=e300]: Mid
+                - generic [ref=e301]:
+                  - generic [ref=e302]: Eurosmart Bath/Shower Mixer
+                  - generic [ref=e303]: Wall-Mounted
+                  - generic [ref=e304]: ₹24,800MRP
+                  - generic "Chrome" [ref=e306]
+              - button "🍳 GROHE Premium Grohe K7 Professional Kitchen Mixer Kitchen Mixers ₹32,500MRP Chrome Hard Graphite Stainless Steel" [ref=e307] [cursor=pointer]:
+                - generic [ref=e308]:
+                  - generic [ref=e309]: 🍳
+                  - generic [ref=e310]:
+                    - generic [ref=e311]: GROHE
+                    - generic [ref=e312]: Premium
+                - generic [ref=e313]:
+                  - generic [ref=e314]: Grohe K7 Professional Kitchen Mixer
+                  - generic [ref=e315]: Kitchen Mixers
+                  - generic [ref=e316]: ₹32,500MRP
+                  - generic [ref=e317]:
+                    - generic "Chrome" [ref=e318]
+                    - generic "Hard Graphite" [ref=e319]
+                    - generic "Stainless Steel" [ref=e320]
+              - button "🍳 GROHE Premium Essence Single-Lever Kitchen Mixer Kitchen Mixers ₹18,200MRP Chrome Hard Graphite" [ref=e321] [cursor=pointer]:
+                - generic [ref=e322]:
+                  - generic [ref=e323]: 🍳
+                  - generic [ref=e324]:
+                    - generic [ref=e325]: GROHE
+                    - generic [ref=e326]: Premium
+                - generic [ref=e327]:
+                  - generic [ref=e328]: Essence Single-Lever Kitchen Mixer
+                  - generic [ref=e329]: Kitchen Mixers
+                  - generic [ref=e330]: ₹18,200MRP
+                  - generic [ref=e331]:
+                    - generic "Chrome" [ref=e332]
+                    - generic "Hard Graphite" [ref=e333]
+              - button "🚿 GROHE Mid Tempesta 100 Hand Shower Hand Showers ₹6,800MRP Chrome" [ref=e334] [cursor=pointer]:
+                - generic [ref=e335]:
+                  - generic [ref=e336]: 🚿
+                  - generic [ref=e337]:
+                    - generic [ref=e338]: GROHE
+                    - generic [ref=e339]: Mid
+                - generic [ref=e340]:
+                  - generic [ref=e341]: Tempesta 100 Hand Shower
+                  - generic [ref=e342]: Hand Showers
+                  - generic [ref=e343]: ₹6,800MRP
+                  - generic "Chrome" [ref=e345]
+              - button "🚿 GROHE Premium Rainshower SmartActive Hand Shower Hand Showers ₹14,500MRP Chrome Hard Graphite Moon White" [ref=e346] [cursor=pointer]:
+                - generic [ref=e347]:
+                  - generic [ref=e348]: 🚿
+                  - generic [ref=e349]:
+                    - generic [ref=e350]: GROHE
+                    - generic [ref=e351]: Premium
+                - generic [ref=e352]:
+                  - generic [ref=e353]: Rainshower SmartActive Hand Shower
+                  - generic [ref=e354]: Hand Showers
+                  - generic [ref=e355]: ₹14,500MRP
+                  - generic [ref=e356]:
+                    - generic "Chrome" [ref=e357]
+                    - generic "Hard Graphite" [ref=e358]
+                    - generic "Moon White" [ref=e359]
+              - button "🚿 GROHE Mid Vitalio Start System 900 Shower Systems ₹28,500MRP Chrome" [ref=e360] [cursor=pointer]:
+                - generic [ref=e361]:
+                  - generic [ref=e362]: 🚿
+                  - generic [ref=e363]:
+                    - generic [ref=e364]: GROHE
+                    - generic [ref=e365]: Mid
+                - generic [ref=e366]:
+                  - generic [ref=e367]: Vitalio Start System 900
+                  - generic [ref=e368]: Shower Systems
+                  - generic [ref=e369]: ₹28,500MRP
+                  - generic "Chrome" [ref=e371]
+              - button "🚰 GROHE Premium Allure Basin Mixer M-Size Single Lever ₹22,800MRP Chrome Hard Graphite Brushed Cool Sunrise" [ref=e372] [cursor=pointer]:
+                - generic [ref=e373]:
+                  - generic [ref=e374]: 🚰
+                  - generic [ref=e375]:
+                    - generic [ref=e376]: GROHE
+                    - generic [ref=e377]: Premium
+                - generic [ref=e378]:
+                  - generic [ref=e379]: Allure Basin Mixer M-Size
+                  - generic [ref=e380]: Single Lever
+                  - generic [ref=e381]: ₹22,800MRP
+                  - generic [ref=e382]:
+                    - generic "Chrome" [ref=e383]
+                    - generic "Hard Graphite" [ref=e384]
+                    - generic "Brushed Cool Sunrise" [ref=e385]
+              - button "🚰 GROHE Premium Lineare Single-Lever Basin Mixer Single Lever ₹17,600MRP Chrome Hard Graphite Moon White" [ref=e386] [cursor=pointer]:
+                - generic [ref=e387]:
+                  - generic [ref=e388]: 🚰
+                  - generic [ref=e389]:
+                    - generic [ref=e390]: GROHE
+                    - generic [ref=e391]: Premium
+                - generic [ref=e392]:
+                  - generic [ref=e393]: Lineare Single-Lever Basin Mixer
+                  - generic [ref=e394]: Single Lever
+                  - generic [ref=e395]: ₹17,600MRP
+                  - generic [ref=e396]:
+                    - generic "Chrome" [ref=e397]
+                    - generic "Hard Graphite" [ref=e398]
+                    - generic "Moon White" [ref=e399]
+              - button "🚰 GROHE Premium Atrio Basin Mixer Single Lever ₹31,200MRP Chrome Hard Graphite Brushed Cool Sunrise Brushed Nickel" [ref=e400] [cursor=pointer]:
+                - generic [ref=e401]:
+                  - generic [ref=e402]: 🚰
+                  - generic [ref=e403]:
+                    - generic [ref=e404]: GROHE
+                    - generic [ref=e405]: Premium
+                - generic [ref=e406]:
+                  - generic [ref=e407]: Atrio Basin Mixer
+                  - generic [ref=e408]: Single Lever
+                  - generic [ref=e409]: ₹31,200MRP
+                  - generic [ref=e410]:
+                    - generic "Chrome" [ref=e411]
+                    - generic "Hard Graphite" [ref=e412]
+                    - generic "Brushed Cool Sunrise" [ref=e413]
+                    - generic "Brushed Nickel" [ref=e414]
+              - button "🚿 GROHE Premium Rainshower 360 SmartActive Overhead Overhead Showers ₹62,000MRP Chrome Hard Graphite" [ref=e415] [cursor=pointer]:
+                - generic [ref=e416]:
+                  - generic [ref=e417]: 🚿
+                  - generic [ref=e418]:
+                    - generic [ref=e419]: GROHE
+                    - generic [ref=e420]: Premium
+                - generic [ref=e421]:
+                  - generic [ref=e422]: Rainshower 360 SmartActive Overhead
+                  - generic [ref=e423]: Overhead Showers
+                  - generic [ref=e424]: ₹62,000MRP
+                  - generic [ref=e425]:
+                    - generic "Chrome" [ref=e426]
+                    - generic "Hard Graphite" [ref=e427]
+              - button "🚰 GROHE Luxury Grandera Basin Mixer Single Lever ₹44,500MRP Chrome Polished Nickel Brushed Cool Sunrise" [ref=e428] [cursor=pointer]:
+                - generic [ref=e429]:
+                  - generic [ref=e430]: 🚰
+                  - generic [ref=e431]:
+                    - generic [ref=e432]: GROHE
+                    - generic [ref=e433]: Luxury
+                - generic [ref=e434]:
+                  - generic [ref=e435]: Grandera Basin Mixer
+                  - generic [ref=e436]: Single Lever
+                  - generic [ref=e437]: ₹44,500MRP
+                  - generic [ref=e438]:
+                    - generic "Chrome" [ref=e439]
+                    - generic "Polished Nickel" [ref=e440]
+                    - generic "Brushed Cool Sunrise" [ref=e441]
+              - button "🚿 GROHE Mid QuickFix Start Flow System 900mm Shower Systems ₹14,800MRP Chrome" [ref=e442] [cursor=pointer]:
+                - generic [ref=e443]:
+                  - generic [ref=e444]: 🚿
+                  - generic [ref=e445]:
+                    - generic [ref=e446]: GROHE
+                    - generic [ref=e447]: Mid
+                - generic [ref=e448]:
+                  - generic [ref=e449]: QuickFix Start Flow System 900mm
+                  - generic [ref=e450]: Shower Systems
+                  - generic [ref=e451]: ₹14,800MRP
+                  - generic "Chrome" [ref=e453]
+              - button "🚿 GROHE Premium Precision Feel Thermostat Shower System Shower Systems ₹92,000MRP Chrome Hard Graphite" [ref=e454] [cursor=pointer]:
+                - generic [ref=e455]:
+                  - generic [ref=e456]: 🚿
+                  - generic [ref=e457]:
+                    - generic [ref=e458]: GROHE
+                    - generic [ref=e459]: Premium
+                - generic [ref=e460]:
+                  - generic [ref=e461]: Precision Feel Thermostat Shower System
+                  - generic [ref=e462]: Shower Systems
+                  - generic [ref=e463]: ₹92,000MRP
+                  - generic [ref=e464]:
+                    - generic "Chrome" [ref=e465]
+                    - generic "Hard Graphite" [ref=e466]
+              - button "🌡️ GROHE Premium Grohtherm 800 Concealed Thermostat Trim Grohtherm ₹26,500MRP Chrome Moon White" [ref=e467] [cursor=pointer]:
+                - generic [ref=e468]:
+                  - generic [ref=e469]: 🌡️
+                  - generic [ref=e470]:
+                    - generic [ref=e471]: GROHE
+                    - generic [ref=e472]: Premium
+                - generic [ref=e473]:
+                  - generic [ref=e474]: Grohtherm 800 Concealed Thermostat Trim
+                  - generic [ref=e475]: Grohtherm
+                  - generic [ref=e476]: ₹26,500MRP
+                  - generic [ref=e477]:
+                    - generic "Chrome" [ref=e478]
+                    - generic "Moon White" [ref=e479]
+              - button "🔩 GROHE Mid Essentials Towel Bar 60cm Towel Rails ₹4,200MRP Chrome Hard Graphite Moon White" [ref=e480] [cursor=pointer]:
+                - generic [ref=e481]:
+                  - generic [ref=e482]: 🔩
+                  - generic [ref=e483]:
+                    - generic [ref=e484]: GROHE
+                    - generic [ref=e485]: Mid
+                - generic [ref=e486]:
+                  - generic [ref=e487]: Essentials Towel Bar 60cm
+                  - generic [ref=e488]: Towel Rails
+                  - generic [ref=e489]: ₹4,200MRP
+                  - generic [ref=e490]:
+                    - generic "Chrome" [ref=e491]
+                    - generic "Hard Graphite" [ref=e492]
+                    - generic "Moon White" [ref=e493]
+              - button "🔩 GROHE Mid Essentials Toilet Paper Holder Toilet Accessories ₹2,800MRP Chrome Hard Graphite" [ref=e494] [cursor=pointer]:
+                - generic [ref=e495]:
+                  - generic [ref=e496]: 🔩
+                  - generic [ref=e497]:
+                    - generic [ref=e498]: GROHE
+                    - generic [ref=e499]: Mid
+                - generic [ref=e500]:
+                  - generic [ref=e501]: Essentials Toilet Paper Holder
+                  - generic [ref=e502]: Toilet Accessories
+                  - generic [ref=e503]: ₹2,800MRP
+                  - generic [ref=e504]:
+                    - generic "Chrome" [ref=e505]
+                    - generic "Hard Graphite" [ref=e506]
+          - generic [ref=e507]:
+            - generic [ref=e508]:
+              - generic [ref=e509]:
+                - button "Collapse room panel" [ref=e510] [cursor=pointer]:
+                  - img [ref=e511]
+                - generic [ref=e513]:
+                  - generic [ref=e514]:
+                    - button "Master Bathroom" [ref=e515] [cursor=pointer]:
+                      - generic [ref=e516]: Master Bathroom
+                    - button [ref=e518] [cursor=pointer]:
+                      - img [ref=e519]
+                  - button "Delete Master Bathroom" [ref=e523] [cursor=pointer]:
+                    - img [ref=e524]
+                - button "Guest Bathroom" [ref=e529] [cursor=pointer]:
+                  - generic [ref=e530]: Guest Bathroom
+                - button "Add" [ref=e532] [cursor=pointer]:
+                  - img [ref=e533]
+                  - text: Add
+              - generic [ref=e534]:
+                - img [ref=e535]
+                - generic [ref=e539]: Master Bathroom discount
+                - spinbutton "Room-level discount %" [ref=e540]: "0"
+                - generic [ref=e541]: "%"
+            - generic [ref=e543]:
+              - generic [ref=e544]: 🛁
+              - generic [ref=e545]: No items yet
+              - generic [ref=e546]: Click any product to configure & add it here
+    - region "Notifications alt+T"
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e554] [cursor=pointer]:
+    - img [ref=e555]
+  - alert [ref=e558]

@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation'
 
 const NAV_ITEMS = [
   { href: '/purchases', label: 'Tracker' },
-  { href: '/purchases/new', label: 'New PO' },
   { href: '/purchases/boxes', label: 'Box Queue' },
+  { href: '/purchases/follow-up', label: 'Follow-Up' },
 ] as const
 
 export default function PurchasesNav() {

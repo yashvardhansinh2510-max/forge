@@ -55,7 +55,7 @@ export default function PurchasesPage() {
   const { data, error, mutate, isLoading } = useSWR(
     `/api/purchase-orders/lines?brand=${encodeURIComponent(activeBrand)}`,
     fetcher,
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: true },
   )
 
   useEffect(() => {

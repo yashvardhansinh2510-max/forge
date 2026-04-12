@@ -23,7 +23,6 @@ import {
 import useSWR from 'swr'
 import { useShellStore, usePaletteStore, useNotificationStore, sidebarVariants, cn } from '@forge/ui'
 import { NAV_GROUPS, isNavItemActive } from '@/lib/navigation'
-import { RoleSwitcher } from './role-switcher'
 import { useRole } from '@/lib/use-role'
 
 function ForgeLogo({ collapsed }: { collapsed: boolean }) {
@@ -518,10 +517,6 @@ export function Sidebar() {
               </motion.div>
             )}
           </AnimatePresence>
-
-          <div className="mx-1.5 mb-1">
-            <RoleSwitcher collapsed={sidebarCollapsed} />
-          </div>
 
           <div className="mx-1.5">
             <UserMenu collapsed={sidebarCollapsed} />
