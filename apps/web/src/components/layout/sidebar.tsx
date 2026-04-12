@@ -20,8 +20,11 @@ import {
   Sparkles,
   HelpCircle,
 } from 'lucide-react'
+import useSWR from 'swr'
 import { useShellStore, usePaletteStore, useNotificationStore, sidebarVariants, cn } from '@forge/ui'
 import { NAV_GROUPS, isNavItemActive } from '@/lib/navigation'
+import { RoleSwitcher } from './role-switcher'
+import { useRole } from '@/lib/use-role'
 
 function ForgeLogo({ collapsed }: { collapsed: boolean }) {
   return (
@@ -169,10 +172,12 @@ function NavItemLink({
   collapsed: boolean
   isActive: boolean
 }) {
-  const { notifications } = useNotificationStore()
-  const overdueBadgeCount = badge === 'overdue'
-    ? notifications.filter((n) => n.type === 'overdue_invoice' && !n.read).length
-    : 0
+  const { data } = useSWR(
+    badge === 'overdue' ? '/api/follow-ups' : null,
+    (url: string) => fetch(url).then((r) => r.json()) as Promise<{ kpis?: { overdue?: number } }>,
+    { refreshInterval: 60_000 },
+  )
+  const overdueBadgeCount = badge === 'overdue' ? (data?.kpis?.overdue ?? 0) : 0
 
   const linkContent = (
     <Link
@@ -432,6 +437,14 @@ export function Sidebar() {
   }, [])
 
   const pathname = usePathname()
+  const { canViewPayments } = useRole()
+
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      item.href === '/payments' ? canViewPayments : true
+    ),
+  }))
 
   return (
     <TooltipPrimitive.Provider delayDuration={0}>
@@ -450,7 +463,7 @@ export function Sidebar() {
         <NewButton collapsed={sidebarCollapsed} />
 
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-1">
-          {NAV_GROUPS.map((group, gi) => (
+          {visibleGroups.map((group, gi) => (
             <div key={gi}>
               {group.label && !sidebarCollapsed && (
                 <AnimatePresence>
@@ -505,6 +518,10 @@ export function Sidebar() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          <div className="mx-1.5 mb-1">
+            <RoleSwitcher collapsed={sidebarCollapsed} />
+          </div>
 
           <div className="mx-1.5">
             <UserMenu collapsed={sidebarCollapsed} />
