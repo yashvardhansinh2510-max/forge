@@ -3,17 +3,12 @@ import {
   LayoutDashboard,
   ClipboardList,
   Users,
-  ShoppingCart,
-  Truck,
-  Package,
-  Boxes,
   ShoppingBag,
-  Receipt,
-  Wallet,
-  BarChart3,
   BookOpen,
   Tag,
   Settings2,
+  PhoneCall,
+  Wallet,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -48,30 +43,15 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Quotation Builder', href: '/pos', icon: ClipboardList },
+      { label: 'Purchases', href: '/purchases', icon: ShoppingBag },
+      { label: 'Payments', href: '/payments', icon: Wallet },
+      { label: 'Follow-ups', href: '/follow-ups', icon: PhoneCall, badge: 'overdue' },
     ],
   },
   {
-    label: 'Sales & CRM',
+    label: 'CRM',
     items: [
       { label: 'CRM', href: '/crm/contacts', icon: Users },
-      { label: 'Sales', href: '/sales/quotations', icon: ShoppingCart },
-      { label: 'Deliveries', href: '/sales/deliveries', icon: Truck },
-      { label: 'Samples', href: '/samples', icon: Package },
-    ],
-  },
-  {
-    label: 'Inventory',
-    items: [
-      { label: 'Inventory', href: '/inventory/products', icon: Boxes },
-      { label: 'Purchases', href: '/purchases', icon: ShoppingBag },
-    ],
-  },
-  {
-    label: 'Finance',
-    items: [
-      { label: 'Invoicing', href: '/invoicing/invoices', icon: Receipt, badge: 'overdue' },
-      { label: 'Payments',  href: '/payments',           icon: Wallet },
-      { label: 'Reports',   href: '/reports',            icon: BarChart3 },
     ],
   },
   {
@@ -79,6 +59,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Catalogue', href: '/catalogue', icon: BookOpen },
       { label: 'Price Lists', href: '/settings/price-lists', icon: Tag },
+      { label: 'Users', href: '/settings/users', icon: Users },
       { label: 'Settings', href: '/settings', icon: Settings2 },
     ],
   },
