@@ -1,6 +1,8 @@
 'use client'
 
-import { useRoleStore, type Role } from './role-store'
+import { useUser } from '@clerk/nextjs'
+
+export type Role = 'owner' | 'manager' | 'worker'
 
 export const ROLE_LABELS: Record<Role, string> = {
   owner: 'Owner',
@@ -9,12 +11,12 @@ export const ROLE_LABELS: Record<Role, string> = {
 }
 
 export function useRole() {
-  const { role, setRole } = useRoleStore()
+  const { user } = useUser()
+  const role = ((user?.publicMetadata?.role as string | undefined) ?? 'worker') as Role
+
   return {
     role,
-    setRole,
     canEdit: role !== 'worker',
     canViewPayments: role !== 'worker',
-    canSwitchRole: role !== 'worker',
   }
 }

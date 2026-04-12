@@ -1,10 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
-// TODO(Task 7): replace with `import { type Role, ROLE_LABELS } from '@/lib/use-role'`
-type Role = 'owner' | 'manager' | 'worker'
-const ROLE_LABELS: Record<Role, string> = { owner: 'Owner', manager: 'Manager', worker: 'Worker' }
+import { type Role, ROLE_LABELS } from '@/lib/use-role'
 
 type User = {
   id: string
