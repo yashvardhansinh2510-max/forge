@@ -18,6 +18,7 @@ import {
   type CustomerType,
   type ResponseMethod,
 } from '@/lib/mock/followup-data'
+import { quotations } from '@/lib/mock/sales-data'
 import type { FollowUpsListResponse, FollowUpItem } from '@/app/api/follow-ups/route'
 import { formatINR } from '@/lib/mock/dashboard-data'
 
@@ -455,6 +456,7 @@ export function FollowUpsClient() {
         }}
         onStatusChange={handleStatusChange}
         onLogResponse={handleLogResponse}
+        quotations={quotations}
         canEdit={canEdit}
       />
 
