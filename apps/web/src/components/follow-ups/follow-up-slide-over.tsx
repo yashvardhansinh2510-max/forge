@@ -108,7 +108,7 @@ interface FollowUpSlideOverProps {
   onRefresh: () => Promise<void>
   onStatusChange?: (id: string, status: FollowUpStatus) => Promise<void>
   onLogResponse?: (id: string, outcome: string, method: string, nextAction: string, nextDate: string) => Promise<void>
-  quotations: Quotation[]
+  quotations?: Quotation[]
   canEdit?: boolean
 }
 
