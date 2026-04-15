@@ -50,8 +50,8 @@ export interface QuotationRevision {
   createdAt: Date
   status: QuotationStatus
   grandTotal: number
-  customerName: string | null
-  siteAddress: string | null
+  customerName: string
+  siteAddress: string
 }
 
 export interface QuotationWithHistory extends Quotation {
@@ -125,11 +125,10 @@ export interface Customer {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 // Global state for quotation history (mock persistence)
-let quotationHistoryStore: Map<string, QuotationRevision[]> = new Map()
+const quotationHistoryStore: Map<string, QuotationRevision[]> = new Map()
 
 export function addQuotationRevision(quotation: Quotation): void {
-  const customerId = quotation.customerId || quotation.customerName || 'unknown'
-  const key = `quotations_${customerId}`
+  const key = `quotations_${quotation.customerId}`
 
   if (!quotationHistoryStore.has(key)) {
     quotationHistoryStore.set(key, [])
