@@ -6,32 +6,21 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Clock } from 'lucide-react'
 import { formatINR } from '@/lib/format'
 import { format } from 'date-fns'
-import type { QuotationRevision } from '@/lib/mock/sales-data'
-import { getQuotationHistory } from '@/lib/mock/sales-data'
+import type { Quotation } from '@/lib/mock/sales-data'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
 interface QuotationHistoryModalProps {
   isOpen: boolean
   onClose: () => void
-  customerName: string | null
-  onSelectRevision?: (revision: QuotationRevision) => void
+  quotation: Quotation | null
 }
 
 export function QuotationHistoryModal({
   isOpen,
   onClose,
-  customerName,
-  onSelectRevision,
+  quotation,
 }: QuotationHistoryModalProps) {
-  const [revisions, setRevisions] = React.useState<QuotationRevision[]>([])
-
-  React.useEffect(() => {
-    if (isOpen && customerName) {
-      const history = getQuotationHistory(customerName)
-      setRevisions(history)
-    }
-  }, [isOpen, customerName])
 
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={onClose}>
@@ -94,64 +83,15 @@ export function QuotationHistoryModal({
             </div>
 
             <div style={{ padding: 16 }}>
-              {revisions.length === 0 ? (
+              {!quotation ? (
                 <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                  <p>No quotation history for this customer.</p>
+                  <p>No quotation selected.</p>
                 </div>
               ) : (
-                <AnimatePresence>
-                  {revisions.map((rev, i) => (
-                    <motion.button
-                      key={rev.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.2, delay: i * 0.05 }}
-                      onClick={() => {
-                        onSelectRevision?.(rev)
-                        onClose()
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: 12,
-                        marginBottom: 8,
-                        borderRadius: 8,
-                        border: '1px solid var(--border-default)',
-                        background: 'white',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'all 150ms',
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-tint)'
-                        ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--accent)'
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = 'white'
-                        ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-                            Rev #{rev.revisionNumber}
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                            {format(rev.createdAt, 'MMM d, yyyy · h:mm a')}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
-                            {formatINR(rev.grandTotal, false)}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                            {rev.status}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.button>
-                  ))}
-                </AnimatePresence>
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                  <p>Quotation history feature coming soon.</p>
+                  <p style={{ marginTop: 8, fontSize: 12 }}>Current quotation: {quotation.number}</p>
+                </div>
               )}
             </div>
           </motion.div>
