@@ -18,6 +18,7 @@ import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { StatusBadge } from '../shared/status-badge'
 import { DocumentTotals } from '../shared/document-totals'
+import { QuotationHistoryModal } from './QuotationHistoryModal'
 import useSWR from 'swr'
 import {
   calcDocumentTotals, type Quotation, type LineItem, type QuotationStatus,
@@ -316,6 +317,7 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
   const [lineItems, setLineItems] = React.useState<LineItem[]>([])
   const [status, setStatus] = React.useState<QuotationStatus>('draft')
   const [showConvertModal, setShowConvertModal] = React.useState(false)
+  const [showHistoryModal, setShowHistoryModal] = React.useState(false)
   const [deliveryAddress, setDeliveryAddress] = React.useState('')
   const [revisionStatus, setRevisionStatus] = React.useState<'DRAFT' | 'LOCKED'>('DRAFT')
   const [revisionId, setRevisionId] = React.useState<string | null>(null)
@@ -728,6 +730,13 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
           </DialogPrimitive.Root>
         )}
       </AnimatePresence>
+
+      {/* Quotation History Modal */}
+      <QuotationHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        quotation={quotation}
+      />
     </DialogPrimitive.Root>
   )
 }
