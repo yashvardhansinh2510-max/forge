@@ -44,6 +44,20 @@ export interface Quotation {
   acceptedAt?: Date
 }
 
+export interface QuotationRevision {
+  id: string
+  revisionNumber: number
+  createdAt: Date
+  status: QuotationStatus
+  grandTotal: number
+  customerName: string | null
+  siteAddress: string | null
+}
+
+export interface QuotationWithHistory extends Quotation {
+  revisions: QuotationRevision[]
+}
+
 export interface SalesOrder {
   id: string
   number: string
@@ -109,6 +123,37 @@ export interface Customer {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Global state for quotation history (mock persistence)
+let quotationHistoryStore: Map<string, QuotationRevision[]> = new Map()
+
+export function addQuotationRevision(quotation: Quotation): void {
+  const customerId = quotation.customerId || quotation.customerName || 'unknown'
+  const key = `quotations_${customerId}`
+
+  if (!quotationHistoryStore.has(key)) {
+    quotationHistoryStore.set(key, [])
+  }
+
+  const revisions = quotationHistoryStore.get(key)!
+  const revision: QuotationRevision = {
+    id: quotation.id,
+    revisionNumber: revisions.length + 1,
+    createdAt: quotation.createdAt,
+    status: quotation.status,
+    grandTotal: quotation.grandTotal ?? 0,
+    customerName: quotation.customerName,
+    siteAddress: quotation.siteAddress,
+  }
+
+  revisions.push(revision)
+  quotationHistoryStore.set(key, revisions)
+}
+
+export function getQuotationHistory(customerId: string): QuotationRevision[] {
+  const key = `quotations_${customerId}`
+  return quotationHistoryStore.get(key) || []
+}
 
 export function calcLineItem(item: LineItem) {
   const subtotal = item.qty * item.unitPrice
