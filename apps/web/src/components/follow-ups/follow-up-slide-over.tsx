@@ -108,7 +108,7 @@ interface FollowUpSlideOverProps {
   onRefresh: () => Promise<void>
   onStatusChange?: (id: string, status: FollowUpStatus) => Promise<void>
   onLogResponse?: (id: string, outcome: string, method: string, nextAction: string, nextDate: string) => Promise<void>
-  quotations?: Quotation[]
+  quotations: Quotation[]
   canEdit?: boolean
 }
 
@@ -145,7 +145,7 @@ export function FollowUpSlideOver({ followUp, onClose, onRefresh, onStatusChange
   if (!f) return null
 
   const linkedQuotation = f.quotationId
-    ? quotations?.find((q) => q.id === f.quotationId)
+    ? quotations.find((q) => q.id === f.quotationId)
     : undefined
 
   const statusCfg = FOLLOWUP_STATUS_CONFIG[f.status]
@@ -198,7 +198,7 @@ export function FollowUpSlideOver({ followUp, onClose, onRefresh, onStatusChange
     } else {
       updateFollowUpStatus(f!.id, 'won')
       // Sync quotation in mock data
-      if (f!.quotationId && quotations) {
+      if (f!.quotationId) {
         const qIdx = quotations.findIndex((q) => q.id === f!.quotationId)
         if (qIdx !== -1) {
           quotations[qIdx] = { ...quotations[qIdx]!, status: 'accepted', acceptedAt: new Date() }
@@ -217,7 +217,7 @@ export function FollowUpSlideOver({ followUp, onClose, onRefresh, onStatusChange
     } else {
       updateFollowUpStatus(f!.id, 'lost')
       // Sync quotation in mock data
-      if (f!.quotationId && quotations) {
+      if (f!.quotationId) {
         const qIdx = quotations.findIndex((q) => q.id === f!.quotationId)
         if (qIdx !== -1) {
           quotations[qIdx] = { ...quotations[qIdx]!, status: 'declined' }
