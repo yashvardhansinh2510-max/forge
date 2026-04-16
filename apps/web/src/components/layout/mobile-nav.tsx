@@ -7,11 +7,9 @@ import type { LucideIcon } from 'lucide-react'
 import {
   LayoutDashboard,
   Users,
-  ShoppingCart,
-  Package,
+  ClipboardList,
+  ShoppingBag,
   MoreHorizontal,
-  Factory,
-  Receipt,
   BarChart3,
   Settings2,
 } from 'lucide-react'
@@ -28,13 +26,11 @@ interface NavTab {
 const PRIMARY_TABS: NavTab[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'CRM', href: '/crm/contacts', icon: Users },
-  { label: 'Sales', href: '/sales/orders', icon: ShoppingCart },
-  { label: 'Inventory', href: '/inventory/products', icon: Package },
+  { label: 'Quotations', href: '/pos', icon: ClipboardList },
+  { label: 'Purchases', href: '/purchases', icon: ShoppingBag },
 ]
 
 const MORE_ITEMS: NavTab[] = [
-  { label: 'Manufacturing', href: '/manufacturing/orders', icon: Factory },
-  { label: 'Invoicing', href: '/invoicing/invoices', icon: Receipt },
   { label: 'Reports', href: '/reports', icon: BarChart3 },
   { label: 'Settings', href: '/settings', icon: Settings2 },
 ]

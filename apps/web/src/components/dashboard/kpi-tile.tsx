@@ -14,6 +14,9 @@ import {
   Factory,
   ChevronRight,
   Minus,
+  FileText,
+  ShoppingBag,
+  AlertCircle,
 } from 'lucide-react'
 import { formatINR, formatPercentChange, type KPIItem, type KPIColor } from '@/lib/mock/dashboard-data'
 
@@ -26,6 +29,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
   PackageX,
   Receipt,
   Factory,
+  FileText,
+  ShoppingBag,
+  AlertCircle,
 }
 
 // ─── Color Palette ────────────────────────────────────────────────────────────

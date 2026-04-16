@@ -1,5 +1,7 @@
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 
+export const dynamic = 'force-dynamic'
+
 const clerkConfigured =
   typeof process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY === 'string' &&
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.length > 8

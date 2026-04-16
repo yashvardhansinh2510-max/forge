@@ -17,8 +17,10 @@ import { DealCard } from './deal-card'
 import { DealSlideOver } from './deal-slide-over'
 import { deals as initialDeals, PIPELINE_STAGES, type Deal, type DealStage } from '@/lib/mock/crm-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
+import { useRole } from '@/lib/use-role'
 
 export function PipelineClient() {
+  const { canEdit } = useRole()
   const [dealItems, setDealItems] = React.useState<Deal[]>(initialDeals)
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [selectedDeal, setSelectedDeal] = React.useState<Deal | null>(null)
@@ -67,7 +69,7 @@ export function PipelineClient() {
       <CRMNav />
 
       <DndContext
-        sensors={sensors}
+        sensors={canEdit ? sensors : []}
         collisionDetection={pointerWithin}
         onDragStart={({ active }) => setActiveId(active.id as string)}
         onDragEnd={handleDragEnd}

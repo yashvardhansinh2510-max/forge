@@ -10,3 +10,4 @@ dist/
 # Environment files
 *.env
 *.env.*
+.worktrees/

@@ -1,11 +1,8 @@
 // GET /api/purchase-orders/search?sku={code}
 // Scans all PO line items for a matching SKU and returns per-PO rows + aggregated totals.
-//
-// Mock mode: searches MOCK_PURCHASE_ORDERS (client-side store may have diverged due to
-// in-session mutations — replace with prisma query when DB is connected).
 
 import { NextRequest, NextResponse } from 'next/server'
-import { MOCK_PURCHASE_ORDERS } from '@/lib/mock/procurement-data'
+import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
 
 export interface SKUSearchMatch {
@@ -44,36 +41,42 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const skuLower = sku.toLowerCase()
-    const matches: SKUSearchMatch[] = []
-    let productName  = ''
-    let productBrand = ''
-    let productImage = ''
+    const lineItems = await prisma.pOLineItem.findMany({
+      where: {
+        product: { sku: { contains: sku, mode: 'insensitive' } },
+      },
+      include: {
+        product: {
+          select: { sku: true, name: true, brand: true, imageUrl: true },
+        },
+        po: {
+          select: {
+            id: true,
+            poNumber: true,
+            status: true,
+            vendorName: true,
+            project: { select: { clientName: true } },
+          },
+        },
+      },
+    })
 
-    for (const po of MOCK_PURCHASE_ORDERS) {
-      for (const line of po.lineItems) {
-        if (!line.productSku.toLowerCase().includes(skuLower)) continue
+    const matches: SKUSearchMatch[] = lineItems.map((li) => ({
+      poId:        li.po.id,
+      poNumber:    li.po.poNumber,
+      projectName: li.po.project?.clientName ?? null,
+      vendorName:  li.po.vendorName,
+      status:      li.po.status,
+      lineItemId:  li.id,
+      qtyOrdered:  li.qtyOrdered,
+      qtyReceived: li.qtyReceived,
+      qtyPending:  li.qtyOrdered - li.qtyReceived,
+    }))
 
-        // Capture product metadata from the first match
-        if (!productName) {
-          productName  = line.productName
-          productBrand = line.productBrand
-          productImage = line.productImage
-        }
-
-        matches.push({
-          poId:        po.id,
-          poNumber:    po.poNumber,
-          projectName: po.projectName,
-          vendorName:  po.vendorName,
-          status:      po.status,
-          lineItemId:  line.id,
-          qtyOrdered:  line.qtyOrdered,
-          qtyReceived: line.qtyReceived,
-          qtyPending:  line.qtyOrdered - line.qtyReceived,
-        })
-      }
-    }
+    const firstLine = lineItems[0]
+    const productName  = firstLine?.product.name  ?? ''
+    const productBrand = firstLine?.product.brand ?? ''
+    const productImage = firstLine?.product.imageUrl ?? ''
 
     const totals = matches.reduce(
       (acc, m) => ({

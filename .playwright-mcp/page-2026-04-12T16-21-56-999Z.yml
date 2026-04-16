@@ -1,0 +1,310 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e5]
+        - generic [ref=e300]: Forge
+      - generic [ref=e8] [cursor=pointer]:
+        - generic [ref=e9]: PE
+        - generic [ref=e10]:
+          - generic [ref=e11]: Personal
+          - img [ref=e12]
+      - button "New" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e301]: New
+      - navigation [ref=e18]:
+        - generic [ref=e20]:
+          - link "Dashboard" [ref=e21] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e23]
+            - generic [ref=e28]: Dashboard
+          - link "Quotation Builder" [ref=e29] [cursor=pointer]:
+            - /url: /pos
+            - img [ref=e30]
+            - generic [ref=e33]: Quotation Builder
+          - link "Purchases" [ref=e34] [cursor=pointer]:
+            - /url: /purchases
+            - img [ref=e35]
+            - generic [ref=e38]: Purchases
+          - link "Payments" [ref=e608] [cursor=pointer]:
+            - /url: /payments
+            - img [ref=e609]
+            - generic [ref=e612]: Payments
+          - link "Follow-ups 2" [ref=e302] [cursor=pointer]:
+            - /url: /follow-ups
+            - img [ref=e45]
+            - generic [ref=e49]: Follow-ups
+            - generic [ref=e303]: "2"
+        - generic [ref=e50]:
+          - generic [ref=e51]: CRM
+          - link "CRM" [ref=e53] [cursor=pointer]:
+            - /url: /crm/contacts
+            - img [ref=e54]
+            - generic [ref=e59]: CRM
+        - generic [ref=e60]:
+          - generic [ref=e61]: Configure
+          - generic [ref=e62]:
+            - link "Catalogue" [ref=e63] [cursor=pointer]:
+              - /url: /catalogue
+              - img [ref=e64]
+              - generic [ref=e66]: Catalogue
+            - link "Price Lists" [ref=e67] [cursor=pointer]:
+              - /url: /settings/price-lists
+              - img [ref=e68]
+              - generic [ref=e71]: Price Lists
+            - link "Settings" [ref=e72] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e73]
+              - generic [ref=e76]: Settings
+      - generic [ref=e77]:
+        - generic [ref=e78]: ⌘K to search anywhere
+        - button "Owner" [active] [ref=e613] [cursor=pointer]:
+          - img [ref=e614]
+          - generic [ref=e85]: Owner
+          - img [ref=e86]
+        - button "U User" [ref=e89] [cursor=pointer]:
+          - generic [ref=e90]: U
+          - generic [ref=e92]: User
+        - button "Collapse" [ref=e94] [cursor=pointer]:
+          - img [ref=e95]
+          - generic [ref=e97]: Collapse
+    - generic [ref=e98]:
+      - banner [ref=e99]:
+        - navigation [ref=e100]:
+          - link [ref=e101] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e102]
+          - img [ref=e104]
+          - generic [ref=e106]: Dashboard
+        - generic [ref=e107]:
+          - button "Search... ⌘K" [ref=e108] [cursor=pointer]:
+            - img [ref=e109]
+            - generic [ref=e112]: Search...
+            - generic [ref=e113]: ⌘K
+          - button [ref=e114] [cursor=pointer]:
+            - img [ref=e115]
+      - main [ref=e119]:
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - heading "Good evening, Buildcon" [level=1] [ref=e124]:
+                - generic [ref=e125]:
+                  - text: Good evening,
+                  - text: Buildcon
+              - paragraph [ref=e126]: Here's your Buildcon House overview for today.
+            - generic [ref=e127]:
+              - button "Apr 2026" [ref=e128]:
+                - img [ref=e129]
+                - text: Apr 2026
+              - button "Refresh" [ref=e131]:
+                - img [ref=e132]
+                - text: Refresh
+              - button "Export" [ref=e137]:
+                - img [ref=e138]
+                - text: Export
+          - generic [ref=e143]: "Last updated: less than a minute ago"
+          - generic [ref=e144]:
+            - generic [ref=e145]:
+              - generic [ref=e307] [cursor=pointer]:
+                - generic [ref=e308]:
+                  - img [ref=e310]
+                  - img [ref=e316]
+                - generic [ref=e317]: —
+                - generic [ref=e318]:
+                  - generic [ref=e320]: Active Follow-ups
+                  - img [ref=e321]
+              - generic [ref=e323] [cursor=pointer]:
+                - generic [ref=e324]:
+                  - img [ref=e326]
+                  - img [ref=e330]
+                - generic [ref=e331]: —
+                - generic [ref=e332]:
+                  - generic [ref=e334]: Open Quotations
+                  - img [ref=e335]
+              - generic [ref=e337] [cursor=pointer]:
+                - generic [ref=e338]:
+                  - img [ref=e340]
+                  - img [ref=e343]
+                - generic [ref=e344]: —
+                - generic [ref=e345]:
+                  - generic [ref=e347]: Overdue Follow-ups
+                  - img [ref=e348]
+              - generic [ref=e350] [cursor=pointer]:
+                - generic [ref=e351]:
+                  - img [ref=e353]
+                  - img [ref=e357]
+                - generic [ref=e358]: "27"
+                - generic [ref=e359]:
+                  - generic [ref=e360]:
+                    - generic [ref=e361]: PO Lines In Transit
+                    - generic [ref=e362]: Pending CO + Dist + Godown
+                  - img [ref=e363]
+              - generic [ref=e365] [cursor=pointer]:
+                - generic [ref=e366]:
+                  - img [ref=e368]
+                  - img [ref=e372]
+                - generic [ref=e373]: ₹4,26,240
+                - generic [ref=e374]:
+                  - generic [ref=e375]:
+                    - generic [ref=e376]: Outstanding
+                    - generic [ref=e377]: ₹97K collected MTD
+                  - img [ref=e378]
+            - generic [ref=e196]:
+              - generic [ref=e380]:
+                - generic [ref=e381]:
+                  - generic [ref=e382]:
+                    - generic [ref=e383]: Revenue Trend
+                    - generic [ref=e384]:
+                      - text: Last 12 months ·
+                      - generic [ref=e385]: ₹97K collected
+                  - generic [ref=e388]: Collected
+                - application [ref=e391]:
+                  - generic [ref=e400]:
+                    - generic [ref=e401]:
+                      - generic [ref=e403]: May
+                      - generic [ref=e405]: Jun
+                      - generic [ref=e407]: Jul
+                      - generic [ref=e409]: Aug
+                      - generic [ref=e411]: Sep
+                      - generic [ref=e413]: Oct
+                      - generic [ref=e415]: Nov
+                      - generic [ref=e417]: Dec
+                      - generic [ref=e419]: Jan
+                      - generic [ref=e421]: Feb
+                      - generic [ref=e423]: Mar
+                      - generic [ref=e425]: Apr
+                    - generic [ref=e426]:
+                      - generic [ref=e428]: ₹0
+                      - generic [ref=e430]: ₹25K
+                      - generic [ref=e432]: ₹50K
+                      - generic [ref=e434]: ₹75K
+                      - generic [ref=e436]: ₹1.0L
+              - generic [ref=e437]:
+                - generic [ref=e438]:
+                  - generic [ref=e439]:
+                    - generic [ref=e440]: Purchase Pipeline
+                    - generic [ref=e441]: Live stage quantities
+                  - generic [ref=e442]: 35 units
+                - application [ref=e445]:
+                  - generic [ref=e462]:
+                    - generic [ref=e463]:
+                      - generic [ref=e465]: Pending CO
+                      - generic [ref=e467]: PendingDist
+                      - generic [ref=e469]: At Godown
+                      - generic [ref=e471]: In Box
+                      - generic [ref=e473]: Dispatched
+                    - generic [ref=e474]:
+                      - generic [ref=e475]: 25 units
+                      - generic [ref=e476]: 2 units
+                      - generic [ref=e477]: 5 units
+                      - generic [ref=e478]: 3 units
+                - generic [ref=e479]:
+                  - generic [ref=e480]:
+                    - generic [ref=e481]: In transit
+                    - generic [ref=e482]: 32 units
+                  - generic [ref=e483]:
+                    - generic [ref=e484]: Dispatched
+                    - generic [ref=e485]: "3"
+            - generic [ref=e211]:
+              - generic [ref=e487]: No activity yet. Start by adding a contact or creating a quotation.
+              - generic [ref=e488]:
+                - generic [ref=e489]:
+                  - generic [ref=e490]:
+                    - generic [ref=e491]: Top Customers
+                    - generic [ref=e492]: By revenue · all time
+                  - button "View all →" [ref=e493] [cursor=pointer]
+                - table [ref=e494]:
+                  - rowgroup [ref=e495]:
+                    - row "# Customer Revenue Orders Outstanding" [ref=e496]:
+                      - columnheader "#" [ref=e497]
+                      - columnheader "Customer" [ref=e498]
+                      - columnheader "Revenue" [ref=e499]
+                      - columnheader "Orders" [ref=e500]
+                      - columnheader "Outstanding" [ref=e501]
+                      - columnheader [ref=e502]
+                  - rowgroup [ref=e503]:
+                    - row "1 RC Rajesh Constructions Pvt Ltd ₹3.1L 1 ₹2.1L" [ref=e504]:
+                      - cell "1" [ref=e505]
+                      - cell "RC Rajesh Constructions Pvt Ltd" [ref=e506]:
+                        - generic [ref=e507]:
+                          - generic [ref=e508]: RC
+                          - generic [ref=e509]: Rajesh Constructions Pvt Ltd
+                      - cell "₹3.1L" [ref=e510]:
+                        - generic [ref=e512]: ₹3.1L
+                      - cell "1" [ref=e513]
+                      - cell "₹2.1L" [ref=e514]
+                      - cell [ref=e515]:
+                        - img [ref=e516]
+                    - row "2 GE Green Earth Homes LLP ₹1.9L 1 ₹42K" [ref=e519]:
+                      - cell "2" [ref=e520]
+                      - cell "GE Green Earth Homes LLP" [ref=e521]:
+                        - generic [ref=e522]:
+                          - generic [ref=e523]: GE
+                          - generic [ref=e524]: Green Earth Homes LLP
+                      - cell "₹1.9L" [ref=e525]:
+                        - generic [ref=e527]: ₹1.9L
+                      - cell "1" [ref=e528]
+                      - cell "₹42K" [ref=e529]
+                      - cell [ref=e530]:
+                        - img [ref=e531]
+                    - row "3 LD Lodha Developers Ltd ₹1.8L 2 ₹20K" [ref=e532]:
+                      - cell "3" [ref=e533]
+                      - cell "LD Lodha Developers Ltd" [ref=e534]:
+                        - generic [ref=e535]:
+                          - generic [ref=e536]: LD
+                          - generic [ref=e537]: Lodha Developers Ltd
+                      - cell "₹1.8L" [ref=e538]:
+                        - generic [ref=e540]: ₹1.8L
+                      - cell "2" [ref=e541]
+                      - cell "₹20K" [ref=e542]
+                      - cell [ref=e543]:
+                        - img [ref=e544]
+                    - row "4 PG Prestige Group (Mumbai) ₹99K 1 Cleared" [ref=e545]:
+                      - cell "4" [ref=e546]
+                      - cell "PG Prestige Group (Mumbai)" [ref=e547]:
+                        - generic [ref=e548]:
+                          - generic [ref=e549]: PG
+                          - generic [ref=e550]: Prestige Group (Mumbai)
+                      - cell "₹99K" [ref=e551]:
+                        - generic [ref=e553]: ₹99K
+                      - cell "1" [ref=e554]
+                      - cell "Cleared" [ref=e555]
+                      - cell [ref=e556]:
+                        - img [ref=e557]
+                    - row "5 N nikhil ₹87K 1 ₹87K" [ref=e560]:
+                      - cell "5" [ref=e561]
+                      - cell "N nikhil" [ref=e562]:
+                        - generic [ref=e563]:
+                          - generic [ref=e564]: "N"
+                          - generic [ref=e565]: nikhil
+                      - cell "₹87K" [ref=e566]:
+                        - generic [ref=e568]: ₹87K
+                      - cell "1" [ref=e569]
+                      - cell "₹87K" [ref=e570]
+                      - cell [ref=e571]:
+                        - img [ref=e572]
+            - generic [ref=e269]:
+              - generic [ref=e270]: Quick Actions
+              - generic [ref=e272]:
+                - button "New Contact" [ref=e273] [cursor=pointer]:
+                  - img [ref=e275]
+                  - generic [ref=e278]: New Contact
+                - button "New Deal" [ref=e279] [cursor=pointer]:
+                  - img [ref=e281]
+                  - generic [ref=e284]: New Deal
+                - button "New Quotation" [ref=e285] [cursor=pointer]:
+                  - img [ref=e287]
+                  - generic [ref=e289]: New Quotation
+                - button "View Purchases" [ref=e290] [cursor=pointer]:
+                  - img [ref=e292]
+                  - generic [ref=e294]: View Purchases
+                - button "Open ⌘K" [ref=e295] [cursor=pointer]:
+                  - img [ref=e297]
+                  - generic [ref=e299]: Open ⌘K
+    - region "Notifications alt+T"
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e580] [cursor=pointer]:
+    - img [ref=e581]
+  - alert [ref=e584]
+  - generic [ref=e585]: Pending CO
