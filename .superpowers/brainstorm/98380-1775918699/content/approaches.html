@@ -1,0 +1,44 @@
+<h2>How should the data work?</h2>
+<p class="subtitle">The app uses 100% mock data today. These 3 approaches differ in how "confirmed orders" feed the payments page.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Standalone mock store (isolated)</h3>
+      <p>Create a new <code>payments-data.ts</code> with hardcoded orders. Payments page is completely independent — no connection to the sales module. Simplest and fastest.</p>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Fastest to build</li><li>No dependencies</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Data is not real — confirming a sales order doesn't actually update payments</li><li>Duplication of order data</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Read from sales mock + add payment layer <span style="background:#dbeafe;color:#1d4ed8;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;">RECOMMENDED</span></h3>
+      <p>Confirmed sales orders from <code>sales-data.ts</code> automatically feed the payments list. A Zustand store tracks payment transactions on top. When an order is confirmed in sales, it appears here automatically.</p>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Orders appear automatically on confirmation</li><li>Single source of truth for order data</li><li>Right architecture for future DB migration</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Slightly more setup</li><li>Need to add "confirmed" status to sales mock</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Full API route with mock DB layer</h3>
+      <p>Create <code>/api/payments</code> routes that simulate a real backend. Payments stored in-memory server-side. Most realistic simulation of a production system.</p>
+      <div class="pros-cons" style="margin-top:8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Most production-like</li><li>Easy to swap with real DB later</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Resets on server restart (no persistence)</li><li>Overkill for a mock-first app</li><li>Doesn't match app's existing patterns</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Click your choice, then confirm in the terminal. I recommend B.</p>

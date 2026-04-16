@@ -3,7 +3,6 @@
 import * as React from 'react'
 import { FileText, RotateCcw, Save, Percent, MapPin, Phone, ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react'
 import { usePOSStore, useTotals } from '@/lib/pos-store'
-import { useProcurementStore } from '@/lib/procurement-store'
 import { QuotationPreview } from './quotation-preview'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -69,13 +68,13 @@ export function POSHeader() {
   const resetBuilder   = usePOSStore((s) => s.resetBuilder)
   const totals         = useTotals()
 
-  const { openDraft, addLine, clearDraft } = useProcurementStore()
   const router = useRouter()
 
   const [showQuotation, setShowQuotation] = React.useState(false)
   const [expanded, setExpanded]           = React.useState(false)
+  const [placingOrder, setPlacingOrder]   = React.useState(false)
 
-  function handlePlaceOrder() {
+  async function handlePlaceOrder() {
     const nonConcealedItems = rooms.flatMap((room) =>
       room.items
         .filter((item) => !item.product.isConcealed)
@@ -85,22 +84,40 @@ export function POSHeader() {
       toast.error('No items to order', { description: 'Add products to your rooms first.' })
       return
     }
-    clearDraft()
-    openDraft('PROJECT_LINKED', {
-      projectName: project.clientName || 'Unnamed Project',
-    })
-    nonConcealedItems.forEach(({ item, roomName }) => {
-      const offerRate = Math.round(
-        item.product.mrp
-        * (1 - project.globalDiscount / 100)
-        * (1 - item.itemDiscount / 100),
-      )
-      addLine(item.product, item.quantity, offerRate, roomName)
-    })
-    router.push('/purchases/new')
-    toast.success('Items loaded into Purchase Order draft', {
-      description: `${nonConcealedItems.length} item${nonConcealedItems.length !== 1 ? 's' : ''} ready for procurement`,
-    })
+    setPlacingOrder(true)
+    try {
+      const res = await fetch('/api/purchase-orders/from-revision/pos-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineItems: nonConcealedItems.map(({ item }) => ({
+            sku: item.product.sku,
+            productName: item.product.name,
+            qty: item.quantity,
+            clientOfferRate: Math.round(
+              item.product.mrp
+              * (1 - project.globalDiscount / 100)
+              * (1 - item.itemDiscount / 100),
+            ),
+          })),
+          customerName: project.clientName || undefined,
+          projectName: project.clientName || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json() as { message?: string }
+        throw new Error(err.message ?? 'Failed to create PO')
+      }
+      const data = await res.json() as { poNumber: string; lineItemCount: number }
+      toast.success(`${data.poNumber} created — ${data.lineItemCount} lines`, {
+        description: 'Items now appear as Unallocated in the tracker',
+      })
+      router.push('/purchases')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create PO')
+    } finally {
+      setPlacingOrder(false)
+    }
   }
 
   const handleSave = () => {
@@ -305,19 +322,22 @@ export function POSHeader() {
 
         {totals.totalItems > 0 && (
           <button
-            onClick={handlePlaceOrder}
+            onClick={() => void handlePlaceOrder()}
+            disabled={placingOrder}
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
               padding: '6px 12px', borderRadius: 7, border: 'none',
-              background: '#16A34A', color: '#fff',
-              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              background: placingOrder ? '#6B7280' : '#16A34A', color: '#fff',
+              fontSize: 12, fontWeight: 600,
+              cursor: placingOrder ? 'not-allowed' : 'pointer',
               letterSpacing: '-0.01em', flexShrink: 0, whiteSpace: 'nowrap',
+              opacity: placingOrder ? 0.8 : 1,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#15803d' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#16A34A' }}
+            onMouseEnter={(e) => { if (!placingOrder) e.currentTarget.style.background = '#15803d' }}
+            onMouseLeave={(e) => { if (!placingOrder) e.currentTarget.style.background = '#16A34A' }}
           >
             <ShoppingCart size={13} />
-            Place Order
+            {placingOrder ? 'Creating PO…' : 'Place Order'}
           </button>
         )}
       </header>

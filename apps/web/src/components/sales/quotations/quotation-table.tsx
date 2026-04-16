@@ -11,6 +11,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import { Badge } from '@/components/shared/badge'
 import { calcDocumentTotals, type Quotation } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
+import { getFollowUpByQuotationNumber, FOLLOWUP_STATUS_CONFIG } from '@/lib/mock/followup-data'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -80,21 +81,24 @@ export function QuotationTable({ data, globalFilter, onRowClick }: QuotationTabl
       header: 'Items',
       size: 80,
       enableSorting: false,
-      cell: ({ row }) => (
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          {row.original.lineItems.length} {row.original.lineItems.length === 1 ? 'item' : 'items'}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const count = row.original.lineItems.length
+        return (
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            {count} {count === 1 ? 'item' : 'items'}
+          </span>
+        )
+      },
     },
     {
       id: 'value',
       header: 'Value',
       size: 120,
       cell: ({ row }) => {
-        const t = calcDocumentTotals(row.original.lineItems)
+        const total = row.original.grandTotal ?? calcDocumentTotals(row.original.lineItems).grandTotal
         return (
           <span style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {formatINR(t.grandTotal, true)}
+            {formatINR(total, true)}
           </span>
         )
       },
@@ -116,6 +120,35 @@ export function QuotationTable({ data, globalFilter, onRowClick }: QuotationTabl
         const dot = dotMap[status] ?? 'neutral'
         const label = status.charAt(0).toUpperCase() + status.slice(1)
         return <Badge label={label} dot={dot} />
+      },
+    },
+    {
+      id: 'followUp',
+      header: 'Follow-up',
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const fu = getFollowUpByQuotationNumber(row.original.number)
+        if (!fu) {
+          return (
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+              —
+            </span>
+          )
+        }
+        const cfg = FOLLOWUP_STATUS_CONFIG[fu.status]
+        return (
+          <span
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '2px 7px', borderRadius: 6,
+              background: cfg.bg, fontSize: 11, fontWeight: 600, color: cfg.text,
+            }}
+          >
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.text, flexShrink: 0 }} />
+            {cfg.label}
+          </span>
+        )
       },
     },
     {
@@ -214,7 +247,7 @@ export function QuotationTable({ data, globalFilter, onRowClick }: QuotationTabl
             ))}
             {table.getRowModel().rows.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ padding: 48, textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
+                <td colSpan={8} style={{ padding: 48, textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
                   No quotations found
                 </td>
               </tr>

@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const staged = pendingCo + pendingDist + godown + inBox + dispatched + notDisplayed
     const unallocated = Math.max(0, ordered - staged)
 
-    return NextResponse.json({
+    const result = {
       unallocated,
       pendingCo,
       pendingDist,
@@ -50,7 +50,8 @@ export async function GET(req: NextRequest) {
       inBox,
       dispatched,
       notDisplayed,
-    })
+    }
+    return NextResponse.json(result)
   } catch (err) {
     console.error('[stage-totals]', err)
     return NextResponse.json(

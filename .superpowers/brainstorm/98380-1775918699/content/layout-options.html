@@ -1,0 +1,146 @@
+<h2>Payments Page — Which layout feels right?</h2>
+<p class="subtitle">All 3 show the same data. The difference is how you navigate and what you see first.</p>
+
+<div class="cards">
+
+  <!-- Option A: Dashboard + List -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f8f8;padding:12px;border-radius:6px;font-family:system-ui;font-size:11px;">
+      <div style="background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:8px;margin-bottom:6px;">
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <div style="flex:1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:4px;padding:6px;text-align:center;">
+            <div style="font-size:9px;color:#64748b;">TOTAL OUTSTANDING</div>
+            <div style="font-size:13px;font-weight:700;color:#0f172a;">₹4,20,000</div>
+          </div>
+          <div style="flex:1;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:6px;text-align:center;">
+            <div style="font-size:9px;color:#64748b;">COLLECTED THIS MONTH</div>
+            <div style="font-size:13px;font-weight:700;color:#15803d;">₹1,80,000</div>
+          </div>
+          <div style="flex:1;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:6px;text-align:center;">
+            <div style="font-size:9px;color:#64748b;">ORDERS PENDING</div>
+            <div style="font-size:13px;font-weight:700;color:#c2410c;">8</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid #f1f5f9;padding-top:6px;">
+          <div style="font-size:9px;color:#94a3b8;margin-bottom:4px;">ORDERS</div>
+          <div style="background:#f8fafc;border-radius:4px;padding:5px 7px;margin-bottom:3px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:600;font-size:10px;">Lodha Supremus</div>
+              <div style="font-size:9px;color:#64748b;">SO-2025-042 · ₹1,30,000 MRP</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:9px;font-weight:700;color:#dc2626;">₹40,000 due</div>
+              <div style="width:50px;height:4px;background:#fee2e2;border-radius:9px;margin-top:2px;"><div style="width:60%;height:100%;background:#22c55e;border-radius:9px;"></div></div>
+            </div>
+          </div>
+          <div style="background:#f8fafc;border-radius:4px;padding:5px 7px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:600;font-size:10px;">Mehta Architects</div>
+              <div style="font-size:9px;color:#64748b;">SO-2025-039 · ₹85,000 MRP</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:9px;font-weight:700;color:#dc2626;">₹85,000 due</div>
+              <div style="width:50px;height:4px;background:#fee2e2;border-radius:9px;margin-top:2px;"><div style="width:0%;height:100%;background:#22c55e;border-radius:9px;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — KPIs on top, order list below</h3>
+      <p>3 summary cards (total outstanding, collected this month, pending orders) + a searchable order list with progress bars. Click any order to open a slide-over with full payment history and "Record Payment" button.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Split pane -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f8f8;padding:12px;border-radius:6px;font-family:system-ui;font-size:11px;">
+      <div style="background:#fff;border:1px solid #e5e5e5;border-radius:6px;overflow:hidden;display:flex;height:130px;">
+        <div style="width:38%;border-right:1px solid #e5e5e5;padding:6px;">
+          <div style="font-size:9px;color:#94a3b8;margin-bottom:4px;">ALL ORDERS</div>
+          <div style="background:#eff6ff;border-left:2px solid #3b82f6;padding:4px 6px;border-radius:2px;margin-bottom:3px;">
+            <div style="font-weight:700;font-size:10px;">Lodha Supremus</div>
+            <div style="font-size:9px;color:#dc2626;font-weight:600;">₹40,000 due</div>
+          </div>
+          <div style="padding:4px 6px;margin-bottom:2px;">
+            <div style="font-size:10px;">Mehta Architects</div>
+            <div style="font-size:9px;color:#dc2626;font-weight:600;">₹85,000 due</div>
+          </div>
+          <div style="padding:4px 6px;">
+            <div style="font-size:10px;">Oberoi Realty</div>
+            <div style="font-size:9px;color:#22c55e;font-weight:600;">Paid ✓</div>
+          </div>
+        </div>
+        <div style="flex:1;padding:8px;">
+          <div style="font-size:11px;font-weight:700;margin-bottom:2px;">Lodha Supremus</div>
+          <div style="font-size:9px;color:#64748b;margin-bottom:6px;">SO-2025-042 · Grohe, Axor</div>
+          <div style="display:flex;gap:4px;margin-bottom:6px;">
+            <div style="flex:1;background:#f8fafc;border-radius:3px;padding:4px;text-align:center;">
+              <div style="font-size:8px;color:#94a3b8;">MRP</div>
+              <div style="font-size:10px;font-weight:700;">₹1,30,000</div>
+            </div>
+            <div style="flex:1;background:#f8fafc;border-radius:3px;padding:4px;text-align:center;">
+              <div style="font-size:8px;color:#94a3b8;">DISC. RATE</div>
+              <div style="font-size:10px;font-weight:700;">₹1,00,000</div>
+            </div>
+            <div style="flex:1;background:#f0fdf4;border-radius:3px;padding:4px;text-align:center;">
+              <div style="font-size:8px;color:#94a3b8;">PAID</div>
+              <div style="font-size:10px;font-weight:700;color:#15803d;">₹60,000</div>
+            </div>
+            <div style="flex:1;background:#fff7ed;border-radius:3px;padding:4px;text-align:center;">
+              <div style="font-size:8px;color:#94a3b8;">DUE</div>
+              <div style="font-size:10px;font-weight:700;color:#c2410c;">₹40,000</div>
+            </div>
+          </div>
+          <div style="font-size:9px;color:#64748b;border-top:1px solid #f1f5f9;padding-top:4px;">
+            ✓ ₹30,000 on 15 Mar &nbsp;·&nbsp; ✓ ₹30,000 on 28 Mar
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Split pane (left list, right detail)</h3>
+      <p>Left column = scrollable order list. Right panel = always-visible detail with MRP / discount / paid / due, full payment timeline, and "Record Payment" button. No click-to-open needed — selection highlights the left row.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Table with inline expand -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f8f8;padding:12px;border-radius:6px;font-family:system-ui;font-size:11px;">
+      <div style="background:#fff;border:1px solid #e5e5e5;border-radius:6px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:0;border-bottom:1px solid #f1f5f9;padding:4px 8px;">
+          <div style="font-size:9px;color:#94a3b8;font-weight:600;">CUSTOMER</div>
+          <div style="font-size:9px;color:#94a3b8;font-weight:600;">MRP</div>
+          <div style="font-size:9px;color:#94a3b8;font-weight:600;">DISC. RATE</div>
+          <div style="font-size:9px;color:#94a3b8;font-weight:600;">PAID</div>
+          <div style="font-size:9px;color:#94a3b8;font-weight:600;">DUE</div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:5px 8px;background:#eff6ff;border-bottom:1px solid #f1f5f9;">
+          <div style="font-size:10px;font-weight:600;">▼ Lodha Supremus</div>
+          <div style="font-size:10px;">₹1,30,000</div>
+          <div style="font-size:10px;">₹1,00,000</div>
+          <div style="font-size:10px;color:#15803d;font-weight:600;">₹60,000</div>
+          <div style="font-size:10px;color:#dc2626;font-weight:600;">₹40,000</div>
+        </div>
+        <div style="background:#f8fafc;padding:5px 8px 5px 16px;border-bottom:1px solid #f1f5f9;">
+          <div style="font-size:9px;color:#64748b;">📅 15 Mar 2025 — ₹30,000 (UPI) &nbsp;·&nbsp; + Record payment</div>
+          <div style="font-size:9px;color:#64748b;margin-top:2px;">📅 28 Mar 2025 — ₹30,000 (Bank Transfer)</div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:5px 8px;">
+          <div style="font-size:10px;">▶ Mehta Architects</div>
+          <div style="font-size:10px;">₹85,000</div>
+          <div style="font-size:10px;">₹74,800</div>
+          <div style="font-size:10px;color:#94a3b8;">₹0</div>
+          <div style="font-size:10px;color:#dc2626;font-weight:600;">₹74,800</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Expandable table rows</h3>
+      <p>Classic spreadsheet-style table. Each row = one order. Click the ▶ arrow to expand and see payment history inline. "Record Payment" appears in the expanded view. Dense, fits many orders on screen at once.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Click an option above, then tell me your choice in the terminal.</p>

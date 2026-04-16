@@ -53,28 +53,59 @@ export async function buildPOFromRevision(
 
   const poNumber = await generatePONumber()
 
-  const po = await prisma.purchaseOrder.create({
-    data: {
-      poNumber,
-      mode: 'PROJECT_LINKED',
-      status: 'DRAFT',
-      projectId: revision.quotation.projectId,
-      revisionId: revision.id,
-      createdById,
-      vendorName: options.vendorFilter ?? null,
-      lineItems: {
-        create: allItems.map((item) => ({
-          productId: item.productId,
-          quotationItemId: item.id,
-          qtyOrdered: item.quantity,
-          clientOfferRate: item.offerRate,
-          landingCost: null,
-          status: 'PENDING' as const,
-        })),
+  const mrpTotal = allItems.reduce((sum, item) => sum + item.mrp * item.quantity, 0)
+  const offerTotal = allItems.reduce((sum, item) => sum + item.offerRate * item.quantity, 0)
+
+  const [po] = await prisma.$transaction([
+    prisma.purchaseOrder.create({
+      data: {
+        poNumber,
+        mode: revision.quotation.projectId ? 'PROJECT_LINKED' : 'BULK_COMPANY',
+        status: 'DRAFT',
+        projectId: revision.quotation.projectId ?? null,
+        revisionId: revision.id,
+        createdById,
+        vendorName: options.vendorFilter ?? null,
+        customerName: revision.quotation.customerName ?? null,
+        customerSiteAddress: revision.quotation.siteAddress ?? null,
+        quotationNumber: revision.quotation.number,
+        lineItems: {
+          create: allItems.map((item) => ({
+            productId: item.productId,
+            quotationItemId: item.id,
+            qtyOrdered: item.quantity,
+            clientOfferRate: item.offerRate,
+            landingCost: null,
+            status: 'PENDING' as const,
+          })),
+        },
       },
-    },
-    include: { lineItems: { include: { product: true } } },
-  })
+      include: { lineItems: { include: { product: true } } },
+    }),
+    prisma.salesOrder.create({
+      data: {
+        number: poNumber,
+        customerId: `rev-${revision.id}`,
+        customerName: revision.quotation.customerName ?? 'Unknown Customer',
+        customerPhone: null,
+        status: 'CONFIRMED',
+        projectName: revision.quotation.siteAddress ?? revision.quotation.number ?? null,
+        deliveryAddress: revision.quotation.siteAddress ?? null,
+        mrpTotal,
+        offerTotal,
+        lineItems: {
+          create: allItems.map((item) => ({
+            sku: item.product.sku,
+            name: item.product.name,
+            brand: item.product.brand,
+            qty: item.quantity,
+            mrp: item.mrp,
+            offerRate: item.offerRate,
+          })),
+        },
+      },
+    }),
+  ])
 
   return po
 }

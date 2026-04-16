@@ -7,8 +7,6 @@ import { motion } from 'framer-motion'
 
 const SALES_TABS = [
   { label: 'Quotations', href: '/sales/quotations' },
-  { label: 'Orders', href: '/sales/orders' },
-  { label: 'Deliveries', href: '/sales/deliveries' },
 ]
 
 export function SalesNav() {
