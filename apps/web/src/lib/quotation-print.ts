@@ -15,7 +15,7 @@ interface SectionData {
   items: LineItem[]
   mrpTotal: number
   offerTotal: number
-  offerDiscountTotal: number
+  offerRateSum: number
   totalQty: number
 }
 
@@ -39,9 +39,9 @@ function groupBySection(lineItems: LineItem[]): SectionData[] {
   return Array.from(map.entries()).map(([name, items]) => {
     const mrpTotal = items.reduce((s, i) => s + i.unitPrice * i.qty, 0)
     const offerTotal = items.reduce((s, i) => s + i.unitPrice * (1 - i.discount / 100) * i.qty, 0)
-    const offerDiscountTotal = items.reduce((s, i) => s + i.unitPrice * (i.discount / 100) * i.qty, 0)
+    const offerRateSum = items.reduce((s, i) => s + i.unitPrice * (1 - i.discount / 100), 0)
     const totalQty = items.reduce((s, i) => s + i.qty, 0)
-    return { name, items, mrpTotal, offerTotal, offerDiscountTotal, totalQty }
+    return { name, items, mrpTotal, offerTotal, offerRateSum, totalQty }
   })
 }
 
@@ -219,7 +219,7 @@ function sectionDetailPage(section: SectionData): string {
           <td></td>
           <td class="center">${section.totalQty}</td>
           <td class="right">${fmt(section.mrpTotal)}</td>
-          <td class="right">₹ ${fmtN(section.offerDiscountTotal)}</td>
+          <td class="right">₹ ${fmtN(section.offerRateSum)}</td>
           <td class="right">₹ ${fmtN(section.offerTotal)}</td>
         </tr>
       </table>
