@@ -270,7 +270,7 @@ function SortableRow({
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 86 }}>
         <input
           value={item.section ?? ''}
-          onChange={(e) => onUpdate({ section: e.target.value || undefined })}
+          onChange={(e) => onUpdate({ section: e.target.value.trim() || undefined })}
           placeholder="Room…"
           style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--border-default)', borderRadius: 4, outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)' }}
         />
@@ -279,7 +279,7 @@ function SortableRow({
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 80 }}>
         <input
           value={item.imageUrl ?? ''}
-          onChange={(e) => onUpdate({ imageUrl: e.target.value || undefined })}
+          onChange={(e) => onUpdate({ imageUrl: e.target.value.trim() || undefined })}
           placeholder="https://…"
           style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--border-default)', borderRadius: 4, outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)' }}
         />
