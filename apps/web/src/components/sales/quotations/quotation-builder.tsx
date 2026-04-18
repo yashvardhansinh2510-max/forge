@@ -381,12 +381,13 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
   }
 
   function handlePrint() {
+    if (!quotation) return
     const html = generateQuotationPrintHTML({
-      number: quotation!.number,
+      number: quotation.number,
       customerName,
       customerPhone: customerPhone || undefined,
-      createdBy: quotation!.createdBy,
-      createdAt: quotation!.createdAt,
+      createdBy: quotation.createdBy,
+      createdAt: quotation.createdAt,
       lineItems,
     })
     const win = window.open('', '_blank')
