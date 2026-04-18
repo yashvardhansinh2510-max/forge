@@ -266,6 +266,24 @@ function SortableRow({
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
         <InlineNumberInput value={item.discount} onChange={(v) => onUpdate({ discount: Math.min(100, v) })} />
       </td>
+      {/* Section */}
+      <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 86 }}>
+        <input
+          value={item.section ?? ''}
+          onChange={(e) => onUpdate({ section: e.target.value || undefined })}
+          placeholder="Room…"
+          style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--border-default)', borderRadius: 4, outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)' }}
+        />
+      </td>
+      {/* Image URL */}
+      <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 80 }}>
+        <input
+          value={item.imageUrl ?? ''}
+          onChange={(e) => onUpdate({ imageUrl: e.target.value || undefined })}
+          placeholder="https://…"
+          style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--border-default)', borderRadius: 4, outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)' }}
+        />
+      </td>
       {/* GST */}
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
         <select
@@ -554,6 +572,13 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                     <button onClick={() => void handleSave()} style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid var(--border-default)', background: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)' }}>
                       Save Draft
                     </button>
+                    <button
+                      onClick={handlePrint}
+                      style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid var(--border-default)', background: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}
+                    >
+                      <Printer size={12} />
+                      Print / Save PDF
+                    </button>
                     {canConvert ? (
                       revisionStatus === 'LOCKED' ? (
                         <div style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -605,6 +630,18 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         placeholder="Customer name"
+                        style={{ width: '100%', fontSize: 13, padding: '5px 8px', border: '1.5px solid var(--border-default)', borderRadius: 6, outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(0,113,227,0.5)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(0,113,227,0.12)' }}
+                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)'; (e.target as HTMLInputElement).style.boxShadow = 'none' }}
+                      />
+                    </div>
+                    {/* Customer Phone */}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Customer Phone</label>
+                      <input
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="e.g. 98989 58897"
                         style={{ width: '100%', fontSize: 13, padding: '5px 8px', border: '1.5px solid var(--border-default)', borderRadius: 6, outline: 'none', boxSizing: 'border-box' }}
                         onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(0,113,227,0.5)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(0,113,227,0.12)' }}
                         onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)'; (e.target as HTMLInputElement).style.boxShadow = 'none' }}
@@ -669,6 +706,8 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>Qty</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 100 }}>Price</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>Disc%</th>
+                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 86 }}>Section</th>
+                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 80 }}>Image URL</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>GST</th>
                             <th style={{ padding: '8px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right', width: 100 }}>Total</th>
                             <th style={{ width: 32 }} />
