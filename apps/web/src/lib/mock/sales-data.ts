@@ -18,6 +18,8 @@ export interface LineItem {
   unitPrice: number
   discount: number   // percentage, 0–100
   gstRate: number    // 5 | 12 | 18 | 28
+  section?: string   // room grouping for PDF, e.g. "BATHROOM 1,2"
+  imageUrl?: string  // product thumbnail URL for PDF
 }
 
 export interface Quotation {
@@ -26,12 +28,14 @@ export interface Quotation {
   number: string
   customerId: string
   customerName: string
+  customerPhone?: string      // maps to the "NUM" field on the PDF cover page
   customerGST: string
   billingAddress: string
   siteAddress: string
   revisionStatus?: 'DRAFT' | 'LOCKED'
   projectName: string
   grandTotal?: number          // pre-computed when loaded from DB
+  lineItemCount?: number       // pre-computed from API for list view
   status: QuotationStatus
   validUntil: Date
   lineItems: LineItem[]
