@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  X, GripVertical, Plus, Send, Check, ChevronRight, Search, Trash2, Lock,
+  X, GripVertical, Plus, Send, Check, ChevronRight, Search, Trash2, Lock, Printer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -24,6 +24,7 @@ import {
   calcDocumentTotals, type Quotation, type LineItem, type QuotationStatus,
 } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/format'
+import { generateQuotationPrintHTML } from '@/lib/quotation-print'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -309,16 +310,21 @@ function SortableRow({
 interface QuotationBuilderProps {
   quotation: Quotation | null
   onClose: () => void
+  onSave?: () => void
   onConvertToOrder: (q: Quotation) => void
 }
 
-export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: QuotationBuilderProps) {
+export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder }: QuotationBuilderProps) {
   const router = useRouter()
   const [lineItems, setLineItems] = React.useState<LineItem[]>([])
   const [status, setStatus] = React.useState<QuotationStatus>('draft')
   const [showConvertModal, setShowConvertModal] = React.useState(false)
   const [showHistoryModal, setShowHistoryModal] = React.useState(false)
-  const [deliveryAddress, setDeliveryAddress] = React.useState('')
+  const [customerName, setCustomerName] = React.useState('')
+  const [customerPhone, setCustomerPhone] = React.useState('')
+  const [siteAddress, setSiteAddress] = React.useState('')
+  const [projectName, setProjectName] = React.useState('')
+  const [notes, setNotes] = React.useState('')
   const [revisionStatus, setRevisionStatus] = React.useState<'DRAFT' | 'LOCKED'>('DRAFT')
   const [revisionId, setRevisionId] = React.useState<string | null>(null)
   const [creating, setCreating] = React.useState(false)
@@ -332,7 +338,11 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
     if (quotation) {
       setLineItems(quotation.lineItems)
       setStatus(quotation.status)
-      setDeliveryAddress(quotation.siteAddress)
+      setCustomerName(quotation.customerName)
+      setCustomerPhone(quotation.customerPhone ?? '')
+      setSiteAddress(quotation.siteAddress)
+      setProjectName(quotation.projectName)
+      setNotes(quotation.notes)
       setRevisionStatus(quotation.revisionStatus ?? 'DRAFT')
       setRevisionId(quotation.revisionId ?? null)
     }
@@ -370,14 +380,37 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
     toast.success(`Quotation ${quotation?.number} sent to ${quotation?.customerName}`)
   }
 
+  function handlePrint() {
+    const html = generateQuotationPrintHTML({
+      number: quotation!.number,
+      customerName,
+      customerPhone: customerPhone || undefined,
+      createdBy: quotation!.createdBy,
+      createdAt: quotation!.createdAt,
+      lineItems,
+    })
+    const win = window.open('', '_blank')
+    if (!win) {
+      toast.error('Pop-ups blocked — allow pop-ups for this site and try again')
+      return
+    }
+    win.document.write(html)
+    win.document.close()
+  }
+
   async function handleSave(): Promise<string | null> {
     if (!quotation) return null
+    const hasCustomer = customerName.trim()
+    if (!hasCustomer) {
+      toast.error('Customer name is required')
+      return null
+    }
     try {
       const payload = {
-        customerName: quotation.customerName,
-        siteAddress: quotation.siteAddress,
-        projectName: quotation.projectName,
-        notes: quotation.notes,
+        customerName: customerName.trim(),
+        siteAddress: siteAddress.trim() || undefined,
+        projectName: projectName.trim() || undefined,
+        notes: notes.trim() || undefined,
         lineItems: lineItems
           .filter(li => li.sku)
           .map(li => ({
@@ -418,6 +451,7 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
       }
 
       toast.success('Quotation saved')
+      onSave?.()
       return savedRevisionId
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save quotation')
@@ -456,8 +490,8 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
               qty: li.qty,
               clientOfferRate: li.unitPrice,
             })),
-          customerName: quotation.customerName,
-          projectName: quotation.projectName,
+          customerName: customerName.trim(),
+          projectName: projectName.trim(),
         }),
       })
       if (!res.ok) {
@@ -561,20 +595,44 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
 
                 {/* Body — two column */}
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                  {/* Left panel */}
+                  {/* Left panel — editable */}
                   <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid var(--border-subtle)', overflowY: 'auto', padding: 20 }}>
+                    {/* Editable: Customer */}
                     <div style={{ marginBottom: 14 }}>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Customer</label>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{quotation.customerName}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>{quotation.customerGST}</div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Customer *</label>
+                      <input
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Customer name"
+                        style={{ width: '100%', fontSize: 13, padding: '5px 8px', border: '1.5px solid var(--border-default)', borderRadius: 6, outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(0,113,227,0.5)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(0,113,227,0.12)' }}
+                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)'; (e.target as HTMLInputElement).style.boxShadow = 'none' }}
+                      />
                     </div>
+                    {/* Editable: Site Address */}
                     <div style={{ marginBottom: 14 }}>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Billing Address</label>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: '18px' }}>{quotation.billingAddress}</div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Site / Project Address</label>
+                      <textarea
+                        value={siteAddress}
+                        onChange={(e) => setSiteAddress(e.target.value)}
+                        placeholder="Site address"
+                        rows={2}
+                        style={{ width: '100%', fontSize: 12, padding: '5px 8px', border: '1.5px solid var(--border-default)', borderRadius: 6, outline: 'none', boxSizing: 'border-box', resize: 'none', lineHeight: '18px' }}
+                        onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(0,113,227,0.5)' }}
+                        onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--border-default)' }}
+                      />
                     </div>
+                    {/* Editable: Project Name */}
                     <div style={{ marginBottom: 14 }}>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Site Address</label>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: '18px' }}>{quotation.siteAddress}</div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Project Name</label>
+                      <input
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        placeholder="e.g. Master Bathroom"
+                        style={{ width: '100%', fontSize: 13, padding: '5px 8px', border: '1.5px solid var(--border-default)', borderRadius: 6, outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(0,113,227,0.5)' }}
+                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
+                      />
                     </div>
                     <div style={{ marginBottom: 14 }}>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Quote Date</label>
@@ -584,22 +642,19 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Valid Until</label>
                       <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{format(quotation.validUntil, 'dd MMM yyyy')}</div>
                     </div>
+                    {/* Editable: Notes */}
                     <div style={{ marginBottom: 14 }}>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Created By</label>
-                      <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{quotation.createdBy}</div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Notes</label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Internal notes…"
+                        rows={3}
+                        style={{ width: '100%', fontSize: 12, padding: '5px 8px', border: '1.5px solid var(--border-default)', borderRadius: 6, outline: 'none', boxSizing: 'border-box', resize: 'none', lineHeight: '18px' }}
+                        onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(0,113,227,0.5)' }}
+                        onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--border-default)' }}
+                      />
                     </div>
-                    {quotation.notes && (
-                      <div style={{ marginBottom: 14 }}>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Notes</label>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: '18px' }}>{quotation.notes}</div>
-                      </div>
-                    )}
-                    {quotation.termsAndConditions && (
-                      <div>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Terms & Conditions</label>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: '18px' }}>{quotation.termsAndConditions}</div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Right panel — line items */}
@@ -698,8 +753,8 @@ export function QuotationBuilder({ quotation, onClose, onConvertToOrder }: Quota
                   <div style={{ marginBottom: 14 }}>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Delivery Address</label>
                     <textarea
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      value={siteAddress}
+                      onChange={(e) => setSiteAddress(e.target.value)}
                       rows={3}
                       style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--border-default)', borderRadius: 8, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
                     />
