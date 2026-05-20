@@ -1,6 +1,5 @@
 import { AppError } from '@/lib/errors'
 import {
-  MOCK_PURCHASE_ORDERS,
   type MockPOLineItem,
   type MockPurchaseOrder,
 } from '@/lib/mock/procurement-data'
@@ -40,7 +39,7 @@ let mockOrders: MockPurchaseOrder[] | null = null
 
 function getMockOrders(): MockPurchaseOrder[] {
   if (!mockOrders) {
-    mockOrders = structuredClone(MOCK_PURCHASE_ORDERS)
+    mockOrders = []
   }
 
   return mockOrders
@@ -196,5 +195,5 @@ export function shouldUseFallback(error: unknown): boolean {
 }
 
 export function resetFallbackOrders(): void {
-  mockOrders = structuredClone(MOCK_PURCHASE_ORDERS)
+  mockOrders = []
 }

@@ -3,7 +3,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import {
-  MOCK_PURCHASES,
   FUNNEL_STAGES,
   type PurchaseOrder,
   type PurchaseStatus,
@@ -38,7 +37,7 @@ function deriveStatus(order: PurchaseOrder): PurchaseStatus {
 
 export const usePurchasesStore = create<PurchasesState & PurchasesActions>()(
   immer((set) => ({
-    orders: MOCK_PURCHASES,
+    orders: [] as PurchaseOrder[],
 
     addOrder: (order) =>
       set((s) => {
