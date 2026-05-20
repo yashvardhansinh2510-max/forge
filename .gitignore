@@ -11,3 +11,12 @@ dist/
 *.env
 *.env.*
 .worktrees/
+
+# Large binary/data assets — serve locally, not tracked in git
+apps/web/public/products/
+apps/web/public/catalog/
+packages/db/data/
+*.xlsx
+*.pdf
+pos-*.png
+.playwright-mcp/
