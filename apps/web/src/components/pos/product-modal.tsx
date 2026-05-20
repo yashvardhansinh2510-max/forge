@@ -3,8 +3,14 @@
 import * as React from 'react'
 import { X, Check, Package } from 'lucide-react'
 import { usePOSStore, useActiveRoom } from '@/lib/pos-store'
-import { getBundledParts, getDefaultFinish } from '@/lib/mock/pos-data'
 import type { Finish } from '@/lib/mock/pos-data'
+import { usePOSCatalog } from '@/lib/pos-catalog'
+
+function skuWithFinish(sku: string, finishCode: string): string {
+  if (!finishCode) return sku
+  return sku.endsWith(`-${finishCode}`) ? sku : `${sku}-${finishCode}`
+}
+import { ProductVisual } from './product-visual'
 
 function formatINR(n: number): string {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`
@@ -26,6 +32,7 @@ export function ProductModal() {
   const closeModal          = usePOSStore((s) => s.closeModal)
   const addItemToActiveRoom = usePOSStore((s) => s.addItemToActiveRoom)
   const activeRoom          = useActiveRoom()
+  const { getBundledParts, getDefaultFinish } = usePOSCatalog()
 
   const [selectedFinish, setSelectedFinish]         = React.useState<Finish | null>(null)
   const [qty, setQty]                               = React.useState(1)
@@ -37,7 +44,7 @@ export function ProductModal() {
       setSelectedFinish(def ?? product.finishes[0] ?? null)
       setQty(1)
     }
-  }, [product?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [product?.id, getDefaultFinish]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Escape to close
   React.useEffect(() => {
@@ -50,6 +57,7 @@ export function ProductModal() {
   if (!product) return null
 
   const bundledParts = getBundledParts(product.id)
+
   const effectiveMRP = product.mrp + (selectedFinish?.priceAdj ?? 0)
   const canAdd       = !!activeRoom && (product.finishes.length === 0 || !!selectedFinish)
   const bg           = BRAND_BG[product.brand] ?? 'linear-gradient(135deg, #6B7280, #4B5563)'
@@ -100,7 +108,30 @@ export function ProductModal() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div>
+            <div style={{ display: 'flex', gap: 14, minWidth: 0 }}>
+              <div style={{
+                width: 200,
+                height: 200,
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.92)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 14px 34px rgba(0,0,0,0.16)',
+                flexShrink: 0,
+                overflow: 'hidden',
+              }}>
+                {product.imageUrl ? (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    style={{ width: 200, height: 200, objectFit: 'contain', padding: 16 }}
+                  />
+                ) : (
+                  <ProductVisual product={product} finish={selectedFinish} size={160} />
+                )}
+              </div>
+              <div style={{ minWidth: 0 }}>
               <div
                 style={{
                   display: 'inline-flex',
@@ -123,13 +154,22 @@ export function ProductModal() {
                   color: '#fff',
                   lineHeight: 1.2,
                   letterSpacing: '-0.01em',
-                  marginBottom: 3,
+                  marginBottom: 4,
                 }}
               >
                 {product.name}
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)' }}>
-                {product.subCategory} · SKU: <span style={{ fontFamily: 'var(--font-ui)' }}>{product.sku}</span>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginBottom: 3 }}>
+                Article No.{' '}
+                <span style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em' }}>
+                  {skuWithFinish(product.sku, selectedFinish?.code ?? '')}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.68)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span>{product.subCategory}</span>
+                {selectedFinish && <span>· {selectedFinish.name}</span>}
+                <span>· GST {product.gstRate}%</span>
+              </div>
               </div>
             </div>
             {/* MRP */}
@@ -388,7 +428,7 @@ export function ProductModal() {
                       borderBottom: '1px solid var(--border)',
                     }}
                   >
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>{part.emoji}</span>
+                    <ProductVisual product={part} size={28} muted />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.3, marginBottom: 2 }}>
                         {part.name}

@@ -44,10 +44,12 @@ function ValidUntilCell({ date }: { date: Date }) {
 interface QuotationTableProps {
   data: Quotation[]
   globalFilter: string
-  onRowClick: (q: Quotation) => void
+  onRowClick: (q: Quotation) => void | Promise<void>
+  loadingId?: string | null
+  isLoading?: boolean
 }
 
-export function QuotationTable({ data, globalFilter, onRowClick }: QuotationTableProps) {
+export function QuotationTable({ data, globalFilter, onRowClick, loadingId, isLoading }: QuotationTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: 'createdAt', desc: true }])
 
   const columns = React.useMemo<ColumnDef<Quotation>[]>(() => [
@@ -82,7 +84,7 @@ export function QuotationTable({ data, globalFilter, onRowClick }: QuotationTabl
       size: 80,
       enableSorting: false,
       cell: ({ row }) => {
-        const count = row.original.lineItems.length
+        const count = row.original.lineItemCount ?? row.original.lineItems.length
         return (
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
             {count} {count === 1 ? 'item' : 'items'}
@@ -193,6 +195,7 @@ export function QuotationTable({ data, globalFilter, onRowClick }: QuotationTabl
 
   return (
     <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+      <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -226,26 +229,42 @@ export function QuotationTable({ data, globalFilter, onRowClick }: QuotationTabl
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row, i) => (
-              <motion.tr
-                key={row.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, ease: APPLE_EASE, delay: i * 0.03 }}
-                onClick={() => onRowClick(row.original)}
-                style={{ cursor: 'pointer', transition: 'background 60ms' }}
-                className="group h-[52px]"
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.02)' }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '' }}
-              >
-                {row.getVisibleCells().filter(c => c.column.id !== 'createdAt').map((cell) => (
-                  <td key={cell.id} style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </motion.tr>
-            ))}
-            {table.getRowModel().rows.length === 0 && (
+            {isLoading
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} style={{ height: 52 }}>
+                    {['70%', '80%', '60%', '75%', '65%', '55%', '50%'].map((w, j) => (
+                      <td key={j} style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{
+                          height: 12, borderRadius: 6, width: w,
+                          background: 'linear-gradient(90deg, var(--surface-tint) 25%, rgba(0,0,0,0.06) 50%, var(--surface-tint) 75%)',
+                          backgroundSize: '200% 100%',
+                          animation: `shimmer ${0.9 + i * 0.1}s infinite`,
+                        }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : table.getRowModel().rows.map((row, i) => (
+                  <motion.tr
+                    key={row.id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, ease: APPLE_EASE, delay: i * 0.03 }}
+                    onClick={() => void onRowClick(row.original)}
+                    style={{ cursor: loadingId ? 'wait' : 'pointer', transition: 'background 60ms', opacity: loadingId === row.original.id ? 0.6 : 1 }}
+                    className="group h-[52px]"
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.02)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '' }}
+                  >
+                    {row.getVisibleCells().filter(c => c.column.id !== 'createdAt').map((cell) => (
+                      <td key={cell.id} style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </motion.tr>
+                ))
+            }
+            {!isLoading && table.getRowModel().rows.length === 0 && (
               <tr>
                 <td colSpan={8} style={{ padding: 48, textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
                   No quotations found

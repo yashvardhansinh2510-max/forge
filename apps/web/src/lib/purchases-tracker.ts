@@ -86,6 +86,12 @@ export interface PurchaseTrackerLine {
     name: string
     brand: string
     imageUrl: string | null
+    seriesName: string | null
+    finishName: string | null
+    articleNumber: string | null
+    mrp: number
+    unit: string
+    tier: string
   }
   qtyOrdered: number
   qtyReceived: number

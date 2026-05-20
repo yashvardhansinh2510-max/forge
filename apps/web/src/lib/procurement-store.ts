@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import {
   MOCK_PURCHASE_ORDERS,
   MOCK_INVENTORY_BOXES,
@@ -21,7 +22,8 @@ import {
   type BoxAllocationStatus,
   type CustomerAllocation,
 } from '@/lib/mock/procurement-data'
-import type { POSProduct } from '@/lib/mock/pos-data'
+import { productImageDataUri, skuWithFinish, unitMRP, type POSProduct } from '@/lib/mock/pos-data'
+import type { ActiveProject, Room } from '@/lib/pos-store'
 
 // ─── Draft PO State ─────────────────────────────────────────────────────────
 
@@ -61,6 +63,7 @@ interface ProcurementActions {
 
   // PO list
   setActiveOrder: (id: string | null) => void
+  addQuotationOrders: (project: ActiveProject, rooms: Room[], quotationRef: string, globalDiscount: number) => void
   updatePOStatus: (id: string, status: POStatus) => void
 
   // Box operations (optimistic)
@@ -147,6 +150,7 @@ interface ProcurementActions {
 // ─── Store ──────────────────────────────────────────────────────────────────
 
 export const useProcurementStore = create<ProcurementState & ProcurementActions>()(
+  persist(
   immer((set, get) => ({
     orders:        MOCK_PURCHASE_ORDERS,
     boxes:         MOCK_INVENTORY_BOXES,
@@ -230,7 +234,7 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
           productName:         l.product.name,
           productSku:          l.product.sku,
           productBrand:        l.product.brand,
-          productImage:        '',
+          productImage:        productImageDataUri(l.product),
           qtyOrdered:          l.qty,
           qtyReceived:         0,
           landingCost:         l.landingCost,
@@ -260,6 +264,75 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
 
     setActiveOrder: (id) =>
       set((s) => { s.activeOrderId = id }),
+
+    addQuotationOrders: (project, rooms, quotationRef, globalDiscount) =>
+      set((s) => {
+        const filledRooms = rooms.filter((room) => room.items.length > 0)
+        const brandMap = new Map<string, MockPOLineItem[]>()
+        const now = new Date().toISOString()
+
+        for (const room of filledRooms) {
+          for (const item of room.items) {
+            const brand = item.product.brand.toUpperCase()
+            const effectiveDiscount = Math.max(globalDiscount, room.roomDiscount ?? 0, item.itemDiscount ?? 0)
+            const offerRate = Math.round(unitMRP(item.product, item.finish) * (1 - effectiveDiscount / 100))
+            const line: MockPOLineItem = {
+              id:                  `line-${quotationRef}-${item.id}`,
+              productId:           item.product.id,
+              productName:         item.product.name,
+              productSku:          skuWithFinish(item.product, item.finish),
+              productBrand:        brand,
+              productImage:        productImageDataUri(item.product, item.finish),
+              qtyOrdered:          item.quantity,
+              qtyReceived:         0,
+              qtyPendingCo:        item.quantity,
+              qtyPendingDist:      0,
+              qtyAtGodown:         0,
+              qtyInBox:            0,
+              qtyDispatched:       0,
+              qtyNotDisplayed:     0,
+              landingCost:         null,
+              clientOfferRate:     offerRate,
+              status:              'PENDING',
+              customerAllocations: [{
+                customerId:        project.id,
+                customerName:      project.clientName || project.name || 'Quotation Client',
+                qty:               item.quantity,
+                boxStatus:         'NEEDS_PO',
+                scheduledDelivery: null,
+                customNote:        room.name,
+              }],
+            }
+            if (!brandMap.has(brand)) brandMap.set(brand, [])
+            brandMap.get(brand)!.push(line)
+          }
+        }
+
+        for (const [brand, lineItems] of brandMap.entries()) {
+          const id = `po-${quotationRef}-${brand}`.replace(/[^a-zA-Z0-9-]/g, '-')
+          const existing = s.orders.find((order) => order.id === id)
+          const order: MockPurchaseOrder = {
+            id,
+            poNumber:          `${quotationRef}-${brand}`,
+            mode:              'PROJECT_LINKED',
+            status:            'DRAFT',
+            projectId:         project.id,
+            projectName:       project.name,
+            clientName:        project.clientName || null,
+            revisionId:        quotationRef,
+            vendorName:        brand,
+            expectedDelivery:  null,
+            notes:             `Created from quotation ${quotationRef}`,
+            landingCostTotal:  null,
+            lineItems,
+            createdAt:         now,
+            updatedAt:         now,
+          }
+          if (existing) Object.assign(existing, order)
+          else s.orders.unshift(order)
+          s.activeOrderId = id
+        }
+      }),
 
     updatePOStatus: (id, status) =>
       set((s) => {
@@ -487,6 +560,26 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
       return error
     },
   })),
+  {
+    name: 'forge-procurement-store-v2',
+    storage: createJSONStorage(() => {
+      if (typeof window === 'undefined') {
+        return {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        }
+      }
+      return localStorage
+    }),
+    partialize: (state) => ({
+      orders: state.orders,
+      boxes: state.boxes,
+      activeOrderId: state.activeOrderId,
+    }),
+    version: 2,
+  },
+  ),
 )
 
 // ─── Selectors ──────────────────────────────────────────────────────────────

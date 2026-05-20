@@ -1,0 +1,42 @@
+╔═══════════════════════════════════════════╗
+║    HANSGROHE CATALOG EXTRACTION REPORT    ║
+╠═══════════════════════════════════════════╣
+║  Files processed:    15                     ║
+║  Files missing:      0                      ║
+║  Total products:     1505                   ║
+║  Duplicates removed: 0                      ║
+║  With MRP:           1355                   ║
+║  Without MRP (N/A):  150                    ║
+║  With images saved:  1489                   ║
+╠═══════════════════════════════════════════╣
+║  BY BRAND                                 ║
+║    HANSGROHE:        1025                   ║
+║    AXOR:             480                    ║
+╠═══════════════════════════════════════════╣
+║  BY CATEGORY                              ║
+║    FAUCETS:          485                    ║
+║    SHOWERS:          417                    ║
+║    THERMOSTATS:      295                    ║
+║    ACCESSORIES:      201                    ║
+║    KITCHEN:          31                     ║
+║    BASINS:           76                     ║
+╠═══════════════════════════════════════════╣
+║  BY SUBCATEGORY                           ║
+║  Thermostats & Controls                 295 ║
+║  Overhead Showers & Shower Panels       232 ║
+║  Wall-Mounted & Concealed Basin Mixers  124 ║
+║  Basin Mixers                           101 ║
+║  Shower Rails, Slide Bars & Showerpipes 98  ║
+║  Tall Basin Mixers                      93  ║
+║  Shower Holders & Wall Outlets          91  ║
+║  Hand Showers                           87  ║
+║  Ceramics, WCs & Wash Bowls             76  ║
+║  Bath Spouts                            72  ║
+║  Fittings, Arms & Valves                68  ║
+║  3-Hole Basin Mixers                    54  ║
+║  Shower Hoses                           42  ║
+║  Bath & Concealed Shower Mixers         41  ║
+║  Kitchen Mixers                         31  ║
+╠═══════════════════════════════════════════╣
+║  IMAGES → apps/web/public/products/       ║
+╚═══════════════════════════════════════════╝

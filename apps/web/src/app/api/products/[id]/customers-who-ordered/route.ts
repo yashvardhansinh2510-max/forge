@@ -6,6 +6,7 @@ import {
   shouldUseFallback,
 } from '@/lib/purchases-fallback'
 import type { CustomerOption } from '@/lib/purchases-tracker'
+import { allowDevFallback } from '@/lib/runtime-mode'
 
 function sortCustomers(customers: CustomerOption[]): CustomerOption[] {
   return [...customers].sort((left, right) => left.name.localeCompare(right.name))
@@ -56,7 +57,7 @@ export async function GET(
 
       return NextResponse.json(sortCustomers(Array.from(customers.values())))
     } catch (error) {
-      if (shouldUseFallback(error)) {
+      if (allowDevFallback() && shouldUseFallback(error)) {
         return NextResponse.json(getFallbackCustomersForProduct(id))
       }
 

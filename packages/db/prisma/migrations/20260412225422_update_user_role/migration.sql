@@ -4,6 +4,9 @@
 CREATE TYPE "UserRole_new" AS ENUM ('OWNER', 'MANAGER', 'WORKER');
 
 ALTER TABLE "User"
+  ALTER COLUMN "role" DROP DEFAULT;
+
+ALTER TABLE "User"
   ALTER COLUMN "role" TYPE "UserRole_new"
   USING CASE "role"::text
     WHEN 'ADMIN' THEN 'OWNER'::"UserRole_new"

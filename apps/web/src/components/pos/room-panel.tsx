@@ -20,6 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { usePOSStore, useActiveRoom } from '@/lib/pos-store'
 import type { Room, RoomItem } from '@/lib/pos-store'
+import { ProductVisual } from './product-visual'
 
 function formatINR(n: number): string {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`
@@ -320,9 +321,9 @@ function SortableCartItem({
         <GripVertical size={11} />
       </button>
 
-      {/* Emoji */}
-      <div style={{ fontSize: 16, flexShrink: 0, lineHeight: 1, marginTop: 2 }}>
-        {item.product.emoji}
+      {/* Product image */}
+      <div style={{ flexShrink: 0, marginTop: -1 }}>
+        <ProductVisual product={item.product} finish={item.finish} size={28} muted={item.isAutoAdded} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -793,7 +794,7 @@ export function RoomPanel({ collapsed, onToggle }: RoomPanelProps) {
                         opacity: 0.8,
                       }}
                     >
-                      <div style={{ fontSize: 14, flexShrink: 0 }}>{item.product.emoji}</div>
+                      <ProductVisual product={item.product} finish={item.finish} size={26} muted />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{

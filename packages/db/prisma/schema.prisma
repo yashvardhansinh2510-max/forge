@@ -238,8 +238,19 @@ model Product {
   boxItems        BoxItem[]
   stockOnOrder    Int             @default(0)   // sum of qty on open POs
   stockCommitted  Int             @default(0)   // sum of qty in LOCKED revisions not yet boxed
+  // Hansgrohe-specific fields
+  articleNumber   String?
+  finishCode      String?
+  finishName      String?
+  seriesName      String?
+  subcategory     String?
+  sectionName     String?
+  brandGroup      String          @default("HANSGROHE")
+  sourceFile      String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+
+  @@index([articleNumber])
 }
 
 // ─── Approval Request ──────────────────────────────────────────────────────────

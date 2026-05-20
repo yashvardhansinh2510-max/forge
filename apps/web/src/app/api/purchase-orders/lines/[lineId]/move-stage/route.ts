@@ -4,6 +4,8 @@ import { prisma } from '@forge/db'
 import { getDevUserId, withErrorHandling } from '@/lib/api-helpers'
 import { AppError } from '@/lib/errors'
 import { moveFallbackLine, shouldUseFallback } from '@/lib/purchases-fallback'
+import { allowDevFallback } from '@/lib/runtime-mode'
+import { logActivity } from '@/lib/activity-log'
 import {
   BRAND_TABS,
   countsFromDbLine,
@@ -216,6 +218,12 @@ export async function PATCH(
 
       await prisma.$transaction(updates)
 
+      await logActivity({
+        type: 'NOTE',
+        userId: getDevUserId(),
+        description: `Moved ${qty} unit(s) from ${fromStage} to ${toStage} in purchase pipeline`,
+      })
+
       const lineItem = await prisma.pOLineItem.findUnique({
         where: { id: lineId },
         include: {
@@ -256,7 +264,7 @@ export async function PATCH(
         stageTotals,
       })
     } catch (error) {
-      if (shouldUseFallback(error)) {
+      if (allowDevFallback() && shouldUseFallback(error)) {
         return NextResponse.json(moveFallbackLine({
           lineId,
           fromStage,

@@ -4,8 +4,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@forge/db'
-import { withErrorHandling } from '@/lib/api-helpers'
+import { getDevUserId, withErrorHandling } from '@/lib/api-helpers'
 import { NotFoundError, ValidationError } from '@/lib/errors'
+import { logActivity } from '@/lib/activity-log'
 
 const UpdatePOSchema = z.object({
   status:           z.enum(['DRAFT','SUBMITTED','PARTIALLY_RECEIVED','FULLY_RECEIVED','CANCELLED']).optional(),
@@ -30,9 +31,9 @@ export async function GET(
           include: {
             product: {
               select: {
-                id: true, name: true, sku: true, brand: true, category: true,
-                imageUrl: true, mrp: true, stockAvailable: true,
-                stockOnOrder: true, stockCommitted: true,
+                id: true, sku: true, name: true, brand: true,
+                imageUrl: true, seriesName: true, finishName: true,
+                articleNumber: true, mrp: true, unit: true, tier: true,
               },
             },
           },
@@ -82,6 +83,13 @@ export async function PATCH(
         }),
       },
       include: { lineItems: { include: { product: true } } },
+    })
+
+    await logActivity({
+      type: 'NOTE',
+      userId: getDevUserId(),
+      description: `Updated purchase order ${updated.poNumber}`,
+      projectId: updated.projectId,
     })
 
     return NextResponse.json(updated)

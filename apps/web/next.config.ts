@@ -4,6 +4,10 @@ const config: NextConfig = {
   transpilePackages: ['@forge/ui', '@forge/db'],
   typedRoutes: true,
   images: {
+    unoptimized: true,
+    localPatterns: [
+      { pathname: '/products/**' },
+    ],
     remotePatterns: [
       {
         protocol: 'https',

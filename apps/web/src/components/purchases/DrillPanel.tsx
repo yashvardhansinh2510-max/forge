@@ -56,7 +56,7 @@ interface DrillPanelProps {
   total: number
   activeBrand: BrandTab
   onClose: () => void
-  onMoved: (newCounts: HeaderCounts) => void
+  onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
 }
 
 export default function DrillPanel({

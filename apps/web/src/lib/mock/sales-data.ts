@@ -1,5 +1,80 @@
 export { formatINR } from '@/lib/mock/dashboard-data'
 
+// ─── Products (Extracted from PDFs) ───────────────────────────────────────────
+
+export interface Product {
+  id: string
+  sku: string
+  productName: string
+  brand: 'GROHE' | 'HANSGROHE' | 'VITRA' | 'AXOR'
+  category: string
+  unitPrice: number
+  gstRate: number
+}
+
+export const products: Product[] = [
+  { id: 'hg001', sku: '10637000', productName: 'AX ShowerHeaven 1200 4jet w/o light',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 2129710, gstRate: 18 },
+  { id: 'hg002', sku: '10637300', productName: 'AX ShowerHeaven 1200 4jet w/o light PRG',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 3194560, gstRate: 18 },
+  { id: 'hg003', sku: '10637140', productName: 'AX ShowerHeaven 1200 4jet w/o light BBR',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 3194560, gstRate: 18 },
+  { id: 'hg004', sku: '10922180', productName: 'AX ShowerHeaven 1200 4jet basic set',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 207970, gstRate: 18 },
+  { id: 'hg005', sku: '28417000', productName: 'HG Rainmaker SH rectangular w/o light',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 858660, gstRate: 18 },
+  { id: 'hg006', sku: '28418000', productName: 'HG Rainmaker SH rectangular w/ light',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 1023840, gstRate: 18 },
+  { id: 'hg007', sku: '28414180', productName: 'HG Rainmaker Basic set rectangular',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 36540, gstRate: 18 },
+  { id: 'hg008', sku: '28433000', productName: 'HG Raindance Rainfall OHS 180 2jet',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 342340, gstRate: 18 },
+  { id: 'hg009', sku: '35283000', productName: 'AX OHS 580 3jet wall chrome',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 831580, gstRate: 18 },
+  { id: 'hg010', sku: '24001400', productName: 'HG Rainmaker Sel.580 3jet SH wall wh/ch',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 647560, gstRate: 18 },
+  { id: 'hg011', sku: '10929000', productName: 'AX Starck OHS 240x240mm w.ceiling conn.',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 362260, gstRate: 18 },
+  { id: 'hg012', sku: '10925000', productName: 'AX Starck OHS 240x240mm chr.w.shower arm',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 419340, gstRate: 18 },
+  { id: 'hg013', sku: '10921180', productName: 'AX Starck basic set f.OHS w.arm 240x240',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 50920, gstRate: 18 },
+  { id: 'hg014', sku: '26031000', productName: 'AX Nendo OHS w.shower arm chrome',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 458080, gstRate: 18 },
+  { id: 'hg015', sku: '26909180', productName: 'AX Nendo Front OHS w.show.arm basic set',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 105920, gstRate: 18 },
+  { id: 'hg016', sku: '26022000', productName: 'AX Front OHS w.ceilling connector chrome',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 206060, gstRate: 18 },
+  { id: 'hg017', sku: '26021000', productName: 'AX Front OHS w.shower arm chrome',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 288450, gstRate: 18 },
+  { id: 'hg018', sku: '35277000', productName: 'AX OHS 460 1jet ceiling chrome',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 504960, gstRate: 18 },
+  { id: 'hg019', sku: '35279000', productName: 'AX OHS 460 2jet ceiling chrome',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 623630, gstRate: 18 },
+  { id: 'hg020', sku: '24010180', productName: 'HG Rainmaker Select 460 OHS basic set',
+    brand: 'HANSGROHE', category: 'Showers & Accessories', unitPrice: 54400, gstRate: 18 },
+  { id: 'vtr001', sku: '7231B403H6216', productName: 'Vitra Wall-Hung WC with Soft Close Seat',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 520180, gstRate: 18 },
+  { id: 'vtr002', sku: '5674B403H6194', productName: 'Vitra Basin 550mm White',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 447840, gstRate: 18 },
+  { id: 'vtr003', sku: '5885B403H0101', productName: 'Vitra Shower Tray 800x800mm',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 130610, gstRate: 18 },
+  { id: 'vtr004', sku: '5885B401H0101', productName: 'Vitra Wall-Hung Basin 500mm',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 156760, gstRate: 18 },
+  { id: 'vtr005', sku: '5885B422H0101', productName: 'Vitra Toilet Seat - Standard',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 176330, gstRate: 18 },
+  { id: 'vtr006', sku: '5885B483H0101', productName: 'Vitra Toilet Seat - Soft Close',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 195930, gstRate: 18 },
+  { id: 'vtr007', sku: '5885B403H0559', productName: 'Vitra Floor-Mount WC Bowl',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 135640, gstRate: 18 },
+  { id: 'vtr008', sku: '5885B401H0559', productName: 'Vitra Concealed Cistern 120mm',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 162780, gstRate: 18 },
+  { id: 'vtr009', sku: '5885B422H0559', productName: 'Vitra Wall Mount Basin Mixer Chrome',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 183120, gstRate: 18 },
+  { id: 'vtr010', sku: '5885B483H0559', productName: 'Vitra Thermostatic Shower Mixer',
+    brand: 'VITRA', category: 'Toilets & Sanitary', unitPrice: 203560, gstRate: 18 },
+]
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type QuotationStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired'
@@ -12,6 +87,10 @@ export interface LineItem {
   productId: string
   productName: string
   sku: string
+  articleNumber?: string
+  seriesName?: string
+  finishName?: string
+  brand?: string
   description: string
   unit: string
   qty: number
@@ -239,36 +318,69 @@ export const customers: Customer[] = [
 
 export const quotations: Quotation[] = [
   {
-    id: 'q01', number: 'Q-2025-0048',
-    customerId: 'c01', customerName: 'Rajesh Constructions Pvt Ltd',
+    id: 'q01', number: 'Q-2026-0001',
+    customerId: 'c01', customerName: 'Chiragbhai Lakhani',
     customerGST: '27AACCR1234F1Z5',
+    customerPhone: '9898958897',
     billingAddress: '14, Maker Chambers IV, Nariman Point, Mumbai 400021',
-    siteAddress: 'Site: Rajesh Heights, Plot 44C, Andheri West, Mumbai 400053',
-    projectName: 'Rajesh Heights — Bathroom Package (12 Units)',
+    siteAddress: 'Chiragbhai Residence, Mumbai',
+    projectName: 'Chiragbhai — Grohe Bathroom & Kitchen Package',
     status: 'sent',
-    validUntil: new Date(Date.now() + 1000*60*60*24*12),
+    validUntil: new Date(Date.now() + 1000*60*60*24*30),
     lineItems: [
-      { id: 'li01', productId: 'p02', productName: 'Hindware Opus Floor-Mount WC', sku: 'HW-WC-OPUS-WH',
-        description: 'Floor-mount WC with soft-close seat, 6L single flush', unit: 'pcs',
-        qty: 12, unitPrice: 12800, discount: 8, gstRate: 18 },
-      { id: 'li02', productId: 'p09', productName: 'Hindware Calido Wash Basin', sku: 'HW-WB-CALI-WH',
-        description: 'Wall-hung basin, 550mm, overflow, tap hole', unit: 'pcs',
-        qty: 12, unitPrice: 5600, discount: 8, gstRate: 18 },
-      { id: 'li03', productId: 'p03', productName: 'Jaguar Lyric Basin Mixer', sku: 'JAG-BM-LYRIC-CH',
-        description: 'Single-lever basin mixer, chrome', unit: 'pcs',
-        qty: 12, unitPrice: 8400, discount: 5, gstRate: 18 },
-      { id: 'li04', productId: 'p05', productName: 'Kajaria Eternity White Floor Tile', sku: 'KAJ-FT-ETW-600',
-        description: '600×600mm ceramic floor tile, anti-skid, matt white', unit: 'box',
-        qty: 48, unitPrice: 1450, discount: 10, gstRate: 28 },
-      { id: 'li05', productId: 'p12', productName: 'Jaguar 3-in-1 Accessories Set', sku: 'JAG-ACC-3IN1-CH',
-        description: 'Towel bar 24" + paper holder + soap dish', unit: 'set',
-        qty: 12, unitPrice: 3800, discount: 5, gstRate: 18 },
+      // BATHROOM 1,2
+      { id: 'li01', productId: 'grh-26559000', productName: '310 Head shower ROUND 1 spray ceiling-mounted', sku: '26559000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 47700, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-003.png' },
+      { id: 'li02', productId: 'grh-29121000', productName: 'Grohtherm SmartControl Thermostat Round, 3 Control', sku: '29121000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 126550, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-004.png' },
+      { id: 'li03', productId: 'grh-35600000', productName: 'Rapido Smartbox', sku: '35600000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 16550, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-005.png' },
+      { id: 'li04', productId: 'grh-13278002', productName: 'Eurodisc Cosmopolitan Bath Spout', sku: '13278002',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 17600, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-006.png' },
+      { id: 'li05', productId: 'grh-26574000', productName: 'Active shower-Chrome –130mm', sku: '26574000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 17300, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-007.png' },
+      { id: 'li06', productId: 'grh-28364001', productName: 'Silverflex Shower Hose, 1500 mm', sku: '28364001',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 3500, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-008.png' },
+      { id: 'li07', productId: 'grh-28628001', productName: 'Wall union with holder', sku: '28628001',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 3300, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-009.png' },
+      { id: 'li08', productId: 'grh-19573002', productName: 'Eurodisc Cosmopolitan Wall-Mount Basin Mixer', sku: '19573002',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 39900, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-010.png' },
+      { id: 'li09', productId: 'grh-32635000', productName: 'Handle Mixer, Concealed Body', sku: '32635000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 13800, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-011.png' },
+      { id: 'li10', productId: 'grh-3853610I', productName: 'Concealed cistern 118mm uniset', sku: '3853610I',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 14250, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-012.png' },
+      { id: 'li11', productId: 'grh-38505000', productName: 'Actuationplate Skate Air Flush Plate, Chrome', sku: '38505000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 3550, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-013.png' },
+      { id: 'li12', productId: 'grh-26352000', productName: 'Tempesta Trigger spray', sku: '26352000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 3750, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-014.png' },
+      { id: 'li13', productId: 'grh-22940000', productName: 'Angle Valve ½"', sku: '22940000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 3450, discount: 50, gstRate: 18, section: 'BATHROOM 1,2', imageUrl: '/product-images/product-015.png' },
+      // BATHROOM 3,4
+      { id: 'li14', productId: 'grh-19573002-b', productName: 'Eurodisc Cosmopolitan Wall-Mount Basin Mixer', sku: '19573002',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 39900, discount: 50, gstRate: 18, section: 'BATHROOM 3,4', imageUrl: '/product-images/product-010.png' },
+      { id: 'li15', productId: 'grh-32635000-b', productName: 'Handle Mixer, Concealed Body', sku: '32635000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 13800, discount: 50, gstRate: 18, section: 'BATHROOM 3,4', imageUrl: '/product-images/product-011.png' },
+      { id: 'li16', productId: 'grh-3853610I-b', productName: 'Concealed cistern 118mm uniset', sku: '3853610I',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 14250, discount: 50, gstRate: 18, section: 'BATHROOM 3,4', imageUrl: '/product-images/product-012.png' },
+      { id: 'li17', productId: 'grh-38505000-b', productName: 'Actuationplate Skate Air Flush Plate, Chrome', sku: '38505000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 3550, discount: 50, gstRate: 18, section: 'BATHROOM 3,4', imageUrl: '/product-images/product-013.png' },
+      { id: 'li18', productId: 'grh-26352000-b', productName: 'Tempesta Trigger spray', sku: '26352000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 3750, discount: 50, gstRate: 18, section: 'BATHROOM 3,4', imageUrl: '/product-images/product-014.png' },
+      { id: 'li19', productId: 'grh-22940000-b', productName: 'Angle Valve ½"', sku: '22940000',
+        description: '', unit: 'pcs', qty: 2, unitPrice: 3450, discount: 50, gstRate: 18, section: 'BATHROOM 3,4', imageUrl: '/product-images/product-015.png' },
+      // KITCHEN
+      { id: 'li20', productId: 'grh-30274000', productName: 'Minta 1-Handle Kitchen Mixer, L Spout, Pull Out', sku: '30274000',
+        description: '', unit: 'pcs', qty: 1, unitPrice: 44550, discount: 50, gstRate: 18, section: 'KITCHEN', imageUrl: '/product-images/product-016.png' },
+      { id: 'li21', productId: 'grh-32661003', productName: 'Concetto 1-Handle Kitchen Mixer, C Spout Swivel', sku: '32661003',
+        description: '', unit: 'pcs', qty: 1, unitPrice: 27850, discount: 50, gstRate: 18, section: 'KITCHEN', imageUrl: '/product-images/product-017.png' },
+      { id: 'li22', productId: 'grh-2201700M', productName: 'Angle Valve for basin mixer 3/8"', sku: '2201700M',
+        description: '', unit: 'pcs', qty: 4, unitPrice: 1360, discount: 50, gstRate: 18, section: 'KITCHEN', imageUrl: '/product-images/product-018.png' },
     ],
-    notes: 'Prices valid for 15 days. Delivery within 7 working days of order confirmation. Installation not included.',
-    termsAndConditions: '50% advance on order confirmation. Balance before dispatch. Goods once dispatched are non-returnable except for manufacturing defects.',
-    createdBy: 'Suresh Iyer',
-    createdAt: new Date(Date.now() - 1000*60*60*24*3),
-    sentAt: new Date(Date.now() - 1000*60*60*48),
+    notes: 'Rate Valid for this month. Delivery as per company schedule. Freight extra as per actual.',
+    termsAndConditions: '100% advance for CP items.',
+    createdBy: 'Prakashbhai Punjabi',
+    createdAt: new Date('2026-03-24'),
+    sentAt: new Date('2026-03-24'),
   },
   {
     id: 'q02', number: 'Q-2025-0047',

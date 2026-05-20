@@ -121,7 +121,7 @@ export function POSHeader() {
   }
 
   const handleSave = () => {
-    const existing = JSON.parse(localStorage.getItem('forge-pos-saved-list') ?? '[]')
+    const existing = JSON.parse(localStorage.getItem('forge-pos-saved-list') ?? '[]') as unknown[]
     const entry = {
       id: `save-${Date.now()}`,
       savedAt: new Date().toISOString(),
@@ -130,8 +130,9 @@ export function POSHeader() {
     }
     const updated = [entry, ...existing].slice(0, 20)
     localStorage.setItem('forge-pos-saved-list', JSON.stringify(updated))
-    toast.success('Project saved', {
-      description: project.clientName ? `Saved for ${project.clientName}` : 'Saved to local storage',
+    toast.success('Quotation saved', {
+      description: project.clientName ? `Saved for ${project.clientName}` : 'Saved to your quotations list',
+      action: { label: 'View list', onClick: () => router.push('/quotations') },
     })
   }
 

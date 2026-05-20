@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import MovePopover from '@/components/purchases/MovePopover'
 import {
   STAGE_COLORS,
@@ -12,20 +13,33 @@ import {
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
 
+const BRAND_COLORS: Record<string, string> = {
+  HANSGROHE: '#00529A',
+  AXOR: '#1C1C1E',
+}
+
 function ProductThumbnail({ line }: { line: PurchaseTrackerLine }) {
   if (line.product.imageUrl) {
     return (
-      <img
-        src={line.product.imageUrl}
-        alt={line.product.name}
-        className="h-20 w-20 rounded-2xl border border-[var(--border)] object-cover"
-      />
+      <div className="relative h-20 w-20 flex-shrink-0">
+        <Image
+          src={line.product.imageUrl}
+          alt={line.product.name}
+          fill
+          className="rounded-2xl border border-[var(--border)] object-contain p-1"
+          unoptimized
+        />
+      </div>
     )
   }
 
+  const color = BRAND_COLORS[line.product.brand] ?? '#6B7280'
   return (
-    <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[var(--border)] bg-[linear-gradient(135deg,#eff6ff,white_52%,#ecfeff)] text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-      {line.product.brand.slice(0, 2)}
+    <div
+      className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] text-sm font-bold tracking-wider"
+      style={{ background: color + '15', color }}
+    >
+      {line.product.brand === 'AXOR' ? 'AX' : 'HG'}
     </div>
   )
 }
@@ -54,7 +68,7 @@ function StageChip({
 interface LineCardProps {
   line: PurchaseTrackerLine
   context: 'company' | 'customer'
-  onMoved: (newCounts: HeaderCounts) => void
+  onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
   brandScope: BrandTab
 }
 
@@ -83,7 +97,17 @@ export default function LineCard({
     <article className="rounded-[28px] border border-[var(--border)] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
       <div className="flex flex-col gap-5 lg:flex-row">
         <div className="flex items-start gap-4 lg:min-w-0 lg:flex-1">
-          <ProductThumbnail line={line} />
+          <div className="flex flex-col items-center">
+            <ProductThumbnail line={line} />
+            <div className="text-[10px] text-[var(--text-muted)] font-mono mt-1">
+              {line.product.sku}
+            </div>
+            {line.product.finishName && (
+              <div className="text-[10px] text-[var(--text-muted)] mt-0.5 text-center">
+                {line.product.finishName}
+              </div>
+            )}
+          </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start gap-3">

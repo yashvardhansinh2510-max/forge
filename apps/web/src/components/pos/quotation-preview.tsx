@@ -7,6 +7,9 @@ import { toast } from 'sonner'
 import type { Room, ActiveProject } from '@/lib/pos-store'
 import type { BrandFulfilment, PurchaseLineItem, PurchaseOrder } from '@/lib/mock/purchases-data'
 import { usePurchasesStore } from '@/lib/purchases-store'
+import { useProcurementStore } from '@/lib/procurement-store'
+import { skuWithFinish, unitMRP } from '@/lib/mock/pos-data'
+import { ProductVisual } from './product-visual'
 
 const BRAND_COLOR_MAP: Record<string, string> = {
   Grohe:      '#0057A8',
@@ -180,6 +183,7 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
   const [poCreated, setPOCreated] = React.useState(false)
   const router   = useRouter()
   const addOrder = usePurchasesStore((s) => s.addOrder)
+  const addQuotationOrders = useProcurementStore((s) => s.addQuotationOrders)
 
   function handleCreatePO() {
     // Group cart items from all filled rooms by brand
@@ -191,13 +195,13 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
           id:           `${item.id}-li`,
           productId:    item.product.id,
           productName:  item.product.name,
-          sku:          item.product.sku,
+          sku:          skuWithFinish(item.product, item.finish),
           brand:        item.product.brand,
           finishName:   item.finish.name,
-          finishColor:  '',
+          finishColor:  item.finish.color,
           quantity:     item.quantity,
-          unitMRP:      item.product.mrp + item.finish.priceAdj,
-          itemDiscount: Math.max(item.itemDiscount ?? 0, discount),
+          unitMRP:      unitMRP(item.product, item.finish),
+          itemDiscount: Math.max(item.itemDiscount ?? 0, room.roomDiscount ?? 0, discount),
           unit:         'pcs',
         })
       }
@@ -237,6 +241,7 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
     }
 
     addOrder(po)
+    addQuotationOrders(project, rooms, quotationNumber, discount)
     setPOCreated(true)
     toast.success('Purchase order created', {
       description: `${quotationNumber} → PO added to Purchases`,
@@ -248,14 +253,13 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
   }
 
   const discount           = project.globalDiscount
-  const discountMultiplier = 1 - discount / 100
-
   const roomTotals = rooms.map((room) => {
     let mrpTotal = 0, offerTotal = 0
     for (const item of room.items) {
-      const unitMRP = item.product.mrp + item.finish.priceAdj
-      mrpTotal  += unitMRP * item.quantity
-      offerTotal += unitMRP * item.quantity * discountMultiplier
+      const unitPrice = unitMRP(item.product, item.finish)
+      mrpTotal  += unitPrice * item.quantity
+      const effectiveDiscount = Math.max(discount, room.roomDiscount ?? 0, item.itemDiscount ?? 0)
+      offerTotal += unitPrice * item.quantity * (1 - effectiveDiscount / 100)
     }
     return { room, mrpTotal, offerTotal }
   })
@@ -496,25 +500,19 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
                     <tbody>
                       {mainItems.map((item) => {
                         srNo++
-                        const unitMRP   = item.product.mrp + item.finish.priceAdj
-                        const offerUnit = unitMRP * discountMultiplier
+                        const unitPrice = unitMRP(item.product, item.finish)
+                        const effectiveDiscount = Math.max(discount, room.roomDiscount ?? 0, item.itemDiscount ?? 0)
+                        const offerUnit = unitPrice * (1 - effectiveDiscount / 100)
                         const offerLine = offerUnit * item.quantity
                         return (
                           <tr key={item.id}>
                             <td className="c">{srNo}</td>
                             <td className="img-cell c">
-                              <div
-                                className="prod-img"
-                                style={{
-                                  background: `linear-gradient(135deg, var(--grad-from, #e0f2fe), var(--grad-to, #bae6fd))`,
-                                  border: '1px solid rgba(0,0,0,0.07)',
-                                  margin: '0 auto',
-                                }}
-                              >
-                                {item.product.emoji}
+                              <div className="prod-img" style={{ margin: '0 auto' }}>
+                                <ProductVisual product={item.product} finish={item.finish} size={36} />
                               </div>
                             </td>
-                            <td className="sku">{item.product.sku}</td>
+                            <td className="sku">{skuWithFinish(item.product, item.finish)}</td>
                             <td className="pname">
                               {item.product.name}
                               <small>
@@ -522,9 +520,9 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
                                 {item.product.brand !== '' ? ` · ${item.product.brand}` : ''}
                               </small>
                             </td>
-                            <td className="r">{fmtINR(unitMRP)}</td>
+                            <td className="r">{fmtINR(unitPrice)}</td>
                             <td className="c">{item.quantity}</td>
-                            <td className="c disc-val">{discount}%</td>
+                            <td className="c disc-val">{effectiveDiscount}%</td>
                             <td className="r">{fmtINR(offerUnit)}</td>
                             <td className="r" style={{ fontWeight: 600 }}>{fmtINR(offerLine)}</td>
                           </tr>
@@ -540,33 +538,26 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
                           </tr>
                           {bundledItems.map((item) => {
                             srNo++
-                            const unitMRP   = item.product.mrp + item.finish.priceAdj
-                            const offerUnit = unitMRP * discountMultiplier
+                            const unitPrice = unitMRP(item.product, item.finish)
+                            const effectiveDiscount = Math.max(discount, room.roomDiscount ?? 0, item.itemDiscount ?? 0)
+                            const offerUnit = unitPrice * (1 - effectiveDiscount / 100)
                             const offerLine = offerUnit * item.quantity
                             return (
                               <tr key={item.id} className="dim">
                                 <td className="c">{srNo}</td>
                                 <td className="img-cell c">
-                                  <div
-                                    className="prod-img"
-                                    style={{
-                                      background: '#f1f5f9',
-                                      border: '1px solid #e2e8f0',
-                                      margin: '0 auto',
-                                      opacity: 0.75,
-                                    }}
-                                  >
-                                    {item.product.emoji}
+                                  <div className="prod-img" style={{ margin: '0 auto' }}>
+                                    <ProductVisual product={item.product} finish={item.finish} size={36} muted />
                                   </div>
                                 </td>
-                                <td className="sku">{item.product.sku}</td>
+                                <td className="sku">{skuWithFinish(item.product, item.finish)}</td>
                                 <td className="pname">
                                   {item.product.name}
                                   <small>Concealed part (auto-bundled) · {item.product.brand}</small>
                                 </td>
-                                <td className="r">{fmtINR(unitMRP)}</td>
+                                <td className="r">{fmtINR(unitPrice)}</td>
                                 <td className="c">{item.quantity}</td>
-                                <td className="c disc-val">{discount}%</td>
+                                <td className="c disc-val">{effectiveDiscount}%</td>
                                 <td className="r">{fmtINR(offerUnit)}</td>
                                 <td className="r" style={{ fontWeight: 600 }}>{fmtINR(offerLine)}</td>
                               </tr>

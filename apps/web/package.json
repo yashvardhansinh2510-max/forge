@@ -10,8 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/nextjs": "^7.0.6",
-    "@dnd-kit/core": "^6.3.1",
+"@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/bricolage-grotesque": "^5.2.10",
@@ -35,8 +34,7 @@
     "react-hook-form": "^7.72.0",
     "recharts": "^3.8.0",
     "sonner": "^2.0.7",
-    "svix": "^1.90.0",
-    "swr": "^2.4.1",
+"swr": "^2.4.1",
     "zod": "^3.23.0",
     "zustand": "^5.0.12"
   },

@@ -7,8 +7,6 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import {
   type POSProduct,
   type Finish,
-  getBundledParts,
-  getDefaultFinish,
 } from '@/lib/mock/pos-data'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -66,7 +64,13 @@ interface POSActions {
   setRoomDiscount: (roomId: string, pct: number) => void
   reorderRooms: (fromIndex: number, toIndex: number) => void
   // Items
-  addItemToActiveRoom: (product: POSProduct, finish: Finish, qty: number, includeConcealedParts?: boolean) => void
+  addItemToActiveRoom: (
+    product: POSProduct,
+    finish: Finish,
+    qty: number,
+    includeConcealedParts?: boolean,
+    concealedParts?: POSProduct[],
+  ) => void
   removeItem: (roomId: string, itemId: string) => void
   updateItemQty: (roomId: string, itemId: string, delta: number) => void
   updateItemDiscount: (roomId: string, itemId: string, discount: number) => void
@@ -79,8 +83,9 @@ interface POSActions {
   // Modal
   openModal: (product: POSProduct) => void
   closeModal: () => void
-  // Reset
+  // Reset / Load
   resetBuilder: () => void
+  loadSnapshot: (project: ActiveProject, rooms: Room[]) => void
 }
 
 // ─── Initial State ─────────────────────────────────────────────────────────────
@@ -170,7 +175,7 @@ export const usePOSStore = create<POSState & POSActions>()(
         }),
 
       // ── Items ────────────────────────────────────────────────────────────
-      addItemToActiveRoom: (product, finish, qty, includeConcealedParts = false) =>
+      addItemToActiveRoom: (product, finish, qty, includeConcealedParts = false, concealedParts = []) =>
         set((s) => {
           const roomId = s.activeRoomId
           if (!roomId) return
@@ -199,11 +204,10 @@ export const usePOSStore = create<POSState & POSActions>()(
 
           // Only bundle concealed parts if user explicitly opted in
           if (includeConcealedParts) {
-            const parts = getBundledParts(product.id)
-            for (const part of parts) {
+            for (const part of concealedParts) {
               const alreadyHasPart = room.items.some((i) => i.product.id === part.id)
               if (alreadyHasPart) continue
-              const partFinish = getDefaultFinish(part) ?? { name: '', code: '', color: '#9ca3af', priceAdj: 0 }
+              const partFinish = part.finishes[0] ?? { name: '', code: '', color: '#9ca3af', priceAdj: 0 }
               room.items.push({
                 id: `item-${Date.now()}-${part.id}`,
                 product: part,
@@ -287,11 +291,21 @@ export const usePOSStore = create<POSState & POSActions>()(
       closeModal: () =>
         set((s) => { s.modalProduct = null }),
 
-      // ── Reset ────────────────────────────────────────────────────────────
+      // ── Reset / Load ─────────────────────────────────────────────────────
       resetBuilder: () =>
         set((s) => {
           s.rooms = DEFAULT_ROOMS.map((r) => ({ ...r, items: [], roomDiscount: 0 }))
           s.activeRoomId = 'room-1'
+          s.selectedBrand = 'Grohe'
+          s.selectedCategory = null
+          s.modalProduct = null
+        }),
+
+      loadSnapshot: (project, rooms) =>
+        set((s) => {
+          s.project = project
+          s.rooms = rooms
+          s.activeRoomId = rooms[0]?.id ?? null
           s.selectedBrand = 'Grohe'
           s.selectedCategory = null
           s.modalProduct = null

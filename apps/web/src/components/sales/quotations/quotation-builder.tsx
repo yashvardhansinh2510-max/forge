@@ -121,22 +121,36 @@ function InlineNumberInput({
   )
 }
 
-type LiveProduct = { id: string; sku: string; name: string; brand: string; mrp: number; unit: string }
+type LiveProduct = { id: string; sku: string; name: string; brand: string; mrp: number; unit: string; imageUrl?: string | null; seriesName?: string | null; finishName?: string | null }
+
+const BRAND_INITIALS: Record<string, string> = { HANSGROHE: 'HG', AXOR: 'AX', GROHE: 'GR', VITRA: 'VT' }
+const BRAND_BG: Record<string, string>       = { HANSGROHE: '#E8F4FD', AXOR: '#FDF3E8', GROHE: '#E8F4ED', VITRA: '#EEF0FB' }
+const BRAND_FG: Record<string, string>       = { HANSGROHE: '#1565C0', AXOR: '#7B4F28', GROHE: '#1B5E20', VITRA: '#283593' }
+
+function useProductSearch(query: string) {
+  return useSWR<LiveProduct[]>(
+    query.length >= 2 ? `/api/products?search=${encodeURIComponent(query)}` : null,
+    async (url: string) => {
+      const r = await fetch(url)
+      const d = await r.json() as { products?: LiveProduct[] } | LiveProduct[]
+      return Array.isArray(d) ? d : (d.products ?? [])
+    },
+    { revalidateOnFocus: false },
+  )
+}
 
 function ProductSearchCell({
-  item, onUpdate, products,
+  item, onUpdate,
 }: {
   item: LineItem
   onUpdate: (updates: Partial<LineItem>) => void
-  products: LiveProduct[]
 }) {
   const [editing, setEditing] = React.useState(false)
   const [search, setSearch] = React.useState('')
   const containerRef = React.useRef<HTMLDivElement>(null)
 
-  const filtered = products.filter(p =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
-  ).slice(0, 6)
+  const { data: searchResults = [] } = useProductSearch(search)
+  const filtered = searchResults.slice(0, 6)
 
   if (!editing) {
     return (
@@ -190,7 +204,21 @@ function ProductSearchCell({
             key={p.id}
             type="button"
             onMouseDown={() => {
-              onUpdate({ productId: p.id, productName: p.name, sku: p.sku, unit: p.unit, unitPrice: p.mrp })
+              onUpdate({
+                productId: p.id,
+                productName: p.name,
+                sku: p.sku,
+                articleNumber: p.sku,
+                description: p.name,
+                unit: p.unit,
+                unitPrice: p.mrp,
+                discount: 0,
+                gstRate: 18,
+                imageUrl: p.imageUrl ?? undefined,
+                seriesName: p.seriesName ?? undefined,
+                finishName: p.finishName ?? undefined,
+                brand: p.brand,
+              })
               setEditing(false)
               setSearch('')
             }}
@@ -215,8 +243,8 @@ function ProductSearchCell({
 }
 
 function SortableRow({
-  item, onUpdate, onDelete, isLast, products,
-}: { item: LineItem; onUpdate: (updates: Partial<LineItem>) => void; onDelete: () => void; isLast: boolean; products: LiveProduct[] }) {
+  item, onUpdate, onDelete, isLast,
+}: { item: LineItem; onUpdate: (updates: Partial<LineItem>) => void; onDelete: () => void; isLast: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const [hovered, setHovered] = React.useState(false)
 
@@ -250,9 +278,30 @@ function SortableRow({
           <GripVertical size={14} />
         </div>
       </td>
+      {/* Thumbnail */}
+      <td style={{ width: 48, padding: '6px 4px', verticalAlign: 'middle' }}>
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.productName}
+            style={{ width: 40, height: 40, objectFit: 'contain', background: 'white', borderRadius: 4, border: '1px solid var(--border-subtle)', display: 'block' }}
+          />
+        ) : item.brand ? (
+          <div style={{
+            width: 40, height: 40, borderRadius: 4, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: 11, fontWeight: 700, letterSpacing: '0.02em',
+            background: BRAND_BG[item.brand] ?? '#F3F4F6',
+            color: BRAND_FG[item.brand] ?? '#374151',
+          }}>
+            {BRAND_INITIALS[item.brand] ?? item.brand.slice(0, 2)}
+          </div>
+        ) : (
+          <div style={{ width: 40, height: 40, borderRadius: 4, background: '#F3F4F6' }} />
+        )}
+      </td>
       {/* Product */}
       <td style={{ padding: '8px 8px', verticalAlign: 'top', minWidth: 200 }}>
-        <ProductSearchCell item={item} onUpdate={onUpdate} products={products} />
+        <ProductSearchCell item={item} onUpdate={onUpdate} />
       </td>
       {/* Qty */}
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
@@ -346,11 +395,6 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
   const [revisionStatus, setRevisionStatus] = React.useState<'DRAFT' | 'LOCKED'>('DRAFT')
   const [revisionId, setRevisionId] = React.useState<string | null>(null)
   const [creating, setCreating] = React.useState(false)
-
-  const { data: liveProducts = [] } = useSWR<LiveProduct[]>(
-    '/api/products',
-    (url: string) => fetch(url).then(r => r.json()),
-  )
 
   React.useEffect(() => {
     if (quotation) {
@@ -702,6 +746,7 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                         <thead>
                           <tr style={{ background: 'rgba(0,0,0,0.02)', position: 'sticky', top: 0 }}>
                             <th style={{ width: 24 }} />
+                            <th style={{ width: 48 }} />
                             <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Product</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>Qty</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 100 }}>Price</th>
@@ -722,7 +767,6 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                                 onUpdate={(u) => updateLineItem(item.id, u)}
                                 onDelete={() => deleteLineItem(item.id)}
                                 isLast={idx === lineItems.length - 1}
-                                products={liveProducts}
                               />
                             ))}
                           </tbody>

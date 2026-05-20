@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Users,
   ShoppingBag,
-  BookOpen,
   Tag,
   Settings2,
   PhoneCall,
@@ -42,22 +41,15 @@ export const NAV_GROUPS: NavGroup[] = [
     label: null,
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Quotation Builder', href: '/pos', icon: ClipboardList },
+      { label: 'Quotations', href: '/quotations', icon: ClipboardList },
       { label: 'Purchases', href: '/purchases', icon: ShoppingBag },
       { label: 'Payments', href: '/payments', icon: Wallet },
       { label: 'Follow-ups', href: '/follow-ups', icon: PhoneCall, badge: 'overdue' },
     ],
   },
   {
-    label: 'CRM',
-    items: [
-      { label: 'CRM', href: '/crm/contacts', icon: Users },
-    ],
-  },
-  {
     label: 'Configure',
     items: [
-      { label: 'Catalogue', href: '/catalogue', icon: BookOpen },
       { label: 'Price Lists', href: '/settings/price-lists', icon: Tag },
       { label: 'Users', href: '/settings/users', icon: Users },
       { label: 'Settings', href: '/settings', icon: Settings2 },

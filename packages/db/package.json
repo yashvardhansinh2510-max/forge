@@ -7,7 +7,13 @@
   "scripts": {
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "catalog:extract-pdf": "python3 scripts/extract_products_from_pdfs.py",
+    "catalog:import-json": "tsx scripts/import_products_json.ts",
+    "catalog:qa-json": "python3 scripts/qa_catalog_json.py",
+    "catalog:apply-image-map": "tsx scripts/apply_exact_image_map.ts",
+    "catalog:export-image-template": "tsx scripts/export_image_map_template.ts",
+    "catalog:build-qa-review": "python3 scripts/build_qa_review_list.py"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0"

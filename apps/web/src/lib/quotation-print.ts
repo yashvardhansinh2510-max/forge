@@ -76,7 +76,7 @@ const CSS = `
   .regards-block { margin-top: 8px; font-size: 9pt; line-height: 1.6; }
   .toll-table td { font-size: 9pt; padding: 3px 8px; }
   .detail-th { background: #F2C50A; font-weight: bold; font-size: 9pt; }
-  .detail-img { width: 58px; height: 48px; object-fit: contain; display: block; margin: auto; }
+  .detail-img { width: 130px; height: 110px; object-fit: contain; display: block; margin: auto; }
   .detail-total-row td { background: #F2C50A; font-weight: bold; font-size: 10pt; }
   @media print {
     .page-break { page-break-before: always; }
@@ -87,15 +87,6 @@ const CSS = `
 function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, grandOffer: number, baseUrl: string): string {
   const dateStr = format(data.createdAt, 'dd-MM-yyyy')
 
-  const logoRow1 = [
-    { name: 'GROHE', src: `${baseUrl}/brands/grohe.svg` },
-    { name: 'hansgrohe', src: `${baseUrl}/brands/hansgrohe.svg` },
-    { name: 'AXOR', src: `${baseUrl}/brands/axor.svg` },
-    { name: 'GEBERIT', src: `${baseUrl}/brands/geberit.svg` },
-    { name: 'VitrA', src: `${baseUrl}/brands/vitra.svg` },
-  ]
-  const logoRow2Text = ['Oyster', 'QUTONE', 'Nexion', 'DIMORE', 'ittimi']
-
   const summaryRows = sections.map((s, i) => `
     <tr>
       <td class="center bold">${i + 1}</td>
@@ -105,14 +96,7 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
 
   return `
     <div class="header-box">
-      <div class="buildcon-title">BUILDCON HOUSE</div>
-      <div class="tagline">Let you live better</div>
-      <div class="brand-row" style="margin-top:10px; border-top:1px solid #ccc; padding-top:8px;">
-        ${logoRow1.map(b => `<img src="${b.src}" alt="${b.name}" class="brand-img" />`).join('')}
-      </div>
-      <div class="brand-row" style="border-top:1px solid #ccc; padding-top:6px;">
-        ${logoRow2Text.map(b => `<span class="brand-text">${b}</span>`).join('')}
-      </div>
+      <img src="${baseUrl}/brands/header-logo.png" alt="Buildcon House Brands" style="width:100%; height:auto; display:block; margin-bottom:10px;" />
     </div>
 
     <div class="sub-title">SUB: Quotation</div>
@@ -129,7 +113,7 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
     </table>
 
     <table>
-      <tr><td colspan="3" class="gold center section-header">GROHE</td></tr>
+      <tr><td colspan="3" class="gold center section-header">SUMMARY</td></tr>
       <tr>
         <th class="gold center summary-sl">SL,NO.</th>
         <th class="gold center">BATHROOM</th>
@@ -182,7 +166,7 @@ function sectionDetailPage(section: SectionData): string {
     const mrpTotal = item.unitPrice * item.qty
     const offerTotal = offerRate * item.qty
     const imgCell = item.imageUrl
-      ? `<img src="${item.imageUrl}" class="detail-img" alt="${item.productName}" />`
+      ? `<div style="text-align:center"><img src="${item.imageUrl}" class="detail-img" alt="${item.productName}" /><div style="font-size:7pt;color:#666;margin-top:2px">${item.sku}</div></div>`
       : ''
     return `
       <tr>

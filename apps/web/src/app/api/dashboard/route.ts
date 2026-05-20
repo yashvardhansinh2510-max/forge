@@ -3,6 +3,7 @@ import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
 import { followUps as mockFollowUps } from '@/lib/mock/followup-data'
 import { activityData, topCustomers as mockTopCustomers, revenueData } from '@/lib/mock/dashboard-data'
+import { allowDevFallback } from '@/lib/runtime-mode'
 
 // ── Response types ─────────────────────────────────────────────────────────────
 
@@ -264,7 +265,7 @@ export async function GET() {
       salesData.length === 0 &&
       activityResult.activities.length === 0
 
-    if (dbIsEmpty) {
+    if (dbIsEmpty && allowDevFallback()) {
       const now = new Date()
       const activeFollowUps = mockFollowUps.filter((f) => f.status !== 'won' && f.status !== 'lost').length
       const overdueFollowUps = mockFollowUps.filter(

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import BrandTabs from '@/components/purchases/BrandTabs'
 import CompanyView from '@/components/purchases/CompanyView'
@@ -15,6 +15,7 @@ import {
   type HeaderCounts,
   type PurchaseLinesResponse,
   type PurchaseStage,
+  type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
 
 const fetcher = async (url: string): Promise<PurchaseLinesResponse> => {
@@ -51,6 +52,9 @@ export default function PurchasesPage() {
   const [activeBrand, setActiveBrand] = useState<BrandTab>('ALL')
   const [activePanel, setActivePanel] = useState<PurchaseStage | null>(null)
   const [view, setView] = useState<'company' | 'customer'>('company')
+  const [globalSearch, setGlobalSearch] = useState('')
+  // optimistic line overrides: lineId → updated stage counts
+  const optimisticLines = useRef<Map<string, PurchaseTrackerLine['stages']>>(new Map())
 
   const { data, error, mutate, isLoading } = useSWR(
     `/api/purchase-orders/lines?brand=${encodeURIComponent(activeBrand)}`,
@@ -58,20 +62,56 @@ export default function PurchasesPage() {
     { revalidateOnFocus: true },
   )
 
+  // Only sync from server when no optimistic overrides pending
   useEffect(() => {
     if (data?.headerCounts) {
       setHeaderCounts(data.headerCounts)
+      // Clear optimistic overrides after server data arrives
+      optimisticLines.current.clear()
     }
   }, [data])
 
-  const lines = data?.lines ?? []
+  const rawLines = data?.lines ?? []
+
+  // Apply optimistic overrides so stage chips update instantly after a move
+  const lines: PurchaseTrackerLine[] = rawLines.map((line) => {
+    const override = optimisticLines.current.get(line.id)
+    return override ? { ...line, stages: override } : line
+  })
+
   const brandCounts = data?.brandCounts ?? createEmptyBrandCounts()
+
+  const searchTerm = globalSearch.trim().toLowerCase()
+  const filteredLines = searchTerm
+    ? lines.filter(
+        (line) =>
+          line.product.name.toLowerCase().includes(searchTerm) ||
+          line.product.sku.toLowerCase().includes(searchTerm) ||
+          (line.customer?.name.toLowerCase().includes(searchTerm) ?? false),
+      )
+    : lines
+
   const drillLines = activePanel
-    ? lines.filter((line) => getStageQuantity(line, activePanel) > 0)
+    ? filteredLines.filter((line) => getStageQuantity(line, activePanel) > 0)
     : []
 
-  const handleMoved = (newCounts: HeaderCounts) => {
+  const handleMoved = (newCounts: HeaderCounts, movedLineId?: string, fromStage?: PurchaseStage, toStage?: PurchaseStage, qty?: number) => {
     setHeaderCounts(newCounts)
+    // Optimistically update the specific line's stages immediately
+    if (movedLineId && fromStage && toStage && qty !== undefined) {
+      const existing = lines.find((l) => l.id === movedLineId)
+      if (existing) {
+        const newStages = { ...existing.stages }
+        if (fromStage !== 'UNALLOCATED') {
+          newStages[fromStage] = Math.max(0, newStages[fromStage] - qty)
+        } else {
+          // UNALLOCATED is derived — adjust it manually for the optimistic view
+          newStages.UNALLOCATED = Math.max(0, newStages.UNALLOCATED - qty)
+        }
+        newStages[toStage] = (newStages[toStage] ?? 0) + qty
+        optimisticLines.current.set(movedLineId, newStages)
+      }
+    }
     void mutate()
   }
 
@@ -88,21 +128,42 @@ export default function PurchasesPage() {
                 Forge operations
               </p>
               <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-[var(--text-primary)]">
-                Purchase tracker, rebuilt around live stage movement
+                Purchase tracker
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-                Filter by brand, drill into any stage card, and move stock through the pipeline from one clean control surface.
-                Header counts stay instant, rows revalidate in the background, and customer drill-downs stay aligned with the same live data.
+                Filter by brand, search by product or customer, drill into any stage card, and move stock through the pipeline.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              {/* Global search */}
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  placeholder="Search product, SKU, customer…"
+                  className="h-10 w-64 rounded-2xl border border-[var(--border)] bg-white/90 pl-9 pr-4 text-sm outline-none transition focus:border-[#93c5fd] focus:shadow-[0_0_0_3px_rgba(147,197,253,0.2)]"
+                />
+                {globalSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setGlobalSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
               <div className="rounded-3xl border border-[var(--border)] bg-white/90 px-4 py-3 shadow-[0_12px_24px_rgba(15,23,42,0.05)]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-                  Lines in scope
+                  {searchTerm ? 'Matched' : 'Lines in scope'}
                 </p>
                 <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--text-primary)]">
-                  {brandCounts[activeBrand]}
+                  {searchTerm ? filteredLines.length : brandCounts[activeBrand]}
                 </p>
               </div>
 
@@ -163,13 +224,13 @@ export default function PurchasesPage() {
 
             {view === 'company' ? (
               <CompanyView
-                lines={lines}
+                lines={filteredLines}
                 activeBrand={activeBrand}
                 onMoved={handleMoved}
               />
             ) : (
               <CustomerView
-                lines={lines}
+                lines={filteredLines}
                 activeBrand={activeBrand}
                 onMoved={handleMoved}
               />

@@ -51,30 +51,6 @@ export const COMMANDS: Command[] = [
     category: 'settings',
   },
   {
-    id: 'jump-contacts',
-    label: 'Contacts',
-    href: '/crm/contacts',
-    group: 'jump',
-    icon: Users,
-    category: 'crm',
-  },
-  {
-    id: 'jump-companies',
-    label: 'Companies',
-    href: '/crm/companies',
-    group: 'jump',
-    icon: Building2,
-    category: 'crm',
-  },
-  {
-    id: 'jump-pipeline',
-    label: 'Pipeline',
-    href: '/crm/pipeline',
-    group: 'jump',
-    icon: TrendingUp,
-    category: 'crm',
-  },
-  {
     id: 'jump-quotations',
     label: 'Quotation Builder',
     href: '/pos',
@@ -99,14 +75,6 @@ export const COMMANDS: Command[] = [
     category: 'purchases',
   },
   {
-    id: 'jump-reports',
-    label: 'Reports',
-    href: '/reports',
-    group: 'jump',
-    icon: BarChart3,
-    category: 'settings',
-  },
-  {
     id: 'jump-settings',
     label: 'Settings',
     href: '/settings',
@@ -117,27 +85,6 @@ export const COMMANDS: Command[] = [
 
   // Create
   {
-    id: 'create-contact',
-    label: 'New Contact',
-    group: 'create',
-    icon: UserPlus,
-    category: 'crm',
-  },
-  {
-    id: 'create-company',
-    label: 'New Company',
-    group: 'create',
-    icon: Building2,
-    category: 'crm',
-  },
-  {
-    id: 'create-deal',
-    label: 'New Deal',
-    group: 'create',
-    icon: TrendingUp,
-    category: 'crm',
-  },
-  {
     id: 'create-quotation',
     label: 'New Quotation',
     group: 'create',
@@ -146,13 +93,6 @@ export const COMMANDS: Command[] = [
   },
 
   // Actions
-  {
-    id: 'action-import-contacts',
-    label: 'Import Contacts',
-    group: 'action',
-    icon: Upload,
-    category: 'crm',
-  },
   {
     id: 'action-export-csv',
     label: 'Export CSV',

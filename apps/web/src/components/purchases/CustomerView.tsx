@@ -9,13 +9,59 @@ import {
   normalizeBrandTab,
   type BrandTab,
   type HeaderCounts,
+  type PurchaseStage,
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
 
 interface CustomerViewProps {
   lines: PurchaseTrackerLine[]
   activeBrand: BrandTab
-  onMoved: (newCounts: HeaderCounts) => void
+  onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
+}
+
+async function exportCustomerToXlsx(customerName: string, lines: PurchaseTrackerLine[]) {
+  const ExcelJS = (await import('exceljs')).default
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet(customerName.slice(0, 31))
+
+  ws.columns = [
+    { header: 'SKU', key: 'sku', width: 28 },
+    { header: 'Product', key: 'name', width: 40 },
+    { header: 'Brand', key: 'brand', width: 14 },
+    { header: 'PO#', key: 'po', width: 16 },
+    { header: 'Unallocated', key: 'unallocated', width: 13 },
+    { header: 'Pend. CO', key: 'pendingCo', width: 12 },
+    { header: 'Pend. Dist', key: 'pendingDist', width: 12 },
+    { header: 'At Godown', key: 'godown', width: 12 },
+    { header: 'In Box', key: 'inBox', width: 10 },
+    { header: 'Dispatched', key: 'dispatched', width: 12 },
+  ]
+
+  for (const line of lines) {
+    ws.addRow({
+      sku: line.product.sku,
+      name: line.product.name,
+      brand: line.product.brand,
+      po: line.poNumber,
+      unallocated: line.stages.UNALLOCATED,
+      pendingCo: line.stages.PENDING_CO,
+      pendingDist: line.stages.PENDING_DIST,
+      godown: line.stages.GODOWN,
+      inBox: line.stages.IN_BOX,
+      dispatched: line.stages.DISPATCHED,
+    })
+  }
+
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${customerName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-pipeline.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 interface CustomerBucket {
@@ -191,6 +237,15 @@ export default function CustomerView({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {selectedLines.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void exportCustomerToXlsx(selectedCustomer.name, selectedLines)}
+                    className="rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:border-[#86efac] hover:text-[#16a34a]"
+                  >
+                    ↓ Export .xlsx
+                  </button>
+                )}
                 {(['ALL', ...availableBrands] as BrandTab[]).map((brand) => {
                   const active = detailBrand === brand
                   return (

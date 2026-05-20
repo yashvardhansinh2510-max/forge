@@ -7,6 +7,7 @@ import { prisma } from '@forge/db'
 import { withErrorHandling, getDevUserId } from '@/lib/api-helpers'
 import { buildPOFromRevision } from '@/lib/quotationToPO'
 import { ValidationError } from '@/lib/errors'
+import { logActivity } from '@/lib/activity-log'
 
 const CreatePOSchema = z.object({
   mode:             z.enum(['PROJECT_LINKED', 'BULK_COMPANY']),
@@ -55,6 +56,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    await logActivity({
+      type: 'NOTE',
+      userId,
+      description: `Created purchase order ${po.poNumber}`,
+      projectId: po.projectId,
+    })
+
     return NextResponse.json(po, { status: 201 })
   })
 }
@@ -78,7 +86,11 @@ export async function GET(req: NextRequest) {
         project: { select: { id: true, clientName: true } },
         _count: { select: { lineItems: true } },
         lineItems: {
-          select: { qtyOrdered: true, landingCost: true, clientOfferRate: true },
+          select: {
+            id: true, qtyOrdered: true, landingCost: true, clientOfferRate: true,
+            product: { select: { brand: true, imageUrl: true, sku: true } },
+          },
+          take: 3,
         },
       },
       orderBy: { createdAt: 'desc' },

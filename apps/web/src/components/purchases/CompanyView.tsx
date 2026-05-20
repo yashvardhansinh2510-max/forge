@@ -6,6 +6,7 @@ import {
   getBrandSectionKey,
   type BrandTab,
   type HeaderCounts,
+  type PurchaseStage,
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
 
@@ -14,7 +15,7 @@ const SECTION_ORDER = ['GROHE', 'HANSGROHE', 'VITRA', 'GEBERIT']
 interface CompanyViewProps {
   lines: PurchaseTrackerLine[]
   activeBrand: BrandTab
-  onMoved: (newCounts: HeaderCounts) => void
+  onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
 }
 
 export default function CompanyView({

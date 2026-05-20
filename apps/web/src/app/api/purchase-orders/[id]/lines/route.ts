@@ -3,8 +3,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@forge/db'
-import { withErrorHandling } from '@/lib/api-helpers'
+import { getDevUserId, withErrorHandling } from '@/lib/api-helpers'
 import { NotFoundError, ValidationError } from '@/lib/errors'
+import { logActivity } from '@/lib/activity-log'
 
 const AddLineSchema = z.object({
   productId:   z.string().cuid(),
@@ -48,6 +49,13 @@ export async function POST(
     await prisma.product.update({
       where: { id: body.productId },
       data: { stockOnOrder: { increment: body.qtyOrdered } },
+    })
+
+    await logActivity({
+      type: 'NOTE',
+      userId: getDevUserId(),
+      description: `Added ${body.qtyOrdered} unit(s) of ${product.sku} to ${po.poNumber}`,
+      projectId: po.projectId,
     })
 
     return NextResponse.json(line, { status: 201 })

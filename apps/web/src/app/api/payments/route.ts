@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { z } from 'zod'
 import { withErrorHandling, getDevUserId } from '@/lib/api-helpers'
+import { allowDevFallback } from '@/lib/runtime-mode'
+import { logActivity } from '@/lib/activity-log'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -111,7 +113,7 @@ export async function GET() {
     })
 
     // Serve mock data when DB is empty
-    if (orders.length === 0) {
+    if (orders.length === 0 && allowDevFallback()) {
       const now = new Date()
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
       const totalOutstanding = MOCK_ORDERS.reduce((s, o) => s + o.outstandingTotal, 0)
@@ -208,6 +210,13 @@ export async function POST(request: NextRequest) {
     await prisma.salesOrder.update({
       where: { id: data.orderId },
       data: { updatedAt: new Date() },
+    })
+
+    await logActivity({
+      type: 'NOTE',
+      userId: getDevUserId(),
+      description: `Recorded payment for ${order.number}`,
+      value: data.amount,
     })
 
     return NextResponse.json({ payment }, { status: 201 })

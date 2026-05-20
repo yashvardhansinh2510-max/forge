@@ -1,13 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
+import fs from 'fs'
+import path from 'path'
 import {
   computeBrandCounts,
+  computeHeaderCounts,
   countsFromDbLine,
   matchesBrandTab,
   normalizeBrandTab,
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
+
+let _imageMap: Map<string, string> | null = null
+function getImageMap(): Map<string, string> {
+  if (_imageMap) return _imageMap
+  _imageMap = new Map()
+  const files = [
+    path.join(process.cwd(), '../../packages/db/data/catalog-import-2026-04-22.json'),
+    path.join(process.cwd(), '../../packages/db/data/vitra-catalog-2026.json'),
+  ]
+  for (const f of files) {
+    try {
+      const data = JSON.parse(fs.readFileSync(f, 'utf8')) as { products: { sku: string; image_url?: string | null }[] }
+      for (const p of data.products) {
+        if (p.image_url) _imageMap.set(p.sku, p.image_url)
+      }
+    } catch { /* ignore missing files */ }
+  }
+  return _imageMap
+}
 
 function mapLine(line: {
   id: string
@@ -27,6 +49,12 @@ function mapLine(line: {
     name: string
     brand: string
     imageUrl: string | null
+    seriesName: string | null
+    finishName: string | null
+    articleNumber: string | null
+    mrp: number
+    unit: string
+    tier: string
   }
   po: {
     id: string
@@ -58,7 +86,13 @@ function mapLine(line: {
       sku: line.product.sku,
       name: line.product.name,
       brand: line.product.brand,
-      imageUrl: line.product.imageUrl,
+      imageUrl: line.product.imageUrl ?? getImageMap().get(line.product.sku) ?? null,
+      seriesName: line.product.seriesName,
+      finishName: line.product.finishName,
+      articleNumber: line.product.articleNumber,
+      mrp: line.product.mrp,
+      unit: line.product.unit,
+      tier: line.product.tier,
     },
     qtyOrdered: line.qtyOrdered,
     qtyReceived: line.qtyReceived,
@@ -75,11 +109,9 @@ export async function GET(req: NextRequest) {
       include: {
         product: {
           select: {
-            id: true,
-            sku: true,
-            name: true,
-            brand: true,
-            imageUrl: true,
+            id: true, sku: true, name: true, brand: true,
+            imageUrl: true, seriesName: true, finishName: true,
+            articleNumber: true, mrp: true, unit: true, tier: true,
           },
         },
         po: {
@@ -107,26 +139,12 @@ export async function GET(req: NextRequest) {
       ? allLines
       : allLines.filter((line) => matchesBrandTab(line.product.brand, activeBrand))
 
-    const agg = await prisma.pOLineItem.aggregate({
-      _sum: {
-        qtyOrdered: true,
-        qtyPendingCo: true,
-        qtyPendingDist: true,
-        qtyAtGodown: true,
-        qtyInBox: true,
-        qtyDispatched: true,
-        qtyNotDisplayed: true,
-      },
+    const headerCounts = computeHeaderCounts(allLines)
+    return NextResponse.json({
+      lines: filteredLines,
+      headerCounts,
+      brandCounts: computeBrandCounts(allLines),
+      generatedAt: new Date().toISOString(),
     })
-    const headerCounts = {
-      UNALLOCATED:   agg._sum.qtyOrdered      ?? 0,
-      PENDING_CO:    agg._sum.qtyPendingCo    ?? 0,
-      PENDING_DIST:  agg._sum.qtyPendingDist  ?? 0,
-      GODOWN:        agg._sum.qtyAtGodown     ?? 0,
-      IN_BOX:        agg._sum.qtyInBox        ?? 0,
-      DISPATCHED:    agg._sum.qtyDispatched   ?? 0,
-      NOT_DISPLAYED: agg._sum.qtyNotDisplayed ?? 0,
-    }
-    return NextResponse.json({ lines: filteredLines, headerCounts, brandCounts: computeBrandCounts(allLines) })
   })
 }

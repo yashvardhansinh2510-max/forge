@@ -24,7 +24,7 @@ interface MovePopoverProps {
   productId: string
   currentStage: PurchaseStage
   availableQty: number
-  onMoved: (newCounts: HeaderCounts) => void
+  onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
   brandScope?: BrandTab
 }
 
@@ -118,7 +118,7 @@ export default function MovePopover({
         return
       }
 
-      onMoved(data.stageTotals)
+      onMoved(data.stageTotals, lineItemId, currentStage, to, qty)
       setOpen(false)
     } catch {
       setErr('Network error')
