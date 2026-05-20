@@ -1,6 +1,3 @@
-// prisma/schema.prisma — Forge Backend v2
-// Project → Quotation → Revision → Room → Item hierarchy
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,7 +7,404 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Enums ─────────────────────────────────────────────────────────────────────
+model User {
+  id               String            @id @default(cuid())
+  clerkId          String?           @unique
+  name             String
+  email            String            @unique
+  passwordHash     String?
+  role             UserRole          @default(WORKER)
+  maxDiscountPct   Float             @default(15.0)
+  createdAt        DateTime          @default(now())
+  approvalRequests ApprovalRequest[] @relation("RequestedBy")
+  approvedRequests ApprovalRequest[] @relation("ReviewedBy")
+  purchaseOrders   PurchaseOrder[]   @relation("CreatedPurchaseOrders")
+  quotations       Quotation[]       @relation("CreatedBy")
+  stageMovements   StageMovement[]   @relation("StageMovements")
+}
+
+model Contact {
+  id        String      @id @default(cuid())
+  name      String
+  role      String
+  companyId String?
+  email     String?
+  phone     String?
+  type      ContactType @default(ARCHITECT)
+  tags      String[]
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  company   Company?    @relation(fields: [companyId], references: [id])
+}
+
+model Company {
+  id        String    @id @default(cuid())
+  name      String
+  industry  String
+  website   String?
+  address   String?
+  createdAt DateTime  @default(now())
+  contacts  Contact[]
+  projects  Project[]
+}
+
+model Project {
+  id             String          @id @default(cuid())
+  clientName     String
+  clientPhone    String?
+  clientEmail    String?
+  siteAddress    String?
+  architectName  String?
+  plumberName    String?
+  companyId      String?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  inventoryBoxes InventoryBox[]
+  company        Company?        @relation(fields: [companyId], references: [id])
+  purchaseOrders PurchaseOrder[]
+  quotations     Quotation[]
+}
+
+model Quotation {
+  id            String              @id @default(cuid())
+  number        String              @unique
+  projectId     String?
+  createdById   String
+  currentStatus RevisionStatus      @default(DRAFT)
+  createdAt     DateTime            @default(now())
+  customerName  String?
+  siteAddress   String?
+  createdBy     User                @relation("CreatedBy", fields: [createdById], references: [id])
+  project       Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  revisions     QuotationRevision[]
+}
+
+model QuotationRevision {
+  id                String            @id @default(cuid())
+  quotationId       String
+  revisionNumber    Int               @default(0)
+  status            RevisionStatus    @default(DRAFT)
+  globalDiscountPct Float             @default(0.0)
+  isLocked          Boolean           @default(false)
+  lockedAt          DateTime?
+  snapshot          Json?
+  notes             String?
+  createdAt         DateTime          @default(now())
+  approvalRequests  ApprovalRequest[]
+  purchaseOrders    PurchaseOrder[]
+  quotation         Quotation         @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  rooms             QuotationRoom[]
+
+  @@unique([quotationId, revisionNumber])
+}
+
+model QuotationRoom {
+  id         String            @id @default(cuid())
+  revisionId String
+  roomName   String
+  order      Int               @default(0)
+  items      QuotationItem[]
+  revision   QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+}
+
+model QuotationItem {
+  id              String          @id @default(cuid())
+  roomId          String
+  productId       String
+  quantity        Int             @default(1)
+  selectedFinish  String?
+  selectedColor   String?
+  mrp             Float
+  discountPct     Float           @default(0.0)
+  offerRate       Float
+  totalOffer      Float
+  isAutoAdded     Boolean         @default(false)
+  sortOrder       Int             @default(0)
+  stockOrdered    Int             @default(0)
+  stockInBox      Int             @default(0)
+  stockDispatched Int             @default(0)
+  inventoryStatus InventoryStatus @default(QUOTED)
+  createdAt       DateTime        @default(now())
+  boxItems        BoxItem[]
+  poLineItems     POLineItem[]
+  product         Product         @relation(fields: [productId], references: [id])
+  room            QuotationRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id              String          @id @default(cuid())
+  brand           ProductBrand
+  category        ProductCategory
+  sku             String          @unique
+  name            String
+  description     String?
+  mrp             Float
+  gstRate         Float           @default(18)
+  unit            String          @default("pcs")
+  imageUrl        String?
+  tier            String          @default("premium")
+  isActive        Boolean         @default(true)
+  stockAvailable  Int             @default(0)
+  variants        Json?
+  concealedPartId String?
+  stockOnOrder    Int             @default(0)
+  stockCommitted  Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  articleNumber   String?
+  brandGroup      String          @default("HANSGROHE")
+  finishCode      String?
+  finishName      String?
+  sectionName     String?
+  seriesName      String?
+  sourceFile      String?
+  subcategory     String?
+  boxItems        BoxItem[]
+  poLineItems     POLineItem[]
+  concealedPart   Product?        @relation("ConcealedParts", fields: [concealedPartId], references: [id])
+  requiredBy      Product[]       @relation("ConcealedParts")
+  quotationItems  QuotationItem[]
+  stockItems      StockItem[]
+  movements       StockMovement[]
+
+  @@index([articleNumber])
+}
+
+model ApprovalRequest {
+  id            String            @id @default(cuid())
+  revisionId    String
+  requestedById String
+  requestedPct  Float
+  reviewedById  String?
+  status        ApprovalStatus    @default(PENDING)
+  note          String?
+  createdAt     DateTime          @default(now())
+  resolvedAt    DateTime?
+  requestedBy   User              @relation("RequestedBy", fields: [requestedById], references: [id])
+  reviewedBy    User?             @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  revision      QuotationRevision @relation(fields: [revisionId], references: [id])
+}
+
+model Warehouse {
+  id          String          @id @default(cuid())
+  name        String
+  shortName   String
+  type        WarehouseType
+  address     String
+  city        String
+  state       String          @default("Maharashtra")
+  managerName String
+  phone       String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  stockItems  StockItem[]
+  movements   StockMovement[]
+}
+
+model StockItem {
+  id          String    @id @default(cuid())
+  productId   String
+  warehouseId String
+  quantity    Int       @default(0)
+  reserved    Int       @default(0)
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@unique([productId, warehouseId])
+}
+
+model StockMovement {
+  id              String       @id @default(cuid())
+  type            MovementType
+  productId       String
+  fromWarehouseId String?
+  toWarehouseId   String?
+  quantity        Int
+  reference       String
+  reason          String?
+  performedByName String
+  createdAt       DateTime     @default(now())
+  fromWarehouse   Warehouse?   @relation(fields: [fromWarehouseId], references: [id])
+  product         Product      @relation(fields: [productId], references: [id])
+}
+
+model PurchaseOrder {
+  id                  String             @id @default(cuid())
+  poNumber            String             @unique
+  mode                POMode
+  status              POStatus           @default(DRAFT)
+  projectId           String?
+  revisionId          String?
+  createdById         String
+  vendorName          String?
+  expectedDelivery    DateTime?
+  notes               String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  customerName        String?
+  customerSiteAddress String?
+  quotationNumber     String?
+  inventoryBoxes      InventoryBox[]
+  lineItems           POLineItem[]
+  createdBy           User               @relation("CreatedPurchaseOrders", fields: [createdById], references: [id])
+  project             Project?           @relation(fields: [projectId], references: [id])
+  revision            QuotationRevision? @relation(fields: [revisionId], references: [id])
+}
+
+model POLineItem {
+  id              String          @id @default(cuid())
+  poId            String
+  productId       String
+  quotationItemId String?
+  qtyOrdered      Int
+  qtyReceived     Int             @default(0)
+  qtyPendingCo    Int             @default(0)
+  qtyPendingDist  Int             @default(0)
+  qtyAtGodown     Int             @default(0)
+  qtyInBox        Int             @default(0)
+  qtyDispatched   Int             @default(0)
+  qtyNotDisplayed Int             @default(0)
+  landingCost     Float?
+  clientOfferRate Float?
+  status          POLineStatus    @default(PENDING)
+  createdAt       DateTime        @default(now())
+  followUpStatus  String?         @default("AWAITING")
+  po              PurchaseOrder   @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product         Product         @relation(fields: [productId], references: [id])
+  quotationItem   QuotationItem?  @relation(fields: [quotationItemId], references: [id])
+  stageMovements  StageMovement[]
+}
+
+model StageMovement {
+  id           String     @id @default(cuid())
+  poLineItemId String
+  fromStage    String
+  toStage      String
+  qty          Int
+  movedById    String
+  note         String?
+  movedAt      DateTime   @default(now())
+  movedBy      User       @relation("StageMovements", fields: [movedById], references: [id])
+  poLineItem   POLineItem @relation(fields: [poLineItemId], references: [id])
+}
+
+model InventoryBox {
+  id        String         @id @default(cuid())
+  boxCode   String         @unique
+  projectId String
+  poId      String?
+  createdAt DateTime       @default(now())
+  items     BoxItem[]
+  po        PurchaseOrder? @relation(fields: [poId], references: [id])
+  project   Project        @relation(fields: [projectId], references: [id])
+}
+
+model BoxItem {
+  id              String         @id @default(cuid())
+  boxId           String
+  productId       String
+  quotationItemId String?
+  qtyTotal        Int
+  qtyDispatched   Int            @default(0)
+  status          BoxItemStatus  @default(STAGED)
+  lastUpdated     DateTime       @updatedAt
+  box             InventoryBox   @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  product         Product        @relation(fields: [productId], references: [id])
+  quotationItem   QuotationItem? @relation(fields: [quotationItemId], references: [id])
+}
+
+model SalesOrder {
+  id              String            @id @default(cuid())
+  number          String            @unique
+  customerId      String
+  customerName    String
+  customerPhone   String?
+  status          SalesOrderStatus  @default(CONFIRMED)
+  projectName     String?
+  deliveryAddress String?
+  notes           String?
+  mrpTotal        Float             @default(0)
+  offerTotal      Float             @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  payments        CustomerPayment[]
+  lineItems       SalesOrderLine[]
+}
+
+model SalesOrderLine {
+  id        String     @id @default(cuid())
+  orderId   String
+  sku       String
+  name      String
+  brand     String     @default("")
+  qty       Int
+  mrp       Float
+  offerRate Float
+  createdAt DateTime   @default(now())
+  order     SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model CustomerPayment {
+  id         String                @id @default(cuid())
+  orderId    String
+  amount     Float
+  method     CustomerPaymentMethod @default(CASH)
+  reference  String?
+  notes      String?
+  receivedAt DateTime
+  recordedBy String                @default("System")
+  createdAt  DateTime              @default(now())
+  order      SalesOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model FollowUp {
+  id               String               @id @default(cuid())
+  type             FollowUpType         @default(WALK_IN)
+  customerName     String
+  customerPhone    String
+  customerType     FollowUpCustomerType @default(RETAIL)
+  brandsInterested String[]
+  productsNoted    String?
+  estimatedBudget  Float?
+  projectName      String?
+  quotationId      String?
+  quotationNumber  String?
+  quotationValue   Float?
+  status           FollowUpStatus       @default(PENDING)
+  nextFollowUpDate DateTime
+  lastContactedAt  DateTime?
+  notes            String?
+  assignedTo       String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  responses        FollowUpResponse[]
+}
+
+model FollowUpResponse {
+  id          String                 @id @default(cuid())
+  followUpId  String
+  date        DateTime
+  method      FollowUpResponseMethod @default(CALL)
+  outcome     String
+  nextAction  String?
+  staffMember String
+  createdAt   DateTime               @default(now())
+  followUp    FollowUp               @relation(fields: [followUpId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  type        ActivityType
+  description String
+  userId      String?
+  contactId   String?
+  companyId   String?
+  projectId   String?
+  quotationId String?
+  value       Float?
+  createdAt   DateTime     @default(now())
+}
 
 enum UserRole {
   OWNER
@@ -43,7 +437,7 @@ enum InventoryStatus {
 enum ProductBrand {
   GROHE
   HANSGROHE
-  AXOR       // Axor is a Hansgrohe subsidiary; grouped under Hansgrohe tab in UI
+  AXOR
   VITRA
   GEBERIT
   OTHER
@@ -61,40 +455,6 @@ enum ProductCategory {
   KITCHEN
 }
 
-// ─── Auth & RBAC ───────────────────────────────────────────────────────────────
-
-model User {
-  id               String            @id @default(cuid())
-  clerkId          String?           @unique  // optional Clerk integration
-  name             String
-  email            String            @unique
-  passwordHash     String?
-  role             UserRole          @default(WORKER)
-  maxDiscountPct   Float             @default(15.0)
-  createdAt        DateTime          @default(now())
-  quotations       Quotation[]       @relation("CreatedBy")
-  approvalRequests ApprovalRequest[] @relation("RequestedBy")
-  approvedRequests ApprovalRequest[] @relation("ReviewedBy")
-  purchaseOrders   PurchaseOrder[]   @relation("CreatedPurchaseOrders")
-  stageMovements   StageMovement[]   @relation("StageMovements")
-}
-
-// ─── CRM ───────────────────────────────────────────────────────────────────────
-
-model Contact {
-  id        String      @id @default(cuid())
-  name      String
-  role      String
-  companyId String?
-  company   Company?    @relation(fields: [companyId], references: [id])
-  email     String?
-  phone     String?
-  type      ContactType @default(ARCHITECT)
-  tags      String[]
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-}
-
 enum ContactType {
   ARCHITECT
   INTERIOR_DESIGNER
@@ -104,210 +464,10 @@ enum ContactType {
   INSTITUTIONAL
 }
 
-model Company {
-  id        String    @id @default(cuid())
-  name      String
-  industry  String
-  website   String?
-  address   String?
-  contacts  Contact[]
-  projects  Project[]
-  createdAt DateTime  @default(now())
-}
-
-// ─── Project ───────────────────────────────────────────────────────────────────
-
-model Project {
-  id            String      @id @default(cuid())
-  clientName    String
-  clientPhone   String?
-  clientEmail   String?
-  siteAddress   String?
-  architectName String?
-  plumberName   String?
-  companyId     String?
-  company       Company?    @relation(fields: [companyId], references: [id])
-  notes          String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  quotations     Quotation[]
-  purchaseOrders PurchaseOrder[]
-  inventoryBoxes InventoryBox[]
-}
-
-// ─── Quotation (container — never mutated after creation) ──────────────────────
-
-model Quotation {
-  id            String              @id @default(cuid())
-  number        String              @unique  // e.g. Q-2026-0045, auto-generated
-  projectId     String?
-  project       Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  customerName  String?
-  siteAddress   String?
-  createdById   String
-  createdBy     User                @relation("CreatedBy", fields: [createdById], references: [id])
-  currentStatus RevisionStatus      @default(DRAFT)
-  createdAt     DateTime            @default(now())
-  revisions     QuotationRevision[]
-}
-
-// ─── Quotation Revision (immutable once locked) ────────────────────────────────
-
-model QuotationRevision {
-  id                String            @id @default(cuid())
-  quotationId       String
-  quotation         Quotation         @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  revisionNumber    Int               @default(0)  // 0 = original, 1 = Rev 1, etc.
-  status            RevisionStatus    @default(DRAFT)
-  globalDiscountPct Float             @default(0.0)
-  isLocked          Boolean           @default(false)
-  lockedAt          DateTime?
-  snapshot          Json?             // Immutable deep copy written at lock time
-  notes             String?
-  createdAt         DateTime          @default(now())
-  rooms             QuotationRoom[]
-  approvalRequests  ApprovalRequest[]
-  purchaseOrders    PurchaseOrder[]
-
-  @@unique([quotationId, revisionNumber])
-}
-
-// ─── Room ──────────────────────────────────────────────────────────────────────
-
-model QuotationRoom {
-  id         String            @id @default(cuid())
-  revisionId String
-  revision   QuotationRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
-  roomName   String
-  order      Int               @default(0)
-  items      QuotationItem[]
-}
-
-// ─── Line Item ─────────────────────────────────────────────────────────────────
-
-model QuotationItem {
-  id              String          @id @default(cuid())
-  roomId          String
-  room            QuotationRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  productId       String
-  product         Product         @relation(fields: [productId], references: [id])
-  quantity        Int             @default(1)
-  selectedFinish  String?
-  selectedColor   String?
-  mrp             Float           // snapshot at time of adding
-  discountPct     Float           @default(0.0)
-  offerRate       Float           // mrp * (1 - discountPct/100)
-  totalOffer      Float           // offerRate * quantity
-  isAutoAdded     Boolean         @default(false)
-  sortOrder       Int             @default(0)
-  // Inventory tracking
-  stockOrdered    Int             @default(0)
-  stockInBox      Int             @default(0)
-  stockDispatched Int             @default(0)
-  inventoryStatus InventoryStatus @default(QUOTED)
-  createdAt       DateTime        @default(now())
-  poLineItems     POLineItem[]
-  boxItems        BoxItem[]
-}
-
-// ─── Product ───────────────────────────────────────────────────────────────────
-
-model Product {
-  id              String          @id @default(cuid())
-  brand           ProductBrand
-  category        ProductCategory
-  sku             String          @unique
-  name            String
-  description     String?
-  mrp             Float
-  gstRate         Float           @default(18)
-  unit            String          @default("pcs")
-  imageUrl        String?
-  tier            String          @default("premium")  // luxury | premium | mid
-  isActive        Boolean         @default(true)
-  stockAvailable  Int             @default(0)
-  variants        Json?           // { finishes: [{name, code, color, priceAdj}] }
-  // Self-referential concealed part dependency
-  concealedPartId String?
-  concealedPart   Product?        @relation("ConcealedParts", fields: [concealedPartId], references: [id])
-  requiredBy      Product[]       @relation("ConcealedParts")
-  quotationItems  QuotationItem[]
-  stockItems      StockItem[]
-  movements       StockMovement[]
-  poLineItems     POLineItem[]
-  boxItems        BoxItem[]
-  stockOnOrder    Int             @default(0)   // sum of qty on open POs
-  stockCommitted  Int             @default(0)   // sum of qty in LOCKED revisions not yet boxed
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-}
-
-// ─── Approval Request ──────────────────────────────────────────────────────────
-
-model ApprovalRequest {
-  id            String            @id @default(cuid())
-  revisionId    String
-  revision      QuotationRevision @relation(fields: [revisionId], references: [id])
-  requestedById String
-  requestedBy   User              @relation("RequestedBy", fields: [requestedById], references: [id])
-  requestedPct  Float
-  reviewedById  String?
-  reviewedBy    User?             @relation("ReviewedBy", fields: [reviewedById], references: [id])
-  status        ApprovalStatus    @default(PENDING)
-  note          String?
-  createdAt     DateTime          @default(now())
-  resolvedAt    DateTime?
-}
-
-// ─── Inventory ─────────────────────────────────────────────────────────────────
-
-model Warehouse {
-  id          String          @id @default(cuid())
-  name        String
-  shortName   String
-  type        WarehouseType
-  address     String
-  city        String
-  state       String          @default("Maharashtra")
-  managerName String
-  phone       String?
-  isActive    Boolean         @default(true)
-  stockItems  StockItem[]
-  movements   StockMovement[]
-  createdAt   DateTime        @default(now())
-}
-
 enum WarehouseType {
   SHOWROOM
   GODOWN
   DISPATCH
-}
-
-model StockItem {
-  id          String    @id @default(cuid())
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id])
-  warehouseId String
-  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
-  quantity    Int       @default(0)
-  reserved    Int       @default(0)
-
-  @@unique([productId, warehouseId])
-}
-
-model StockMovement {
-  id              String        @id @default(cuid())
-  type            MovementType
-  productId       String
-  product         Product       @relation(fields: [productId], references: [id])
-  fromWarehouseId String?
-  fromWarehouse   Warehouse?    @relation(fields: [fromWarehouseId], references: [id])
-  toWarehouseId   String?
-  quantity        Int
-  reference       String
-  reason          String?
-  performedByName String
-  createdAt       DateTime      @default(now())
 }
 
 enum MovementType {
@@ -317,8 +477,6 @@ enum MovementType {
   ADJUST
   RETURN
 }
-
-// ─── Procurement Enums ─────────────────────────────────────────────────────────
 
 enum POStatus {
   DRAFT
@@ -345,104 +503,6 @@ enum BoxItemStatus {
   FULLY_DISPATCHED
 }
 
-// ─── Purchase Order ─────────────────────────────────────────────────────────────
-
-model PurchaseOrder {
-  id               String             @id @default(cuid())
-  poNumber         String             @unique  // e.g. "PO-2025-0042"
-  mode             POMode
-  status           POStatus           @default(DRAFT)
-  projectId        String?
-  project          Project?           @relation(fields: [projectId], references: [id])
-  revisionId       String?
-  revision         QuotationRevision? @relation(fields: [revisionId], references: [id])
-  createdById      String
-  createdBy        User               @relation("CreatedPurchaseOrders", fields: [createdById], references: [id])
-  vendorName          String?
-  customerName        String?
-  customerSiteAddress String?
-  quotationNumber     String?
-  expectedDelivery    DateTime?
-  notes               String?
-  createdAt           DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  lineItems        POLineItem[]
-  inventoryBoxes   InventoryBox[]
-}
-
-// ─── PO Line Item ────────────────────────────────────────────────────────────────
-
-model POLineItem {
-  id              String         @id @default(cuid())
-  poId            String
-  po              PurchaseOrder  @relation(fields: [poId], references: [id], onDelete: Cascade)
-  productId       String
-  product         Product        @relation(fields: [productId], references: [id])
-  quotationItemId String?
-  quotationItem   QuotationItem? @relation(fields: [quotationItemId], references: [id])
-  qtyOrdered        Int
-  qtyReceived       Int            @default(0)
-  // Stage-by-stage quantity tracking (invariant: sum <= qtyOrdered)
-  qtyPendingCo      Int            @default(0)
-  qtyPendingDist    Int            @default(0)
-  qtyAtGodown       Int            @default(0)
-  qtyInBox          Int            @default(0)
-  qtyDispatched     Int            @default(0)
-  qtyNotDisplayed   Int            @default(0)
-  landingCost       Float?
-  clientOfferRate   Float?
-  status            POLineStatus   @default(PENDING)
-  followUpStatus    String?        @default("AWAITING")
-  createdAt         DateTime       @default(now())
-  stageMovements    StageMovement[]
-}
-
-// ─── Stage Movement (append-only audit log) ─────────────────────────────────────
-
-model StageMovement {
-  id           String     @id @default(cuid())
-  poLineItemId String
-  poLineItem   POLineItem @relation(fields: [poLineItemId], references: [id])
-  fromStage    String
-  toStage      String
-  qty          Int
-  movedById    String
-  movedBy      User       @relation("StageMovements", fields: [movedById], references: [id])
-  note         String?
-  movedAt      DateTime   @default(now())
-}
-
-// ─── Inventory Box ───────────────────────────────────────────────────────────────
-
-model InventoryBox {
-  id        String         @id @default(cuid())
-  boxCode   String         @unique  // e.g. "BOX-SMITH-001"
-  projectId String
-  project   Project        @relation(fields: [projectId], references: [id])
-  poId      String?
-  po        PurchaseOrder? @relation(fields: [poId], references: [id])
-  createdAt DateTime       @default(now())
-  items     BoxItem[]
-}
-
-// ─── Box Item ────────────────────────────────────────────────────────────────────
-
-model BoxItem {
-  id              String         @id @default(cuid())
-  boxId           String
-  box             InventoryBox   @relation(fields: [boxId], references: [id], onDelete: Cascade)
-  productId       String
-  product         Product        @relation(fields: [productId], references: [id])
-  quotationItemId String?
-  quotationItem   QuotationItem? @relation(fields: [quotationItemId], references: [id])
-  qtyTotal        Int
-  qtyDispatched   Int            @default(0)
-  status          BoxItemStatus  @default(STAGED)
-  lastUpdated     DateTime       @updatedAt
-}
-
-// ─── Sales Orders & Customer Payments ─────────────────────────────────────────
-
 enum SalesOrderStatus {
   CONFIRMED
   PROCESSING
@@ -458,52 +518,6 @@ enum CustomerPaymentMethod {
   CHEQUE
   CREDIT_CARD
 }
-
-model SalesOrder {
-  id              String            @id @default(cuid())
-  number          String            @unique
-  customerId      String
-  customerName    String
-  customerPhone   String?
-  status          SalesOrderStatus  @default(CONFIRMED)
-  projectName     String?
-  deliveryAddress String?
-  notes           String?
-  mrpTotal        Float             @default(0)
-  offerTotal      Float             @default(0)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  lineItems       SalesOrderLine[]
-  payments        CustomerPayment[]
-}
-
-model SalesOrderLine {
-  id        String     @id @default(cuid())
-  orderId   String
-  order     SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  sku       String
-  name      String
-  brand     String     @default("")
-  qty       Int
-  mrp       Float
-  offerRate Float
-  createdAt DateTime   @default(now())
-}
-
-model CustomerPayment {
-  id         String                @id @default(cuid())
-  orderId    String
-  order      SalesOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  amount     Float
-  method     CustomerPaymentMethod @default(CASH)
-  reference  String?
-  notes      String?
-  receivedAt DateTime
-  recordedBy String               @default("System")
-  createdAt  DateTime             @default(now())
-}
-
-// ─── Follow-ups ────────────────────────────────────────────────────────────────
 
 enum FollowUpType {
   WALK_IN
@@ -532,56 +546,6 @@ enum FollowUpResponseMethod {
   WHATSAPP
   EMAIL
   VISIT
-}
-
-model FollowUp {
-  id               String               @id @default(cuid())
-  type             FollowUpType         @default(WALK_IN)
-  customerName     String
-  customerPhone    String
-  customerType     FollowUpCustomerType @default(RETAIL)
-  brandsInterested String[]
-  productsNoted    String?
-  estimatedBudget  Float?
-  projectName      String?
-  quotationId      String?
-  quotationNumber  String?
-  quotationValue   Float?
-  status           FollowUpStatus       @default(PENDING)
-  nextFollowUpDate DateTime
-  lastContactedAt  DateTime?
-  notes            String?
-  assignedTo       String?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  responses        FollowUpResponse[]
-}
-
-model FollowUpResponse {
-  id          String                 @id @default(cuid())
-  followUpId  String
-  followUp    FollowUp               @relation(fields: [followUpId], references: [id], onDelete: Cascade)
-  date        DateTime
-  method      FollowUpResponseMethod @default(CALL)
-  outcome     String
-  nextAction  String?
-  staffMember String
-  createdAt   DateTime               @default(now())
-}
-
-// ─── Activity Log ──────────────────────────────────────────────────────────────
-
-model Activity {
-  id          String       @id @default(cuid())
-  type        ActivityType
-  description String
-  userId      String?
-  contactId   String?
-  companyId   String?
-  projectId   String?
-  quotationId String?
-  value       Float?
-  createdAt   DateTime     @default(now())
 }
 
 enum ActivityType {

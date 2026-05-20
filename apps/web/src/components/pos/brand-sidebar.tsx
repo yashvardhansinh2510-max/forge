@@ -2,8 +2,25 @@
 
 import * as React from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import useSWR from 'swr'
 import { usePOSStore } from '@/lib/pos-store'
-import { POS_BRANDS, POS_PRODUCTS } from '@/lib/mock/pos-data'
+
+interface BrandEntry {
+  brand: string
+  count: number
+  series: { name: string; count: number }[]
+}
+
+const BRANDS = [
+  { id: 'grohe',     name: 'Grohe',     dbKey: 'GROHE',     color: '#009FE3' },
+  { id: 'hansgrohe', name: 'Hansgrohe', dbKey: 'HANSGROHE', color: '#00529A' },
+  { id: 'axor',      name: 'Axor',      dbKey: 'AXOR',      color: '#1C1C1E' },
+  { id: 'vitra',     name: 'Vitra',     dbKey: 'VITRA',     color: '#E5002B' },
+  { id: 'geberit',   name: 'Geberit',   dbKey: 'GEBERIT',   color: '#6B7280' },
+  { id: 'kajaria',   name: 'Kajaria',   dbKey: 'KAJARIA',   color: '#F59E0B' },
+]
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json()) as Promise<BrandEntry[]>
 
 interface BrandSidebarProps {
   collapsed: boolean
@@ -16,25 +33,20 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
   const setSelectedBrand    = usePOSStore((s) => s.setSelectedBrand)
   const setSelectedCategory = usePOSStore((s) => s.setSelectedCategory)
 
-  // Count visible (non-concealed) products per brand
-  const brandCounts = React.useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const p of POS_PRODUCTS) {
-      if (!p.isConcealed) counts.set(p.brand, (counts.get(p.brand) ?? 0) + 1)
-    }
-    return counts
-  }, [])
+  const { data: seriesData } = useSWR('/api/products/series', fetcher, {
+    revalidateOnFocus: false,
+  })
 
-  // Derive categories + counts for the selected brand
-  const categories = React.useMemo(() => {
-    if (!selectedBrand) return []
-    const catMap = new Map<string, number>()
-    for (const p of POS_PRODUCTS) {
-      if (p.brand === selectedBrand && !p.isConcealed)
-        catMap.set(p.category, (catMap.get(p.category) ?? 0) + 1)
-    }
-    return Array.from(catMap.entries()).map(([name, count]) => ({ name, count }))
-  }, [selectedBrand])
+  const activeBrandEntry = React.useMemo(() => {
+    if (!selectedBrand || !seriesData) return null
+    const dbKey = BRANDS.find((b) => b.name === selectedBrand)?.dbKey
+    return seriesData.find((e) => e.brand === dbKey) ?? null
+  }, [selectedBrand, seriesData])
+
+  const brandCount = (name: string) => {
+    const dbKey = BRANDS.find((b) => b.name === name)?.dbKey
+    return seriesData?.find((e) => e.brand === dbKey)?.count ?? null
+  }
 
   if (collapsed) {
     return (
@@ -49,7 +61,6 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
           gap: 6,
         }}
       >
-        {/* Expand toggle */}
         <button
           onClick={onToggle}
           title="Expand brand panel"
@@ -65,8 +76,7 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
           <ChevronRight size={13} />
         </button>
 
-        {/* Brand dots */}
-        {POS_BRANDS.map((brand) => {
+        {BRANDS.map((brand) => {
           const isActive = selectedBrand === brand.name
           return (
             <button
@@ -97,19 +107,14 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
         overflow: 'hidden',
       }}
     >
-      {/* Header row with collapse button */}
+      {/* Header */}
       <div
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 14px 6px',
         }}
       >
-        <span
-          style={{
-            fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.38)',
-            textTransform: 'uppercase', letterSpacing: '0.08em',
-          }}
-        >
+        <span style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           Brands
         </span>
         <button
@@ -129,9 +134,9 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
       </div>
 
       <div style={{ flexShrink: 0 }}>
-        {POS_BRANDS.map((brand) => {
+        {BRANDS.map((brand) => {
           const isActive = selectedBrand === brand.name
-          const count    = brandCounts.get(brand.name) ?? 0
+          const count    = brandCount(brand.name)
           return (
             <button
               key={brand.id}
@@ -154,49 +159,29 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
                   }}
                 />
               )}
-              <div
-                style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: brand.color, flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  flex: 1, fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.62)',
-                  letterSpacing: '-0.01em',
-                }}
-              >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: brand.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? '#fff' : 'rgba(255,255,255,0.62)', letterSpacing: '-0.01em' }}>
                 {brand.name}
               </span>
-              <span
-                style={{
-                  fontSize: 11, color: 'rgba(255,255,255,0.28)',
-                  fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {count}
-              </span>
+              {count !== null && (
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
+                  {count}
+                </span>
+              )}
             </button>
           )
         })}
       </div>
 
-      {/* Section: Categories */}
-      {selectedBrand && categories.length > 0 && (
+      {/* Series section */}
+      {selectedBrand && activeBrandEntry && activeBrandEntry.series.length > 0 && (
         <>
           <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0', flexShrink: 0 }} />
-          <div
-            style={{
-              padding: '0 14px 6px', fontSize: 10, fontWeight: 600,
-              color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase',
-              letterSpacing: '0.08em', flexShrink: 0,
-            }}
-          >
-            Category
+          <div style={{ padding: '0 14px 6px', fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>
+            Series
           </div>
 
+          {/* All button */}
           <button
             onClick={() => setSelectedCategory(null)}
             style={{
@@ -208,19 +193,15 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
             onMouseEnter={(e) => { if (selectedCategory !== null) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
             onMouseLeave={(e) => { if (selectedCategory !== null) e.currentTarget.style.background = 'transparent' }}
           >
-            <span
-              style={{
-                fontSize: 12, fontWeight: selectedCategory === null ? 600 : 400,
-                color: selectedCategory === null ? '#fff' : 'rgba(255,255,255,0.52)',
-              }}
-            >
+            <span style={{ fontSize: 12, fontWeight: selectedCategory === null ? 600 : 400, color: selectedCategory === null ? '#fff' : 'rgba(255,255,255,0.52)' }}>
               All {selectedBrand}
             </span>
           </button>
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            {categories.map(({ name, count }) => {
-              const isActive = selectedCategory === name
+            {activeBrandEntry.series.map(({ name, count }) => {
+              const isActive   = selectedCategory === name
+              const brandColor = BRANDS.find((b) => b.name === selectedBrand)?.color ?? '#6B7280'
               return (
                 <button
                   key={name}
@@ -228,26 +209,20 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     width: '100%', padding: '6px 14px',
-                    background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
-                    border: 'none', cursor: 'pointer',
+                    background: isActive
+                      ? `${brandColor}22`
+                      : 'transparent',
+                    border: 'none',
+                    borderLeft: isActive ? `2px solid ${brandColor}` : '2px solid transparent',
+                    cursor: 'pointer',
                   }}
                   onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
                   onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                 >
-                  <span
-                    style={{
-                      fontSize: 12, fontWeight: isActive ? 600 : 400,
-                      color: isActive ? '#fff' : 'rgba(255,255,255,0.52)',
-                    }}
-                  >
+                  <span style={{ fontSize: 12, fontWeight: isActive ? 600 : 400, color: isActive ? '#fff' : 'rgba(255,255,255,0.52)', letterSpacing: '-0.01em' }}>
                     {name}
                   </span>
-                  <span
-                    style={{
-                      fontSize: 11, color: 'rgba(255,255,255,0.25)',
-                      fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
                     {count}
                   </span>
                 </button>
