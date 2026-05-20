@@ -19,7 +19,10 @@ import { toast } from 'sonner'
 import { Button } from '@forge/ui'
 import { PageContainer } from '@/components/layout/page-container'
 import { CRMNav } from '../shared/crm-nav'
-import { activities, contacts, type Activity, type ActivityType } from '@/lib/mock/crm-data'
+import { type Activity, type ActivityType } from '@/lib/mock/crm-data'
+
+const activities: Activity[] = []
+const contacts: { id: string; company: string | null }[] = []
 
 // ─── Activity Type Config ─────────────────────────────────────────────────────
 

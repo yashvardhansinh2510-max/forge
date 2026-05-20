@@ -12,7 +12,9 @@ import {
 import { motion } from 'framer-motion'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { format } from 'date-fns'
-import { companies, type Company } from '@/lib/mock/crm-data'
+import { type Company } from '@/lib/mock/crm-data'
+
+const companies: Company[] = []
 import { formatINR } from '@/lib/mock/dashboard-data'
 
 function Avatar({ initials, size = 32 }: { initials: string; color?: string; size?: number }) {

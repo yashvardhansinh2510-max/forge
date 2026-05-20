@@ -8,7 +8,9 @@ import { PageContainer } from '@/components/layout/page-container'
 import { CRMNav } from '../shared/crm-nav'
 import { CompanyTable } from './company-table'
 import { CompanySlideOver } from './company-slide-over'
-import { companies, type Company } from '@/lib/mock/crm-data'
+import { type Company } from '@/lib/mock/crm-data'
+
+const companies: Company[] = []
 
 export function CompaniesClient() {
   const [selected, setSelected] = React.useState<Company | null>(null)

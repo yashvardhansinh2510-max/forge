@@ -5,13 +5,15 @@ import { toast } from 'sonner'
 import { Button } from '@forge/ui'
 import { PageContainer } from '@/components/layout/page-container'
 import { Badge } from '@/components/shared/badge'
-import { priceLists } from '@/lib/mock/price-lists-data'
+import type { PriceList } from '@/lib/mock/price-lists-data'
+
+const priceLists: PriceList[] = []
 
 export function PriceListsClient() {
   return (
     <PageContainer
       title="Price Lists"
-      subtitle="3 active price lists"
+      subtitle={`${priceLists.length} active price lists`}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
         {priceLists.map((pl) => (

@@ -3,8 +3,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import {
-  MOCK_PURCHASE_ORDERS,
-  MOCK_INVENTORY_BOXES,
   LEGAL_TRANSITIONS,
   type MockPurchaseOrder,
   type MockPOLineItem,
@@ -148,8 +146,8 @@ interface ProcurementActions {
 
 export const useProcurementStore = create<ProcurementState & ProcurementActions>()(
   immer((set, get) => ({
-    orders:        MOCK_PURCHASE_ORDERS,
-    boxes:         MOCK_INVENTORY_BOXES,
+    orders:        [] as MockPurchaseOrder[],
+    boxes:         [] as MockInventoryBox[],
     draftPO:       EMPTY_DRAFT,
     sidebarOpen:   false,
     activeOrderId: null,

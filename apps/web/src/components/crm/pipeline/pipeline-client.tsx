@@ -15,13 +15,13 @@ import { CRMNav } from '../shared/crm-nav'
 import { StageColumn } from './stage-column'
 import { DealCard } from './deal-card'
 import { DealSlideOver } from './deal-slide-over'
-import { deals as initialDeals, PIPELINE_STAGES, type Deal, type DealStage } from '@/lib/mock/crm-data'
+import { PIPELINE_STAGES, type Deal, type DealStage } from '@/lib/mock/crm-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
 import { useRole } from '@/lib/use-role'
 
 export function PipelineClient() {
   const { canEdit } = useRole()
-  const [dealItems, setDealItems] = React.useState<Deal[]>(initialDeals)
+  const [dealItems, setDealItems] = React.useState<Deal[]>([])
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [selectedDeal, setSelectedDeal] = React.useState<Deal | null>(null)
 
