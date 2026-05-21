@@ -8,6 +8,7 @@ interface PrintData {
   createdBy: string
   createdAt: Date
   lineItems: LineItem[]
+  brandLabel?: string
 }
 
 interface SectionData {
@@ -82,6 +83,18 @@ const CSS = `
     .page-break { page-break-before: always; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
+  .brand-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 3px 8px; border-radius: 4px;
+    background: #f3f4f6; border: 1px solid #d1d5db;
+    font-size: 8pt; font-weight: 700; letter-spacing: 0.05em;
+    color: #374151; font-family: Arial Black, Arial, sans-serif;
+  }
+  .brand-pill-oyster  { background: #fff0f0; border-color: #fca5a5; color: #991b1b; }
+  .brand-pill-qutone  { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+  .brand-pill-nexion  { background: #f9fafb; border-color: #6b7280; color: #111827; }
+  .brand-pill-dimore  { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
+  .brand-pill-ittimi  { background: #fdf4ff; border-color: #d8b4fe; color: #6b21a8; }
 `
 
 function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, grandOffer: number, baseUrl: string): string {
@@ -94,7 +107,13 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
     { name: 'GEBERIT', src: `${baseUrl}/brands/geberit.svg` },
     { name: 'VitrA', src: `${baseUrl}/brands/vitra.svg` },
   ]
-  const logoRow2Text = ['Oyster', 'QUTONE', 'Nexion', 'DIMORE', 'ittimi']
+  const brandRow2Html = `<div class="brand-logos-row" style="margin-top:4px;">
+    <span class="brand-pill brand-pill-oyster">Oyster®</span>
+    <span class="brand-pill brand-pill-qutone">QUTONE</span>
+    <span class="brand-pill brand-pill-nexion">✗ Nexion</span>
+    <span class="brand-pill brand-pill-dimore">DIMORE</span>
+    <span class="brand-pill brand-pill-ittimi">ittimi</span>
+  </div>`
 
   const summaryRows = sections.map((s, i) => `
     <tr>
@@ -111,7 +130,7 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
         ${logoRow1.map(b => `<img src="${b.src}" alt="${b.name}" class="brand-img" />`).join('')}
       </div>
       <div class="brand-row" style="border-top:1px solid #ccc; padding-top:6px;">
-        ${logoRow2Text.map(b => `<span class="brand-text">${b}</span>`).join('')}
+        ${brandRow2Html}
       </div>
     </div>
 
@@ -129,7 +148,7 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
     </table>
 
     <table>
-      <tr><td colspan="3" class="gold center section-header">GROHE</td></tr>
+      <tr><td colspan="3" class="gold center section-header">${data.brandLabel?.toUpperCase() || 'GROHE'}</td></tr>
       <tr>
         <th class="gold center summary-sl">SL,NO.</th>
         <th class="gold center">BATHROOM</th>
@@ -187,12 +206,18 @@ function sectionDetailPage(section: SectionData): string {
     return `
       <tr>
         <td class="center">${idx + 1}</td>
-        <td class="center" style="font-size:8.5pt;">${item.sku}</td>
+        <td style="text-align:center;">
+          ${item.sku || '—'}<br>
+          ${(item as any).selectedColor
+            ? `<span style="font-size:7pt;color:#666;">${(item as any).selectedColor}</span>`
+            : ''}
+        </td>
         <td class="center" style="font-size:8.5pt;">${item.productName}${item.description ? `<br><span style="font-size:7.5pt;color:#555;">${item.description}</span>` : ''}</td>
         <td class="center">${imgCell}</td>
         <td class="right">₹ ${fmtN(item.unitPrice)}</td>
         <td class="center">${item.qty}</td>
         <td class="right">₹ ${fmtN(mrpTotal)}</td>
+        <td class="center">${item.gstRate !== undefined ? item.gstRate + '%' : '18%'}</td>
         <td class="right">₹ ${fmtN(offerRate)}</td>
         <td class="right">₹ ${fmtN(offerTotal)}</td>
       </tr>`
@@ -201,7 +226,7 @@ function sectionDetailPage(section: SectionData): string {
   return `
     <div class="page-break">
       <table>
-        <tr><td colspan="9" class="gold bold section-header">${section.name}</td></tr>
+        <tr><td colspan="10" class="gold bold section-header">${section.name}</td></tr>
         <tr>
           <th class="detail-th center" style="width:36px;">Sr.<br>No.</th>
           <th class="detail-th center" style="width:78px;">Article<br>No.</th>
@@ -210,15 +235,16 @@ function sectionDetailPage(section: SectionData): string {
           <th class="detail-th center" style="width:68px;">MRP</th>
           <th class="detail-th center" style="width:36px;">QTY</th>
           <th class="detail-th center" style="width:90px;">MRP TOTAL</th>
+          <th class="detail-th center" style="width:40px;">GST%</th>
           <th class="detail-th center" style="width:82px;">OFFER RATE</th>
           <th class="detail-th center" style="width:90px;">TOTAL</th>
         </tr>
         ${rows}
         <tr class="detail-total-row">
-          <td colspan="4" class="center" style="font-size:11pt;">TOTAL</td>
-          <td></td>
+          <td colspan="5" class="center" style="font-size:11pt;">TOTAL</td>
           <td class="center">${section.totalQty}</td>
           <td class="right">${fmt(section.mrpTotal)}</td>
+          <td class="center">—</td>
           <td class="right">₹ ${fmtN(section.offerRateSum)}</td>
           <td class="right">₹ ${fmtN(section.offerTotal)}</td>
         </tr>
@@ -245,7 +271,7 @@ export function generateQuotationPrintHTML(data: PrintData): string {
 <body>
   ${cover}
   ${details}
-  <script>window.onload = function () { window.print() }</script>
+  <script>window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 400); });</script>
 </body>
 </html>`
 }
