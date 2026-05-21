@@ -20,6 +20,10 @@ interface SectionData {
   totalQty: number
 }
 
+function esc(s: string | null | undefined): string {
+  return (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 /** Indian-formatted currency: ₹ 8,57,640.00 */
 function fmt(n: number): string {
   return '₹ ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -118,7 +122,7 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
   const summaryRows = sections.map((s, i) => `
     <tr>
       <td class="center bold">${i + 1}</td>
-      <td class="center bold">${s.name}</td>
+      <td class="center bold">${esc(s.name)}</td>
       <td class="right bold">${fmt(s.mrpTotal)}</td>
     </tr>`).join('')
 
@@ -141,14 +145,14 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
     </div>
 
     <table class="info-table" style="margin-bottom:12px;">
-      <tr><td class="info-label">NAME :</td><td class="info-value center">${data.customerName}</td></tr>
+      <tr><td class="info-label">NAME :</td><td class="info-value center">${esc(data.customerName)}</td></tr>
       <tr><td class="info-label">DATE :</td><td class="info-value center">${dateStr}</td></tr>
-      <tr><td class="info-label">NUM :</td><td class="info-value center">${data.customerPhone ?? ''}</td></tr>
-      <tr><td class="info-label">REF :</td><td class="info-value center">${data.createdBy}</td></tr>
+      <tr><td class="info-label">NUM :</td><td class="info-value center">${esc(data.customerPhone)}</td></tr>
+      <tr><td class="info-label">REF :</td><td class="info-value center">${esc(data.createdBy)}</td></tr>
     </table>
 
     <table>
-      <tr><td colspan="3" class="gold center section-header">${data.brandLabel?.toUpperCase() || 'GROHE'}</td></tr>
+      <tr><td colspan="3" class="gold center section-header">${esc(data.brandLabel?.toUpperCase() || 'GROHE')}</td></tr>
       <tr>
         <th class="gold center summary-sl">SL,NO.</th>
         <th class="gold center">BATHROOM</th>
@@ -201,18 +205,18 @@ function sectionDetailPage(section: SectionData): string {
     const mrpTotal = item.unitPrice * item.qty
     const offerTotal = offerRate * item.qty
     const imgCell = item.imageUrl
-      ? `<img src="${item.imageUrl}" class="detail-img" alt="${item.productName}" />`
+      ? `<img src="${esc(item.imageUrl)}" class="detail-img" alt="${esc(item.productName)}" />`
       : ''
     return `
       <tr>
         <td class="center">${idx + 1}</td>
         <td style="text-align:center;">
-          ${item.sku || '—'}<br>
+          ${esc(item.sku) || '—'}<br>
           ${item.selectedColor
-            ? `<span style="font-size:7pt;color:#666;">${item.selectedColor}</span>`
+            ? `<span style="font-size:7pt;color:#666;">${esc(item.selectedColor)}</span>`
             : ''}
         </td>
-        <td class="center" style="font-size:8.5pt;">${item.productName}${item.description ? `<br><span style="font-size:7.5pt;color:#555;">${item.description}</span>` : ''}</td>
+        <td class="center" style="font-size:8.5pt;">${esc(item.productName)}${item.description ? `<br><span style="font-size:7.5pt;color:#555;">${esc(item.description)}</span>` : ''}</td>
         <td class="center">${imgCell}</td>
         <td class="right">₹ ${fmtN(item.unitPrice)}</td>
         <td class="center">${item.qty}</td>
@@ -227,7 +231,7 @@ function sectionDetailPage(section: SectionData): string {
   return `
     <div class="page-break">
       <table>
-        <tr><td colspan="11" class="gold bold section-header">${section.name}</td></tr>
+        <tr><td colspan="11" class="gold bold section-header">${esc(section.name)}</td></tr>
         <tr>
           <th class="detail-th center" style="width:36px;">Sr.<br>No.</th>
           <th class="detail-th center" style="width:78px;">Article<br>No.</th>
@@ -268,7 +272,7 @@ export function generateQuotationPrintHTML(data: PrintData): string {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Quotation ${data.number} — ${data.customerName}</title>
+  <title>Quotation ${esc(data.number)} — ${esc(data.customerName)}</title>
   <style>${CSS}</style>
 </head>
 <body>

@@ -152,9 +152,12 @@ export async function PATCH(
 
       // --- Rooms-based sync (new full-page editor) ---
       if (body.rooms !== undefined) {
-        await tx.quotationRoom.deleteMany({ where: { revisionId: id } })
         const allSkus = body.rooms.flatMap((r) => r.items.map((i) => i.sku))
         const products = await tx.product.findMany({ where: { sku: { in: allSkus } }, select: { id: true, sku: true, mrp: true } })
+        if (allSkus.length > 0 && products.length === 0) {
+          throw new Error('No valid SKUs found in payload')
+        }
+        await tx.quotationRoom.deleteMany({ where: { revisionId: id } })
         const productBySku = new Map(products.map((p) => [p.sku, p]))
 
         const rooms = await Promise.all(
@@ -175,9 +178,12 @@ export async function PATCH(
 
       // --- Legacy line-items sync (slide-over builder) ---
       if (body.lineItems !== undefined) {
-        await tx.quotationRoom.deleteMany({ where: { revisionId: id } })
         const skus = body.lineItems.map((li) => li.sku)
         const products = await tx.product.findMany({ where: { sku: { in: skus } }, select: { id: true, sku: true, mrp: true } })
+        if (skus.length > 0 && products.length === 0) {
+          throw new Error('No valid SKUs found in payload')
+        }
+        await tx.quotationRoom.deleteMany({ where: { revisionId: id } })
         const productBySku = new Map(products.map((p) => [p.sku, p]))
         const sectionMap = new Map<string, typeof body.lineItems>()
         for (const li of body.lineItems!) {
