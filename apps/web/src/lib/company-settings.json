@@ -1,0 +1,14 @@
+{
+  "name": "Buildcon House",
+  "gstin": "",
+  "address": "",
+  "phone": "+91 99099 06652",
+  "email": "buildconhouse10@gmail.com",
+  "tollFree": {
+    "GEBERIT": "1800 102 4323",
+    "GROHE": "1800 102 4475",
+    "HANSGROHE": "1800 209 3246",
+    "VITRA": "70451 32132",
+    "OYSTER": "1800 120 8999"
+  }
+}
