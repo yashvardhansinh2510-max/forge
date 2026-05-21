@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { motion } from 'framer-motion'
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, LabelList } from 'recharts'
-import type { DashboardPurchaseStage } from '@/app/api/dashboard/route'
+import type { StatsPipelineStage } from '@/app/api/dashboard/stats/route'
 
 // ── Stage colours ─────────────────────────────────────────────────────────────
 
@@ -29,15 +29,24 @@ function PipelineChartSkeleton() {
 
 interface PipelineChartProps {
   isLoading?: boolean
-  data?: DashboardPurchaseStage[]
+  data?: StatsPipelineStage[]
+}
+
+const STAGE_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  PENDING_APPROVAL: 'Pending Approval',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  LOCKED: 'Locked',
+  FINALIZED: 'Finalized',
 }
 
 export function PipelineChart({ isLoading = false, data }: PipelineChartProps) {
   if (isLoading) return <PipelineChartSkeleton />
 
-  const stages = data ?? []
-  const totalQty = stages.reduce((sum, s) => sum + s.qty, 0)
-  const dispatched = stages.find((s) => s.stage === 'Dispatched')?.qty ?? 0
+  const stages = (data ?? []).map((s) => ({ ...s, stageLabel: STAGE_LABELS[s.stage] ?? s.stage }))
+  const totalQty = stages.reduce((sum, s) => sum + s.count, 0)
+  const finalized = stages.find((s) => s.stage === 'FINALIZED')?.count ?? 0
 
   // CustomLabel needs access to stages — defined as a closure
   function CustomLabel({ x = 0, y = 0, width = 0, height = 0, value = 0 }: {
@@ -46,7 +55,7 @@ export function PipelineChart({ isLoading = false, data }: PipelineChartProps) {
     if (value === 0) return null
     return (
       <text x={x + width + 8} y={y + height / 2} dy={4} fontSize={11} fill="#A1A1AA" fontFamily="var(--font-ui)">
-        {value} {value === 1 ? 'unit' : 'units'}
+        {value}
       </text>
     )
   }
@@ -60,7 +69,7 @@ export function PipelineChart({ isLoading = false, data }: PipelineChartProps) {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
         style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-base)', borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 280 }}
       >
-        <div style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center' }}>No purchase orders yet.</div>
+        <div style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center' }}>No quotations yet.</div>
       </motion.div>
     )
   }
@@ -78,9 +87,9 @@ export function PipelineChart({ isLoading = false, data }: PipelineChartProps) {
       {/* Header */}
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Purchase Pipeline</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Quotation Pipeline</div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
-            Live stage quantities
+            By status · all time
           </div>
         </div>
         <div style={{ background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 12, fontWeight: 600, padding: '0 8px', height: 22, borderRadius: 6, display: 'flex', alignItems: 'center' }}>
@@ -100,8 +109,8 @@ export function PipelineChart({ isLoading = false, data }: PipelineChartProps) {
             ))}
           </defs>
           <XAxis type="number" hide />
-          <YAxis type="category" dataKey="stage" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#52525B', fontWeight: 500 }} width={90} />
-          <Bar dataKey="qty" radius={[0, 4, 4, 0]} barSize={20} isAnimationActive animationDuration={1200} animationEasing="ease-out">
+          <YAxis type="category" dataKey="stageLabel" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#52525B', fontWeight: 500 }} width={110} />
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20} isAnimationActive animationDuration={1200} animationEasing="ease-out">
             {stages.map((_, index) => (
               <Cell key={`cell-${index}`} fill={`url(#stageGrad${index})`} />
             ))}
@@ -113,15 +122,15 @@ export function PipelineChart({ isLoading = false, data }: PipelineChartProps) {
       {/* Footer */}
       <div className="mt-4 flex items-center justify-between pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
         <div>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 2 }}>In transit</div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 2 }}>Open</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-            {totalQty - dispatched} units
+            {totalQty - finalized} quotations
           </div>
         </div>
         <div className="text-right">
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 2 }}>Dispatched</div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 2 }}>Finalized</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: '#15803D', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-            {dispatched}
+            {finalized}
           </div>
         </div>
       </div>

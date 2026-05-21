@@ -1,7 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { FileText, RotateCcw, Save, Percent, MapPin, Phone, ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { FileText, RotateCcw, Save, Percent, MapPin, Phone, ChevronDown, ChevronUp, ShoppingCart, FolderOpen } from 'lucide-react'
 import { usePOSStore, useTotals } from '@/lib/pos-store'
 import { QuotationPreview } from './quotation-preview'
 import { toast } from 'sonner'
@@ -66,6 +67,7 @@ export function POSHeader() {
   const setSiteAddress = usePOSStore((s) => s.setSiteAddress)
   const setReferenceBy = usePOSStore((s) => s.setReferenceBy)
   const resetBuilder   = usePOSStore((s) => s.resetBuilder)
+  const addRoom        = usePOSStore((s) => s.addRoom)
   const totals         = useTotals()
 
   const router = useRouter()
@@ -73,6 +75,12 @@ export function POSHeader() {
   const [showQuotation, setShowQuotation] = React.useState(false)
   const [expanded, setExpanded]           = React.useState(false)
   const [placingOrder, setPlacingOrder]   = React.useState(false)
+  const [saving, setSaving]               = React.useState(false)
+  const [showLoadMenu, setShowLoadMenu]   = React.useState(false)
+  const [dropdownPos, setDropdownPos]     = React.useState({ top: 0, left: 0 })
+  const loadMenuRef  = React.useRef<HTMLDivElement>(null)
+  const loadBtnRef   = React.useRef<HTMLButtonElement>(null)
+  const dropdownRef  = React.useRef<HTMLDivElement>(null)
 
   async function handlePlaceOrder() {
     const nonConcealedItems = rooms.flatMap((room) =>
@@ -120,20 +128,136 @@ export function POSHeader() {
     }
   }
 
-  const handleSave = () => {
-    const existing = JSON.parse(localStorage.getItem('forge-pos-saved-list') ?? '[]')
-    const entry = {
-      id: `save-${Date.now()}`,
-      savedAt: new Date().toISOString(),
-      project,
-      rooms,
+  async function handleSave() {
+    if (!project.clientName.trim()) {
+      toast.error('Add a client name before saving')
+      return
     }
-    const updated = [entry, ...existing].slice(0, 20)
-    localStorage.setItem('forge-pos-saved-list', JSON.stringify(updated))
-    toast.success('Project saved', {
-      description: project.clientName ? `Saved for ${project.clientName}` : 'Saved to local storage',
-    })
+    setSaving(true)
+    try {
+      const lineItems = rooms.flatMap((room) =>
+        room.items
+          .filter((item) => !item.isAutoAdded)
+          .map((item) => ({
+            sku:           item.product.sku,
+            productName:   item.product.name,
+            articleNumber: item.product.articleNumber ?? item.product.sku,
+            qty:           item.quantity,
+            unitPrice:     item.product.mrp,
+            discount:      Math.max(item.itemDiscount, project.globalDiscount),
+            gstRate:       item.product.gstRate,
+            section:       room.name,
+            imageUrl:      item.product.imageUrl ?? undefined,
+            finishName:    item.finish.name || undefined,
+            seriesName:    item.product.seriesName || undefined,
+          }))
+      )
+
+      const res = await fetch('/api/quotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName:  project.clientName,
+          customerPhone: project.clientPhone,
+          siteAddress:   project.siteAddress,
+          projectName:   project.clientName,
+          notes:         `Ref: ${project.referenceBy}`,
+          lineItems,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json() as { message?: string }
+        throw new Error(err.message ?? 'Save failed')
+      }
+
+      const data = await res.json() as { id: string; quotationNumber: string; revisionId: string }
+
+      const savedList = JSON.parse(
+        localStorage.getItem('forge-pos-saved-list') ?? '[]'
+      ) as Array<{ id: string; quotationNumber: string; clientName: string; savedAt: string }>
+
+      const entry = {
+        id:              data.id,
+        revisionId:      data.revisionId,
+        quotationNumber: data.quotationNumber,
+        clientName:      project.clientName,
+        savedAt:         new Date().toISOString(),
+      }
+      localStorage.setItem(
+        'forge-pos-saved-list',
+        JSON.stringify([entry, ...savedList].slice(0, 20))
+      )
+
+      toast.success(`Saved as ${data.quotationNumber}`, {
+        description: `${project.clientName} — view in Quotations`,
+        action: {
+          label: 'Open',
+          onClick: () => router.push('/sales/quotations'),
+        },
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
   }
+
+  async function loadProject(revisionId: string) {
+    setShowLoadMenu(false)
+    try {
+      const res = await fetch(`/api/quotations/${revisionId}`)
+      if (!res.ok) throw new Error('Failed to load')
+      const data = await res.json() as {
+        customerName: string
+        customerPhone: string
+        siteAddress: string
+        lineItems: Array<{
+          sku: string
+          productName: string
+          qty: number
+          unitPrice: number
+          discount: number
+          gstRate: number
+          section: string
+          imageUrl?: string
+        }>
+      }
+
+      resetBuilder()
+      setClientName(data.customerName ?? '')
+      setClientPhone(data.customerPhone ?? '')
+      setSiteAddress(data.siteAddress ?? '')
+
+      const bySection = new Map<string, typeof data.lineItems>()
+      for (const item of data.lineItems) {
+        const section = item.section ?? 'GENERAL'
+        if (!bySection.has(section)) bySection.set(section, [])
+        bySection.get(section)!.push(item)
+      }
+
+      for (const [sectionName] of bySection) {
+        addRoom(sectionName)
+      }
+
+      toast.success('Project loaded', {
+        description: `${data.customerName} — ${data.lineItems.length} items restored`,
+      })
+    } catch {
+      toast.error('Could not load saved project')
+    }
+  }
+
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      const inBtn      = loadMenuRef.current?.contains(target)
+      const inDropdown = dropdownRef.current?.contains(target)
+      if (!inBtn && !inDropdown) setShowLoadMenu(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   return (
     <div style={{ flexShrink: 0, background: 'var(--background)', borderBottom: '1px solid var(--border)' }}>
@@ -155,7 +279,7 @@ export function POSHeader() {
           <div
             style={{
               width: 28, height: 28, borderRadius: 6,
-              background: 'linear-gradient(135deg, #1d4ed8, #7c3aed)',
+              background: '#1d4ed8',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
@@ -290,19 +414,97 @@ export function POSHeader() {
         </button>
 
         <button
-          onClick={handleSave}
+          onClick={() => void handleSave()}
+          disabled={saving}
           style={{
             display: 'flex', alignItems: 'center', gap: 4,
             padding: '6px 10px', borderRadius: 7,
             border: '1px solid var(--border)', background: 'transparent',
-            fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0,
+            fontSize: 12, color: 'var(--text-secondary)', cursor: saving ? 'not-allowed' : 'pointer',
+            flexShrink: 0, opacity: saving ? 0.6 : 1,
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-tint)' }}
+          onMouseEnter={(e) => { if (!saving) e.currentTarget.style.background = 'var(--surface-tint)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
           <Save size={12} />
-          Save
+          {saving ? 'Saving…' : 'Save'}
         </button>
+
+        <div ref={loadMenuRef} style={{ flexShrink: 0 }}>
+          <button
+            ref={loadBtnRef}
+            onClick={() => {
+              if (loadBtnRef.current) {
+                const r = loadBtnRef.current.getBoundingClientRect()
+                setDropdownPos({ top: r.bottom + 4, left: r.left })
+              }
+              setShowLoadMenu((v) => !v)
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '6px 10px', borderRadius: 7,
+              border: '1px solid var(--border)', background: 'transparent',
+              fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-tint)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <FolderOpen size={12} />
+            Load
+          </button>
+        </div>
+
+        {showLoadMenu && createPortal(
+          (() => {
+            const saved = JSON.parse(
+              localStorage.getItem('forge-pos-saved-list') ?? '[]'
+            ) as Array<{ id: string; revisionId: string; quotationNumber: string; clientName: string; savedAt: string }>
+            return (
+              <div ref={dropdownRef} style={{
+                position: 'fixed', top: dropdownPos.top, left: dropdownPos.left,
+                width: 280, background: 'var(--background)',
+                border: '1px solid var(--border)', borderRadius: 10,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+                zIndex: 9999, overflow: 'hidden',
+              }}>
+                <div style={{
+                  padding: '8px 12px', fontSize: 10, fontWeight: 700,
+                  color: 'var(--text-muted)', textTransform: 'uppercase',
+                  letterSpacing: '0.07em', borderBottom: '1px solid var(--border)',
+                }}>
+                  Recent saves
+                </div>
+                {saved.length === 0 ? (
+                  <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+                    No saved projects yet
+                  </div>
+                ) : saved.slice(0, 5).map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => void loadProject(s.revisionId)}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '9px 12px',
+                      background: 'transparent', border: 'none',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {s.clientName || 'Unnamed client'}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
+                      {s.quotationNumber} · {new Date(s.savedAt).toLocaleDateString('en-IN')}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )
+          })(),
+          document.body
+        )}
 
         <button
           onClick={() => setShowQuotation(true)}
