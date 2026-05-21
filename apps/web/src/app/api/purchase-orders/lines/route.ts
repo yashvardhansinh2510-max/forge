@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@forge/db'
+import { prisma, Prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
 import {
   computeBrandCounts,
   countsFromDbLine,
-  matchesBrandTab,
+  getBrandsForTab,
   normalizeBrandTab,
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
@@ -72,14 +72,20 @@ function mapLine(line: {
 export async function GET(req: NextRequest) {
   return withErrorHandling(async () => {
     const activeBrand = normalizeBrandTab(req.nextUrl.searchParams.get('brand'))
-    const page  = Math.max(1, Number(req.nextUrl.searchParams.get('page')  ?? 1))
-    const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? 100)))
+    const page  = Math.max(1, parseInt(req.nextUrl.searchParams.get('page')  ?? '', 10) || 1)
+    const limit = Math.min(200, Math.max(1, parseInt(req.nextUrl.searchParams.get('limit') ?? '', 10) || 100))
     const skip  = (page - 1) * limit
+
+    const brandsForTab = activeBrand === 'ALL' ? null : getBrandsForTab(activeBrand)
+    const brandWhere: Prisma.POLineItemWhereInput | undefined = brandsForTab
+      ? ({ product: { is: { brand: { in: brandsForTab as any[] } } } } as Prisma.POLineItemWhereInput)
+      : undefined
 
     const [dbLines, total] = await Promise.all([
       prisma.pOLineItem.findMany({
       skip,
       take: limit,
+      where: brandWhere,
       include: {
         product: {
           select: {
@@ -109,13 +115,10 @@ export async function GET(req: NextRequest) {
       },
       orderBy: [{ createdAt: 'desc' }],
       }),
-      prisma.pOLineItem.count(),
+      prisma.pOLineItem.count({ where: brandWhere }),
     ])
 
     const allLines = dbLines.map(mapLine)
-    const filteredLines = activeBrand === 'ALL'
-      ? allLines
-      : allLines.filter((line) => matchesBrandTab(line.product.brand, activeBrand))
 
     const agg = await prisma.pOLineItem.aggregate({
       _sum: {
@@ -137,6 +140,6 @@ export async function GET(req: NextRequest) {
       DISPATCHED:    agg._sum.qtyDispatched   ?? 0,
       NOT_DISPLAYED: agg._sum.qtyNotDisplayed ?? 0,
     }
-    return NextResponse.json({ lines: filteredLines, headerCounts, brandCounts: computeBrandCounts(allLines), pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+    return NextResponse.json({ lines: allLines, headerCounts, brandCounts: computeBrandCounts(allLines), pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
   })
 }

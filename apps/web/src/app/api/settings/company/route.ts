@@ -21,6 +21,10 @@ async function read(): Promise<CompanySettings> {
 }
 
 export async function GET() {
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Authentication required' }, { status: 401 })
+  }
   try {
     return NextResponse.json(await read())
   } catch {

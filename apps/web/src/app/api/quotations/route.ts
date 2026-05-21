@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
       )
 
       const allItems = sections.flatMap(([, items], sIdx) => {
-        const roomId = rooms[sIdx].id
+        const roomId = rooms[sIdx]!.id
         return items.flatMap((li, itemIdx) => {
           const product = productBySku.get(li.sku)
           if (!product) return []

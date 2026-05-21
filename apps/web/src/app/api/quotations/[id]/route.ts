@@ -166,7 +166,7 @@ export async function PATCH(
           roomPayload.items.flatMap((item, iIdx) => {
             const product = productBySku.get(item.sku)
             if (!product) return []
-            return [{ roomId: rooms[rIdx].id, productId: product.id, quantity: item.qty, mrp: product.mrp, discountPct: 0, offerRate: item.offerRate, totalOffer: item.offerRate * item.qty, sortOrder: iIdx }]
+            return [{ roomId: rooms[rIdx]!.id, productId: product.id, quantity: item.qty, mrp: product.mrp, discountPct: 0, offerRate: item.offerRate, totalOffer: item.offerRate * item.qty, sortOrder: iIdx }]
           })
         )
         if (roomItems.length > 0) await tx.quotationItem.createMany({ data: roomItems })
@@ -196,7 +196,7 @@ export async function PATCH(
             const product = productBySku.get(li.sku)
             if (!product) return []
             const offerRate = li.unitPrice > 0 ? li.unitPrice : product.mrp * (1 - li.discount / 100)
-            return [{ roomId: rooms[sIdx].id, productId: product.id, quantity: li.qty, mrp: product.mrp, discountPct: li.discount, offerRate, totalOffer: offerRate * li.qty, sortOrder: iIdx, imageUrl: li.imageUrl ?? null, finishName: li.finishName ?? null, seriesName: li.seriesName ?? null, articleNumber: li.articleNumber ?? null }]
+            return [{ roomId: rooms[sIdx]!.id, productId: product.id, quantity: li.qty, mrp: product.mrp, discountPct: li.discount, offerRate, totalOffer: offerRate * li.qty, sortOrder: iIdx, imageUrl: li.imageUrl ?? null, finishName: li.finishName ?? null, seriesName: li.seriesName ?? null, articleNumber: li.articleNumber ?? null }]
           })
         )
         if (legacyItems.length > 0) await tx.quotationItem.createMany({ data: legacyItems })
