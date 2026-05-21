@@ -12,6 +12,7 @@ import {
 function mapLine(line: {
   id: string
   poId: string
+  createdAt: Date
   qtyOrdered: number
   qtyReceived: number
   qtyPendingCo: number
@@ -64,14 +65,21 @@ function mapLine(line: {
     qtyReceived: line.qtyReceived,
     stages: countsFromDbLine(line),
     followUpStatus: line.followUpStatus,
+    createdAt: line.createdAt.toISOString(),
   }
 }
 
 export async function GET(req: NextRequest) {
   return withErrorHandling(async () => {
     const activeBrand = normalizeBrandTab(req.nextUrl.searchParams.get('brand'))
+    const page  = Math.max(1, Number(req.nextUrl.searchParams.get('page')  ?? 1))
+    const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') ?? 100)))
+    const skip  = (page - 1) * limit
 
-    const dbLines = await prisma.pOLineItem.findMany({
+    const [dbLines, total] = await Promise.all([
+      prisma.pOLineItem.findMany({
+      skip,
+      take: limit,
       include: {
         product: {
           select: {
@@ -100,7 +108,9 @@ export async function GET(req: NextRequest) {
         },
       },
       orderBy: [{ createdAt: 'desc' }],
-    })
+      }),
+      prisma.pOLineItem.count(),
+    ])
 
     const allLines = dbLines.map(mapLine)
     const filteredLines = activeBrand === 'ALL'
@@ -127,6 +137,6 @@ export async function GET(req: NextRequest) {
       DISPATCHED:    agg._sum.qtyDispatched   ?? 0,
       NOT_DISPLAYED: agg._sum.qtyNotDisplayed ?? 0,
     }
-    return NextResponse.json({ lines: filteredLines, headerCounts, brandCounts: computeBrandCounts(allLines) })
+    return NextResponse.json({ lines: filteredLines, headerCounts, brandCounts: computeBrandCounts(allLines), pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
   })
 }

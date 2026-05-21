@@ -157,20 +157,19 @@ export async function PATCH(
         const products = await tx.product.findMany({ where: { sku: { in: allSkus } }, select: { id: true, sku: true, mrp: true } })
         const productBySku = new Map(products.map((p) => [p.sku, p]))
 
-        let roomOrder = 0
-        for (const roomPayload of body.rooms) {
-          const room = await tx.quotationRoom.create({
-            data: { revisionId: id, roomName: roomPayload.name, order: roomOrder++ },
-          })
-          let itemOrder = 0
-          for (const item of roomPayload.items) {
+        const rooms = await Promise.all(
+          body.rooms.map((roomPayload, idx) =>
+            tx.quotationRoom.create({ data: { revisionId: id, roomName: roomPayload.name, order: idx } })
+          )
+        )
+        const roomItems = body.rooms.flatMap((roomPayload, rIdx) =>
+          roomPayload.items.flatMap((item, iIdx) => {
             const product = productBySku.get(item.sku)
-            if (!product) continue
-            await tx.quotationItem.create({
-              data: { roomId: room.id, productId: product.id, quantity: item.qty, mrp: product.mrp, discountPct: 0, offerRate: item.offerRate, totalOffer: item.offerRate * item.qty, sortOrder: itemOrder++ },
-            })
-          }
-        }
+            if (!product) return []
+            return [{ roomId: rooms[rIdx].id, productId: product.id, quantity: item.qty, mrp: product.mrp, discountPct: 0, offerRate: item.offerRate, totalOffer: item.offerRate * item.qty, sortOrder: iIdx }]
+          })
+        )
+        if (roomItems.length > 0) await tx.quotationItem.createMany({ data: roomItems })
         return
       }
 
@@ -186,19 +185,21 @@ export async function PATCH(
           if (!sectionMap.has(key)) sectionMap.set(key, [])
           sectionMap.get(key)!.push(li)
         }
-        let roomOrder = 0
-        for (const [sectionName, items] of sectionMap) {
-          const room = await tx.quotationRoom.create({ data: { revisionId: id, roomName: sectionName, order: roomOrder++ } })
-          let itemOrder = 0
-          for (const li of items) {
+        const sections = Array.from(sectionMap.entries())
+        const rooms = await Promise.all(
+          sections.map(([sectionName, _], idx) =>
+            tx.quotationRoom.create({ data: { revisionId: id, roomName: sectionName, order: idx } })
+          )
+        )
+        const legacyItems = sections.flatMap(([, items], sIdx) =>
+          items.flatMap((li, iIdx) => {
             const product = productBySku.get(li.sku)
-            if (!product) continue
+            if (!product) return []
             const offerRate = li.unitPrice > 0 ? li.unitPrice : product.mrp * (1 - li.discount / 100)
-            await tx.quotationItem.create({
-              data: { roomId: room.id, productId: product.id, quantity: li.qty, mrp: product.mrp, discountPct: li.discount, offerRate, totalOffer: offerRate * li.qty, sortOrder: itemOrder++, imageUrl: li.imageUrl, finishName: li.finishName, seriesName: li.seriesName, articleNumber: li.articleNumber },
-            })
-          }
-        }
+            return [{ roomId: rooms[sIdx].id, productId: product.id, quantity: li.qty, mrp: product.mrp, discountPct: li.discount, offerRate, totalOffer: offerRate * li.qty, sortOrder: iIdx, imageUrl: li.imageUrl ?? null, finishName: li.finishName ?? null, seriesName: li.seriesName ?? null, articleNumber: li.articleNumber ?? null }]
+          })
+        )
+        if (legacyItems.length > 0) await tx.quotationItem.createMany({ data: legacyItems })
       }
     })
 

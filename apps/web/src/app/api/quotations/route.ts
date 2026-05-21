@@ -132,39 +132,41 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      let roomOrder = 0
-      for (const [sectionName, items] of sectionMap) {
-        const room = await tx.quotationRoom.create({
-          data: {
-            revisionId: revision.id,
-            roomName: sectionName,
-            order: roomOrder++,
-          },
-        })
+      const sections = Array.from(sectionMap.entries())
+      const rooms = await Promise.all(
+        sections.map(([sectionName, _], idx) =>
+          tx.quotationRoom.create({
+            data: { revisionId: revision.id, roomName: sectionName, order: idx },
+          })
+        )
+      )
 
-        let itemOrder = 0
-        for (const li of items) {
+      const allItems = sections.flatMap(([, items], sIdx) => {
+        const roomId = rooms[sIdx].id
+        return items.flatMap((li, itemIdx) => {
           const product = productBySku.get(li.sku)
-          if (!product) continue
+          if (!product) return []
           const discountFraction = li.discount / 100
           const offerRate = li.unitPrice > 0 ? li.unitPrice : product.mrp * (1 - discountFraction)
-          await tx.quotationItem.create({
-            data: {
-              roomId: room.id,
-              productId: product.id,
-              quantity: li.qty,
-              mrp: product.mrp,
-              discountPct: li.discount,
-              offerRate,
-              totalOffer: offerRate * li.qty,
-              sortOrder: itemOrder++,
-              imageUrl: li.imageUrl,
-              finishName: li.finishName,
-              seriesName: li.seriesName,
-              articleNumber: li.articleNumber,
-            },
-          })
-        }
+          return [{
+            roomId,
+            productId: product.id,
+            quantity: li.qty,
+            mrp: product.mrp,
+            discountPct: li.discount,
+            offerRate,
+            totalOffer: offerRate * li.qty,
+            sortOrder: itemIdx,
+            imageUrl: li.imageUrl ?? null,
+            finishName: li.finishName ?? null,
+            seriesName: li.seriesName ?? null,
+            articleNumber: li.articleNumber ?? null,
+          }]
+        })
+      })
+
+      if (allItems.length > 0) {
+        await tx.quotationItem.createMany({ data: allItems })
       }
 
       return { quotation, revision }
