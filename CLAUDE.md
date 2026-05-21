@@ -232,6 +232,14 @@ For all web browsing and design collaboration, use `/browse` from gstack — nev
 Available skills:
 `/office-hours` `/plan-ceo-review` `/plan-eng-review` `/plan-design-review` `/design-consultation` `/design-shotgun` `/design-html` `/review` `/ship` `/land-and-deploy` `/canary` `/benchmark` `/browse` `/connect-chrome` `/qa` `/qa-only` `/design-review` `/setup-browser-cookies` `/setup-deploy` `/retro` `/investigate` `/document-release` `/codex` `/cso` `/autoplan` `/plan-devex-review` `/devex-review` `/careful` `/freeze` `/guard` `/unfreeze` `/gstack-upgrade` `/learn`
 
+## Testing
+
+- Run command: `pnpm --filter @forge/web test`
+- Test directory: `apps/web/src/__tests__/`
+- See [TESTING.md](TESTING.md) for full docs
+
+When writing new functions, write a corresponding test. When fixing a bug, write a regression test. When adding a conditional, test both paths. Never commit code that breaks existing tests.
+
 ## Skill routing
 
 When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
