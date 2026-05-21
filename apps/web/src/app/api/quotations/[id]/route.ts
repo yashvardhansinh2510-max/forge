@@ -1,26 +1,48 @@
-// GET   /api/quotations/[id]  — load single quotation revision with line items
-// PATCH /api/quotations/[id]  — update draft (re-save line items)
+// GET   /api/quotations/[id]  — load quotation revision with rooms + items
+// PATCH /api/quotations/[id]  — replace rooms + update metadata
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
 
-const LineItemSchema = z.object({
-  sku: z.string().min(1),
-  productName: z.string(),
-  qty: z.number().int().positive(),
-  unitPrice: z.number().min(0),
-  discount: z.number().min(0).max(100).default(0),
-  gstRate: z.number().min(0).default(18),
+const RoomItemSchema = z.object({
+  sku:       z.string().min(1),
+  qty:       z.number().int().positive(),
+  offerRate: z.number().min(0),
+})
+
+const RoomSchema = z.object({
+  name:  z.string().min(1),
+  items: z.array(RoomItemSchema),
 })
 
 const PatchSchema = z.object({
-  customerName: z.string().min(1).optional(),
-  siteAddress: z.string().optional(),
+  customerName:       z.string().optional(),
+  customerPhone:      z.string().optional(),
+  billingAddress:     z.string().optional(),
+  siteAddress:        z.string().optional(),
+  salesRep:           z.string().optional(),
+  brandLabel:         z.string().optional(),
+  validUntil:         z.string().datetime({ offset: true }).optional(),
+  notes:              z.string().optional(),
+  termsAndConditions: z.string().optional(),
+  rooms:              z.array(RoomSchema).optional(),
+  // Legacy line-items path (kept for backwards compat with slide-over builder)
+  lineItems: z.array(z.object({
+    sku:          z.string().min(1),
+    productName:  z.string().optional(),
+    articleNumber: z.string().optional(),
+    qty:          z.number().int().positive(),
+    unitPrice:    z.number().min(0),
+    discount:     z.number().min(0).max(100).default(0),
+    gstRate:      z.number().min(0).default(18),
+    section:      z.string().optional(),
+    imageUrl:     z.string().optional(),
+    finishName:   z.string().optional(),
+    seriesName:   z.string().optional(),
+  })).optional(),
   projectName: z.string().optional(),
-  notes: z.string().optional(),
-  lineItems: z.array(LineItemSchema).optional(),
 })
 
 export async function GET(
@@ -39,7 +61,9 @@ export async function GET(
           include: {
             items: {
               orderBy: { sortOrder: 'asc' as const },
-              include: { product: { select: { sku: true, name: true, unit: true, gstRate: true } } },
+              include: {
+                product: { select: { sku: true, name: true, mrp: true, unit: true, gstRate: true } },
+              },
             },
           },
         },
@@ -50,28 +74,36 @@ export async function GET(
       return NextResponse.json({ message: 'Revision not found' }, { status: 404 })
     }
 
-    const lineItems = revision.rooms.flatMap((room) =>
-      room.items.map((item) => ({
-        id: item.id,
-        sku: item.product.sku,
-        productName: item.product.name,
-        unit: item.product.unit,
-        qty: item.quantity,
-        unitPrice: item.offerRate,
-        discount: item.discountPct,
-        gstRate: item.product.gstRate,
-      })),
-    )
-
     return NextResponse.json({
-      id: revision.quotationId,
-      revisionId: revision.id,
-      quotationNumber: revision.quotation.number,
-      status: revision.status,
-      isLocked: revision.isLocked,
-      customerName: revision.quotation.customerName,
-      siteAddress: revision.quotation.siteAddress,
-      lineItems,
+      id:                 revision.quotationId,
+      revisionId:         revision.id,
+      quotationNumber:    revision.quotation.number,
+      status:             revision.status,
+      isLocked:           revision.isLocked,
+      customerName:       revision.quotation.customerName ?? '',
+      customerPhone:      revision.customerPhone ?? '',
+      billingAddress:     revision.quotation.billingAddress ?? '',
+      siteAddress:        revision.quotation.siteAddress ?? '',
+      salesRep:           (revision.quotation as any).salesRep ?? '',
+      brandLabel:         (revision.quotation as any).brandLabel ?? 'GROHE',
+      createdAt:          revision.createdAt.toISOString(),
+      validUntil:         (revision as any).validUntil?.toISOString() ?? null,
+      notes:              revision.notes ?? '',
+      termsAndConditions: (revision as any).termsAndConditions ?? '',
+      rooms: revision.rooms.map((room) => ({
+        id:    room.id,
+        name:  room.roomName,
+        order: room.order,
+        items: room.items.map((item) => ({
+          id:          item.id,
+          productId:   item.productId,
+          sku:         item.product.sku,
+          productName: item.product.name,
+          mrp:         item.mrp,
+          qty:         item.quantity,
+          offerRate:   item.offerRate,
+        })),
+      })),
     })
   })
 }
@@ -92,83 +124,80 @@ export async function PATCH(
     if (!revision) {
       return NextResponse.json({ message: 'Revision not found' }, { status: 404 })
     }
-
     if (revision.isLocked) {
       return NextResponse.json({ message: 'Cannot update a locked revision' }, { status: 422 })
     }
 
     await prisma.$transaction(async (tx) => {
-      // Update quotation metadata
-      if (body.customerName !== undefined || body.siteAddress !== undefined) {
-        await tx.quotation.update({
-          where: { id: revision.quotationId },
-          data: {
-            ...(body.customerName !== undefined && { customerName: body.customerName }),
-            ...(body.siteAddress !== undefined && { siteAddress: body.siteAddress }),
-          },
-        })
+      // Update Quotation metadata
+      const quotationUpdate: Record<string, unknown> = {}
+      if (body.customerName   !== undefined) quotationUpdate.customerName   = body.customerName
+      if (body.siteAddress    !== undefined) quotationUpdate.siteAddress    = body.siteAddress
+      if (body.billingAddress !== undefined) quotationUpdate.billingAddress = body.billingAddress
+      if (body.salesRep       !== undefined) (quotationUpdate as any).salesRep    = body.salesRep
+      if (body.brandLabel     !== undefined) (quotationUpdate as any).brandLabel  = body.brandLabel
+      if (Object.keys(quotationUpdate).length > 0) {
+        await tx.quotation.update({ where: { id: revision.quotationId }, data: quotationUpdate })
       }
 
-      // Update revision notes
-      if (body.notes !== undefined || body.projectName !== undefined) {
-        await tx.quotationRevision.update({
-          where: { id },
-          data: { ...(body.notes !== undefined && { notes: body.notes }) },
-        })
+      // Update Revision metadata
+      const revUpdate: Record<string, unknown> = {}
+      if (body.notes              !== undefined) revUpdate.notes             = body.notes
+      if (body.customerPhone      !== undefined) revUpdate.customerPhone     = body.customerPhone
+      if (body.validUntil         !== undefined) (revUpdate as any).validUntil         = new Date(body.validUntil)
+      if (body.termsAndConditions !== undefined) (revUpdate as any).termsAndConditions = body.termsAndConditions
+      if (Object.keys(revUpdate).length > 0) {
+        await tx.quotationRevision.update({ where: { id }, data: revUpdate })
       }
 
-      // Re-sync line items if provided
-      if (body.lineItems !== undefined) {
-        // Get or create room
-        let roomId: string
-        const firstRoom = revision.rooms[0]
-        if (firstRoom) {
-          roomId = firstRoom.id
-          // Delete existing items
-          await tx.quotationItem.deleteMany({ where: { roomId } })
-          // Update room name if projectName changed
-          if (body.projectName !== undefined) {
-            await tx.quotationRoom.update({
-              where: { id: roomId },
-              data: { roomName: body.projectName },
-            })
-          }
-        } else {
-          const room = await tx.quotationRoom.create({
-            data: {
-              revisionId: id,
-              roomName: body.projectName ?? 'General',
-              order: 0,
-            },
-          })
-          roomId = room.id
-        }
-
-        // Look up products by SKU
-        const skus = body.lineItems.map((li) => li.sku)
-        const products = await tx.product.findMany({
-          where: { sku: { in: skus } },
-          select: { id: true, sku: true, mrp: true },
-        })
+      // --- Rooms-based sync (new full-page editor) ---
+      if (body.rooms !== undefined) {
+        await tx.quotationRoom.deleteMany({ where: { revisionId: id } })
+        const allSkus = body.rooms.flatMap((r) => r.items.map((i) => i.sku))
+        const products = await tx.product.findMany({ where: { sku: { in: allSkus } }, select: { id: true, sku: true, mrp: true } })
         const productBySku = new Map(products.map((p) => [p.sku, p]))
 
-        let order = 0
-        for (const li of body.lineItems) {
-          const product = productBySku.get(li.sku)
-          if (!product) continue
-          const offerRate = li.unitPrice > 0 ? li.unitPrice : product.mrp * (1 - li.discount / 100)
-          await tx.quotationItem.create({
-            data: {
-              roomId,
-              productId: product.id,
-              quantity: li.qty,
-              mrp: product.mrp,
-              discountPct: li.discount,
-              offerRate,
-              totalOffer: offerRate * li.qty,
-              sortOrder: order++,
-            },
+        let roomOrder = 0
+        for (const roomPayload of body.rooms) {
+          const room = await tx.quotationRoom.create({
+            data: { revisionId: id, roomName: roomPayload.name, order: roomOrder++ },
           })
+          let itemOrder = 0
+          for (const item of roomPayload.items) {
+            const product = productBySku.get(item.sku)
+            if (!product) continue
+            await tx.quotationItem.create({
+              data: { roomId: room.id, productId: product.id, quantity: item.qty, mrp: product.mrp, discountPct: 0, offerRate: item.offerRate, totalOffer: item.offerRate * item.qty, sortOrder: itemOrder++ },
+            })
+          }
+        }
+        return
+      }
+
+      // --- Legacy line-items sync (slide-over builder) ---
+      if (body.lineItems !== undefined) {
+        await tx.quotationRoom.deleteMany({ where: { revisionId: id } })
+        const skus = body.lineItems.map((li) => li.sku)
+        const products = await tx.product.findMany({ where: { sku: { in: skus } }, select: { id: true, sku: true, mrp: true } })
+        const productBySku = new Map(products.map((p) => [p.sku, p]))
+        const sectionMap = new Map<string, typeof body.lineItems>()
+        for (const li of body.lineItems!) {
+          const key = li.section?.trim() || body.projectName || 'General'
+          if (!sectionMap.has(key)) sectionMap.set(key, [])
+          sectionMap.get(key)!.push(li)
+        }
+        let roomOrder = 0
+        for (const [sectionName, items] of sectionMap) {
+          const room = await tx.quotationRoom.create({ data: { revisionId: id, roomName: sectionName, order: roomOrder++ } })
+          let itemOrder = 0
+          for (const li of items) {
+            const product = productBySku.get(li.sku)
+            if (!product) continue
+            const offerRate = li.unitPrice > 0 ? li.unitPrice : product.mrp * (1 - li.discount / 100)
+            await tx.quotationItem.create({
+              data: { roomId: room.id, productId: product.id, quantity: li.qty, mrp: product.mrp, discountPct: li.discount, offerRate, totalOffer: offerRate * li.qty, sortOrder: itemOrder++, imageUrl: li.imageUrl, finishName: li.finishName, seriesName: li.seriesName, articleNumber: li.articleNumber },
+            })
+          }
         }
       }
     })

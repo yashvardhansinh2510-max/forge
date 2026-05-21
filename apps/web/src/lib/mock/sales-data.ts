@@ -20,6 +20,7 @@ export interface LineItem {
   gstRate: number    // 5 | 12 | 18 | 28
   section?: string   // room grouping for PDF, e.g. "BATHROOM 1,2"
   imageUrl?: string  // product thumbnail URL for PDF
+  selectedColor?: string
 }
 
 export interface Quotation {

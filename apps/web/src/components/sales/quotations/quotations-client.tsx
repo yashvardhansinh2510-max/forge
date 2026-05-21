@@ -4,15 +4,14 @@ import * as React from 'react'
 import { motion } from 'framer-motion'
 import { Search, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 import { Button } from '@forge/ui'
 import { PageContainer } from '@/components/layout/page-container'
 import { SalesNav } from '../shared/sales-nav'
 import { QuotationTable } from './quotation-table'
-import { QuotationBuilder } from './quotation-builder'
 import useSWR from 'swr'
 import { type Quotation } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
-import { getFollowUpByQuotationNumber, createFollowUpForQuotation } from '@/lib/mock/followup-data'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -67,41 +66,44 @@ function apiToQuotation(q: ApiQuotation): Quotation {
 }
 
 export function QuotationsClient() {
+  const router = useRouter()
   const [search, setSearch] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<string>('all')
-  const [selectedQuotation, setSelectedQuotation] = React.useState<Quotation | null>(null)
 
-  const { data: apiQuotations = [], isLoading, mutate } = useSWR<ApiQuotation[]>(
+  const { data: apiQuotations = [], isLoading } = useSWR<ApiQuotation[]>(
     '/api/quotations',
     (url: string) => fetch(url).then(r => r.json()),
   )
 
   const quotations = apiQuotations.map(apiToQuotation)
 
-  // Auto-create follow-ups for sent/viewed quotations that don't have one yet
+  // Auto-create follow-ups for sent/viewed quotations (once per session per quotation)
   const processedRef = React.useRef<Set<string>>(new Set())
   React.useEffect(() => {
     quotations.forEach((q) => {
       if (!q.id || processedRef.current.has(q.id)) return
-      if (q.status === 'sent' || q.status === 'viewed') {
-        const existing = getFollowUpByQuotationNumber(q.number)
-        if (!existing) {
-          processedRef.current.add(q.id)
-          createFollowUpForQuotation({
-            quotationId: q.id,
-            quotationNumber: q.number,
-            quotationValue: q.grandTotal ?? 0,
-            customerName: q.customerName,
-            customerPhone: '',
-            brandsInterested: [],
-            projectName: q.projectName,
-            assignedTo: 'Suresh Iyer',
-          })
-          toast.success(`Follow-up created for ${q.customerName}`)
-        } else {
-          processedRef.current.add(q.id)
-        }
-      }
+      if (q.status !== 'sent' && q.status !== 'viewed') return
+      processedRef.current.add(q.id)
+      void fetch('/api/follow-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'QUOTATION',
+          customerName: q.customerName,
+          customerPhone: '',
+          customerType: 'RETAIL',
+          brandsInterested: [],
+          projectName: q.projectName,
+          quotationId: q.id,
+          quotationNumber: q.number,
+          quotationValue: q.grandTotal ?? 0,
+          status: 'PENDING',
+          nextFollowUpDate: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+          assignedTo: 'Suresh Iyer',
+        }),
+      }).then((res) => {
+        if (res.ok) toast.success(`Follow-up created for ${q.customerName}`)
+      })
     })
   }, [quotations])
 
@@ -133,7 +135,7 @@ export function QuotationsClient() {
   ]
 
   const actions = (
-    <Button size="sm" onClick={() => toast.success('New quotation coming soon')}>
+    <Button size="sm" onClick={() => router.push('/sales/quotations/new' as never)}>
       <Plus size={14} className="mr-1.5" />
       New Quotation
     </Button>
@@ -211,13 +213,7 @@ export function QuotationsClient() {
         </div>
       </div>
 
-      <QuotationTable data={filtered} globalFilter={search} onRowClick={setSelectedQuotation} />
-
-      <QuotationBuilder
-        quotation={selectedQuotation}
-        onClose={() => { setSelectedQuotation(null); void mutate() }}
-        onConvertToOrder={() => {}}
-      />
+      <QuotationTable data={filtered} globalFilter={search} onRowClick={(q) => router.push(`/sales/quotations/${q.revisionId ?? ''}` as never)} />
     </PageContainer>
   )
 }

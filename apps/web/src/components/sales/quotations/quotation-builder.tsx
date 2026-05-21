@@ -25,6 +25,7 @@ import {
 } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/format'
 import { generateQuotationPrintHTML } from '@/lib/quotation-print'
+import type { ProductApiItem } from '@/lib/pos-catalog'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -121,7 +122,18 @@ function InlineNumberInput({
   )
 }
 
-type LiveProduct = { id: string; sku: string; name: string; brand: string; mrp: number; unit: string }
+type LiveProduct = {
+  id: string
+  sku: string
+  name: string
+  brand: string
+  mrp: number
+  unit: string
+  imageUrl?: string
+  articleNumber?: string
+  seriesName?: string
+  finishName?: string
+}
 
 function ProductSearchCell({
   item, onUpdate, products,
@@ -190,20 +202,56 @@ function ProductSearchCell({
             key={p.id}
             type="button"
             onMouseDown={() => {
-              onUpdate({ productId: p.id, productName: p.name, sku: p.sku, unit: p.unit, unitPrice: p.mrp })
+              onUpdate({
+                productId:   p.id,
+                productName: p.name,
+                sku:         p.sku,
+                unit:        p.unit,
+                unitPrice:   p.mrp,
+                imageUrl:    p.imageUrl,
+                description: p.seriesName
+                  ? `${p.seriesName}${p.finishName ? ' · ' + p.finishName : ''}`
+                  : undefined,
+              })
               setEditing(false)
               setSearch('')
             }}
             style={{
-              display: 'block', width: '100%', textAlign: 'left',
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              width: '100%', textAlign: 'left',
               padding: '8px 12px', fontSize: 12, background: 'white', border: 'none',
               borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer',
             }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-tint)' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'white' }}
           >
-            <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 1 }}>{p.name}</div>
-            <div style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{p.sku} · {p.brand} · {formatINR(p.mrp)}</div>
+            {p.imageUrl ? (
+              <img src={p.imageUrl} alt={p.name} style={{
+                width: 32, height: 32, objectFit: 'contain',
+                borderRadius: 4, border: '1px solid var(--border)',
+                background: '#fafafa', flexShrink: 0,
+              }} />
+            ) : (
+              <div style={{
+                width: 32, height: 32, borderRadius: 4,
+                background: p.brand === 'AXOR' ? '#1C1C1E22' : '#00529A22',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 9, fontWeight: 700,
+                color: p.brand === 'AXOR' ? '#1C1C1E' : '#00529A',
+                flexShrink: 0,
+              }}>
+                {p.brand === 'AXOR' ? 'AX' : 'HG'}
+              </div>
+            )}
+            <div>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 1 }}>{p.name}</div>
+              <div style={{ color: 'var(--text-tertiary)', fontSize: 10, marginTop: 1 }}>
+                {p.articleNumber ?? p.sku}
+                {p.seriesName && ` · ${p.seriesName}`}
+                {p.finishName && ` · ${p.finishName}`}
+              </div>
+              <div style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>{p.brand} · {formatINR(p.mrp)}</div>
+            </div>
           </button>
         ))}
         {filtered.length === 0 && (
@@ -242,7 +290,7 @@ function SortableRow({
       {...attributes}
     >
       {/* Drag handle */}
-      <td style={{ width: 24, padding: '8px 4px 8px 12px', verticalAlign: 'top' }}>
+      <td style={{ width: 24, padding: '8px 4px 8px 4px', verticalAlign: 'top' }}>
         <div
           {...listeners}
           style={{ cursor: 'grab', color: hovered ? 'var(--text-tertiary)' : 'transparent', paddingTop: 2, transition: 'color 100ms' }}
@@ -250,9 +298,29 @@ function SortableRow({
           <GripVertical size={14} />
         </div>
       </td>
-      {/* Product */}
-      <td style={{ padding: '8px 8px', verticalAlign: 'top', minWidth: 200 }}>
-        <ProductSearchCell item={item} onUpdate={onUpdate} products={products} />
+      {/* Product + Image */}
+      <td style={{ padding: '10px 10px', verticalAlign: 'middle', minWidth: 260 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.productName}
+              style={{ width: 52, height: 52, objectFit: 'contain',
+                border: '1px solid var(--border-default)', borderRadius: 6,
+                background: '#fafafa', flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{ width: 52, height: 52, borderRadius: 6,
+              border: '1px solid var(--border-default)',
+              background: 'var(--surface)', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
+            }}>
+              IMG
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ProductSearchCell item={item} onUpdate={onUpdate} products={products} />
+          </div>
+        </div>
       </td>
       {/* Qty */}
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
@@ -266,23 +334,23 @@ function SortableRow({
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
         <InlineNumberInput value={item.discount} onChange={(v) => onUpdate({ discount: Math.min(100, v) })} />
       </td>
-      {/* Section */}
-      <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 86 }}>
-        <input
-          value={item.section ?? ''}
-          onChange={(e) => onUpdate({ section: e.target.value.trim() || undefined })}
-          placeholder="Room…"
-          style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--border-default)', borderRadius: 4, outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)' }}
-        />
-      </td>
-      {/* Image URL */}
-      <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 80 }}>
-        <input
-          value={item.imageUrl ?? ''}
-          onChange={(e) => onUpdate({ imageUrl: e.target.value.trim() || undefined })}
-          placeholder="https://…"
-          style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--border-default)', borderRadius: 4, outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)' }}
-        />
+      {/* Room */}
+      <td style={{ padding: '10px 6px', verticalAlign: 'middle', width: 110 }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-tertiary)',
+            textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+            Room
+          </div>
+          <input
+            value={item.section ?? ''}
+            onChange={(e) => onUpdate({ section: e.target.value || undefined })}
+            placeholder="e.g. BATHROOM 1,2"
+            style={{ width: '100%', fontSize: 11, padding: '4px 6px',
+              border: '1px solid var(--border-default)', borderRadius: 4,
+              outline: 'none', boxSizing: 'border-box',
+              color: 'var(--text-primary)', background: 'var(--background)' }}
+          />
+        </div>
       </td>
       {/* GST */}
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
@@ -340,6 +408,7 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
   const [showHistoryModal, setShowHistoryModal] = React.useState(false)
   const [customerName, setCustomerName] = React.useState('')
   const [customerPhone, setCustomerPhone] = React.useState('')
+  const [brandLabel, setBrandLabel] = React.useState('GROHE')
   const [siteAddress, setSiteAddress] = React.useState('')
   const [projectName, setProjectName] = React.useState('')
   const [notes, setNotes] = React.useState('')
@@ -347,9 +416,25 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
   const [revisionId, setRevisionId] = React.useState<string | null>(null)
   const [creating, setCreating] = React.useState(false)
 
-  const { data: liveProducts = [] } = useSWR<LiveProduct[]>(
-    '/api/products',
+  const { data: productsResponse } = useSWR<{ products: ProductApiItem[] }>(
+    '/api/products?limit=2000',
     (url: string) => fetch(url).then(r => r.json()),
+    { revalidateOnFocus: false },
+  )
+  const liveProducts = React.useMemo<LiveProduct[]>(
+    () => (productsResponse?.products ?? []).map(p => ({
+      id:            p.id,
+      sku:           p.sku,
+      name:          p.name,
+      brand:         p.brand,
+      mrp:           p.mrp,
+      unit:          p.unit,
+      imageUrl:      p.imageUrl      ?? undefined,
+      articleNumber: p.articleNumber ?? p.sku,
+      seriesName:    p.seriesName    ?? undefined,
+      finishName:    p.finishName    ?? undefined,
+    })),
+    [productsResponse],
   )
 
   React.useEffect(() => {
@@ -382,6 +467,7 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
     setLineItems(prev => [...prev, {
       id: newId, productId: '', productName: '', sku: '', description: '',
       unit: 'pcs', qty: 1, unitPrice: 0, discount: 0, gstRate: 18,
+      imageUrl: undefined,
     }])
   }
 
@@ -406,6 +492,7 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
       customerPhone: customerPhone || undefined,
       createdBy: quotation.createdBy,
       createdAt: quotation.createdAt,
+      brandLabel: brandLabel || 'GROHE',
       lineItems,
     })
     const win = window.open('', '_blank')
@@ -647,6 +734,18 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                         onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)'; (e.target as HTMLInputElement).style.boxShadow = 'none' }}
                       />
                     </div>
+                    {/* Brand Label */}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Brand Label</label>
+                      <input
+                        value={brandLabel}
+                        onChange={(e) => setBrandLabel(e.target.value)}
+                        placeholder="e.g. GROHE"
+                        style={{ width: '100%', fontSize: 13, padding: '5px 8px', border: '1.5px solid var(--border-default)', borderRadius: 6, outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(0,113,227,0.5)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(0,113,227,0.12)' }}
+                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)'; (e.target as HTMLInputElement).style.boxShadow = 'none' }}
+                      />
+                    </div>
                     {/* Editable: Site Address */}
                     <div style={{ marginBottom: 14 }}>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Site / Project Address</label>
@@ -704,10 +803,9 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                             <th style={{ width: 24 }} />
                             <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Product</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>Qty</th>
-                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 100 }}>Price</th>
+                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 100 }}>MRP</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>Disc%</th>
-                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 86 }}>Section</th>
-                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 80 }}>Image URL</th>
+                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 110 }}>Room</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>GST</th>
                             <th style={{ padding: '8px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right', width: 100 }}>Total</th>
                             <th style={{ width: 32 }} />

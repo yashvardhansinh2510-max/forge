@@ -208,8 +208,8 @@ function sectionDetailPage(section: SectionData): string {
         <td class="center">${idx + 1}</td>
         <td style="text-align:center;">
           ${item.sku || '—'}<br>
-          ${(item as any).selectedColor
-            ? `<span style="font-size:7pt;color:#666;">${(item as any).selectedColor}</span>`
+          ${item.selectedColor
+            ? `<span style="font-size:7pt;color:#666;">${item.selectedColor}</span>`
             : ''}
         </td>
         <td class="center" style="font-size:8.5pt;">${item.productName}${item.description ? `<br><span style="font-size:7.5pt;color:#555;">${item.description}</span>` : ''}</td>
@@ -217,6 +217,7 @@ function sectionDetailPage(section: SectionData): string {
         <td class="right">₹ ${fmtN(item.unitPrice)}</td>
         <td class="center">${item.qty}</td>
         <td class="right">₹ ${fmtN(mrpTotal)}</td>
+        <td class="center">${item.discount}%</td>
         <td class="center">${item.gstRate !== undefined ? item.gstRate + '%' : '18%'}</td>
         <td class="right">₹ ${fmtN(offerRate)}</td>
         <td class="right">₹ ${fmtN(offerTotal)}</td>
@@ -226,7 +227,7 @@ function sectionDetailPage(section: SectionData): string {
   return `
     <div class="page-break">
       <table>
-        <tr><td colspan="10" class="gold bold section-header">${section.name}</td></tr>
+        <tr><td colspan="11" class="gold bold section-header">${section.name}</td></tr>
         <tr>
           <th class="detail-th center" style="width:36px;">Sr.<br>No.</th>
           <th class="detail-th center" style="width:78px;">Article<br>No.</th>
@@ -235,6 +236,7 @@ function sectionDetailPage(section: SectionData): string {
           <th class="detail-th center" style="width:68px;">MRP</th>
           <th class="detail-th center" style="width:36px;">QTY</th>
           <th class="detail-th center" style="width:90px;">MRP TOTAL</th>
+          <th class="detail-th center" style="width:44px;">DISC%</th>
           <th class="detail-th center" style="width:40px;">GST%</th>
           <th class="detail-th center" style="width:82px;">OFFER RATE</th>
           <th class="detail-th center" style="width:90px;">TOTAL</th>
@@ -244,6 +246,7 @@ function sectionDetailPage(section: SectionData): string {
           <td colspan="5" class="center" style="font-size:11pt;">TOTAL</td>
           <td class="center">${section.totalQty}</td>
           <td class="right">${fmt(section.mrpTotal)}</td>
+          <td class="center">—</td>
           <td class="center">—</td>
           <td class="right">₹ ${fmtN(section.offerRateSum)}</td>
           <td class="right">₹ ${fmtN(section.offerTotal)}</td>
@@ -271,7 +274,7 @@ export function generateQuotationPrintHTML(data: PrintData): string {
 <body>
   ${cover}
   ${details}
-  <script>window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 400); });</script>
+  <script>window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 500); });</script>
 </body>
 </html>`
 }

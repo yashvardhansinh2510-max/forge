@@ -21,20 +21,28 @@ model User {
   purchaseOrders   PurchaseOrder[]   @relation("CreatedPurchaseOrders")
   quotations       Quotation[]       @relation("CreatedBy")
   stageMovements   StageMovement[]   @relation("StageMovements")
+  ownedContacts    Contact[]         @relation("OwnedContacts")
 }
 
 model Contact {
-  id        String      @id @default(cuid())
-  name      String
-  role      String
-  companyId String?
-  email     String?
-  phone     String?
-  type      ContactType @default(ARCHITECT)
-  tags      String[]
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  company   Company?    @relation(fields: [companyId], references: [id])
+  id             String      @id @default(cuid())
+  name           String
+  title          String
+  companyId      String?
+  email          String?
+  phone          String?
+  type           ContactType @default(ARCHITECT)
+  tags           String[]
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  whatsapp       String?
+  city           String?
+  area           String?
+  ownerId        String?
+  lastActivityAt DateTime?
+  notes          String?
+  company        Company?    @relation(fields: [companyId], references: [id])
+  owner          User?       @relation("OwnedContacts", fields: [ownerId], references: [id])
 }
 
 model Company {
@@ -73,9 +81,13 @@ model Quotation {
   createdById   String
   currentStatus RevisionStatus      @default(DRAFT)
   createdAt     DateTime            @default(now())
-  customerName  String?
-  siteAddress   String?
-  createdBy     User                @relation("CreatedBy", fields: [createdById], references: [id])
+  customerName   String?
+  siteAddress    String?
+  customerGST    String?
+  billingAddress String?
+  salesRep       String?
+  brandLabel     String?
+  createdBy      User                @relation("CreatedBy", fields: [createdById], references: [id])
   project       Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   revisions     QuotationRevision[]
 }
@@ -90,6 +102,10 @@ model QuotationRevision {
   lockedAt          DateTime?
   snapshot          Json?
   notes             String?
+  customerPhone     String?
+  validDays         Int               @default(30)
+  validUntil        DateTime?
+  termsAndConditions String?
   createdAt         DateTime          @default(now())
   approvalRequests  ApprovalRequest[]
   purchaseOrders    PurchaseOrder[]
@@ -125,6 +141,10 @@ model QuotationItem {
   stockInBox      Int             @default(0)
   stockDispatched Int             @default(0)
   inventoryStatus InventoryStatus @default(QUOTED)
+  imageUrl        String?
+  finishName      String?
+  seriesName      String?
+  articleNumber   String?
   createdAt       DateTime        @default(now())
   boxItems        BoxItem[]
   poLineItems     POLineItem[]
