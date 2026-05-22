@@ -33,19 +33,6 @@ const BRAND_BG: Record<string, string> = {
   'Kajaria':   'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
 }
 
-function CategoryIcon({ category }: { category: string }) {
-  const icons: Record<string, string> = {
-    'Showers':      '🚿',
-    'Basin Mixers': '🚰',
-    'Thermostats':  '🌡️',
-    'WCs':          '🚽',
-    'Basins':       '🫧',
-    'Bath Mixers':  '🛁',
-    'Kitchen':      '🍳',
-    'Accessories':  '🔩',
-  }
-  return <span style={{ fontSize: 28 }}>{icons[category] ?? '📦'}</span>
-}
 
 function ProductCard({ product, onClick }: { product: POSProduct; onClick: () => void }) {
   const tier = TIER_COLORS[product.tier] ?? TIER_COLORS.mid!
@@ -71,13 +58,81 @@ function ProductCard({ product, onClick }: { product: POSProduct; onClick: () =>
         e.currentTarget.style.borderColor = 'var(--border)'
       }}
     >
-      <div style={{ background: bg, padding: '14px 14px 10px', display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
-        <CategoryIcon category={product.category} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-          <span style={{ padding: '2px 7px', borderRadius: 999, background: 'rgba(255,255,255,0.20)', fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.04em', backdropFilter: 'blur(2px)' }}>
+      <div style={{
+        height: 130,
+        position: 'relative',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}>
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            loading="lazy"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              padding: 10,
+              background: '#FAFAFA',
+              display: 'block',
+            }}
+            onError={(e) => {
+              const img = e.currentTarget
+              img.style.display = 'none'
+              const fallback = img.nextElementSibling as HTMLElement
+              if (fallback) fallback.style.display = 'flex'
+            }}
+          />
+        ) : null}
+        <div style={{
+          display: product.imageUrl ? 'none' : 'flex',
+          width: '100%',
+          height: '100%',
+          background: bg,
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 13,
+          fontWeight: 800,
+          color: '#fff',
+          letterSpacing: '0.06em',
+        }}>
+          {product.brand === 'Axor' ? 'AX' :
+           product.brand === 'Hansgrohe' ? 'HG' :
+           product.brand.slice(0, 2).toUpperCase()}
+        </div>
+
+        {/* Brand + tier badges — always overlaid top-left */}
+        <div style={{
+          position: 'absolute',
+          top: 6,
+          left: 6,
+          display: 'flex',
+          gap: 4,
+          flexWrap: 'wrap',
+        }}>
+          <span style={{
+            padding: '2px 7px',
+            borderRadius: 999,
+            background: product.imageUrl
+              ? 'rgba(0,0,0,0.45)'
+              : 'rgba(255,255,255,0.20)',
+            fontSize: 9,
+            fontWeight: 700,
+            color: '#fff',
+            letterSpacing: '0.04em',
+            backdropFilter: 'blur(4px)',
+          }}>
             {product.brand.toUpperCase()}
           </span>
-          <span style={{ padding: '2px 7px', borderRadius: 999, fontSize: 9, fontWeight: 500, background: tier.bg, color: tier.text }}>
+          <span style={{
+            padding: '2px 7px',
+            borderRadius: 999,
+            fontSize: 9,
+            fontWeight: 500,
+            background: tier.bg,
+            color: tier.text,
+          }}>
             {TIER_LABELS[product.tier]}
           </span>
         </div>
@@ -200,7 +255,39 @@ function POSSearch() {
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
-              <span style={{ fontSize: 18, flexShrink: 0 }}>📦</span>
+              {p.imageUrl ? (
+                <img
+                  src={p.imageUrl}
+                  alt=""
+                  style={{
+                    width: 36,
+                    height: 36,
+                    objectFit: 'contain',
+                    borderRadius: 5,
+                    border: '1px solid var(--border)',
+                    background: '#fafafa',
+                    flexShrink: 0,
+                    display: 'block',
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 5,
+                  border: '1px solid var(--border)',
+                  background: p.brand === 'Axor' ? '#1C1C1E18' : '#00529A18',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 9,
+                  fontWeight: 800,
+                  color: p.brand === 'Axor' ? '#1C1C1E' : '#00529A',
+                  flexShrink: 0,
+                }}>
+                  {p.brand === 'Axor' ? 'AX' : 'HG'}
+                </div>
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {p.name}
@@ -277,7 +364,6 @@ export function ProductGrid() {
           ))
         ) : products.length === 0 ? (
           <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 60, color: 'var(--text-muted)', gap: 8 }}>
-            <span style={{ fontSize: 32 }}>📦</span>
             <span style={{ fontSize: 13 }}>No products found</span>
             <span style={{ fontSize: 11 }}>Select a brand from the left to browse</span>
           </div>

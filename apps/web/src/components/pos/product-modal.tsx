@@ -99,8 +99,39 @@ export function ProductModal() {
             flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+            {/* Product image — 200×200 centered, object-contain */}
+            <div style={{
+              width: 200, height: 200, flexShrink: 0,
+              background: product.imageUrl ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.12)',
+              borderRadius: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
+            }}>
+              {product.imageUrl ? (
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  style={{ width: 200, height: 200, objectFit: 'contain', padding: 12 }}
+                  onError={(e) => {
+                    const parent = e.currentTarget.parentElement
+                    if (parent) {
+                      parent.style.background = 'rgba(255,255,255,0.12)'
+                      e.currentTarget.style.display = 'none'
+                    }
+                  }}
+                />
+              ) : (
+                <span style={{ fontSize: 48, fontWeight: 900, color: 'rgba(255,255,255,0.6)', letterSpacing: '-0.02em' }}>
+                  {product.brand === 'Axor' ? 'AX' :
+                   product.brand === 'Hansgrohe' ? 'HG' :
+                   product.brand.slice(0, 2).toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            {/* Text content */}
+            <div style={{ flex: 1 }}>
               <div
                 style={{
                   display: 'inline-flex',
@@ -133,7 +164,7 @@ export function ProductModal() {
               </div>
             </div>
             {/* MRP */}
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ textAlign: 'right', flexShrink: 0, alignSelf: 'flex-start' }}>
               <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>MRP</div>
               <div
                 style={{
@@ -177,6 +208,49 @@ export function ProductModal() {
 
           {/* Left: configure */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
+            {/* Product image */}
+            {product.imageUrl && (
+              <div style={{
+                width: '100%',
+                height: 200,
+                marginBottom: 18,
+                borderRadius: 10,
+                border: '1px solid var(--border)',
+                background: '#FAFAFA',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    padding: 16,
+                    display: 'block',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Article number */}
+            <div style={{
+              fontSize: 11,
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-ui)',
+              marginBottom: product.description ? 8 : 18,
+            }}>
+              Article No. {product.articleNumber ?? product.sku}
+              {product.seriesName && (
+                <span style={{ marginLeft: 8, color: 'var(--text-tertiary)' }}>
+                  · {product.seriesName}
+                </span>
+              )}
+            </div>
+
             {/* Description */}
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.65, margin: '0 0 18px' }}>
               {product.description}
@@ -388,7 +462,39 @@ export function ProductModal() {
                       borderBottom: '1px solid var(--border)',
                     }}
                   >
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>{part.emoji}</span>
+                    {part.imageUrl ? (
+                      <img
+                        src={part.imageUrl}
+                        alt={part.name}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          objectFit: 'contain',
+                          borderRadius: 4,
+                          border: '1px solid var(--border)',
+                          background: '#fafafa',
+                          flexShrink: 0,
+                          display: 'block',
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 4,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 8,
+                        fontWeight: 700,
+                        color: 'var(--text-muted)',
+                        flexShrink: 0,
+                      }}>
+                        HG
+                      </div>
+                    )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.3, marginBottom: 2 }}>
                         {part.name}

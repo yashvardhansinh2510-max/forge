@@ -13,6 +13,7 @@ export interface ProductApiItem {
   category: string | null
   subcategory: string | null
   seriesName: string | null
+  finishName: string | null
   mrp: number
   unit: string
   gstRate: number
@@ -29,7 +30,6 @@ const BRAND_DISPLAY: Record<string, string> = {
   AXOR:      'Axor',
   VITRA:     'Vitra',
   GEBERIT:   'Geberit',
-  KAJARIA:   'Kajaria',
   OTHER:     'Other',
 }
 
@@ -39,7 +39,6 @@ const BRAND_COLOR: Record<string, string> = {
   Axor:      '#1C1C1E',
   Vitra:     '#E5002B',
   Geberit:   '#6B7280',
-  Kajaria:   '#F59E0B',
   Other:     '#6B7280',
 }
 
@@ -93,7 +92,6 @@ export function mapToPOSProduct(p: ProductApiItem): POSProduct {
     tier,
     finishes,
     defaultFinish: finishes[0]?.name ?? '',
-    emoji:        '📦',
     gradient:     '',
     requiresPartIds: p.concealedPartId ? [p.concealedPartId] : [],
     isConcealed:  false,

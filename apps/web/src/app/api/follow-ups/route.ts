@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { followUps as mockFollowUps } from '@/lib/mock/followup-data'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -83,54 +82,16 @@ export async function GET(_req: NextRequest) {
       },
     })
 
-    // If DB is empty, serve mock data
+    // Empty state — no data yet
     if (all.length === 0) {
-      const now = new Date()
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      const mockActive = mockFollowUps.filter((f) => f.status !== 'won' && f.status !== 'lost')
-      const mockOverdue = mockActive.filter((f) => f.nextFollowUpDate < now)
-      const mockWonMonth = mockFollowUps.filter((f) => f.status === 'won' && f.updatedAt >= startOfMonth)
-      const mockLostMonth = mockFollowUps.filter((f) => f.status === 'lost' && f.updatedAt >= startOfMonth)
-      const mockWonValue = mockWonMonth.reduce((s, f) => s + (f.quotationValue ?? f.estimatedBudget ?? 0), 0)
-
-      const followUps: FollowUpItem[] = mockFollowUps.map((f) => ({
-        id: f.id,
-        type: f.type.toUpperCase(),
-        customerName: f.customerName,
-        customerPhone: f.customerPhone,
-        customerType: f.customerType.toUpperCase(),
-        brandsInterested: f.brandsInterested as string[],
-        productsNoted: f.productsNoted ?? null,
-        estimatedBudget: f.estimatedBudget ?? null,
-        projectName: f.projectName ?? null,
-        quotationId: f.quotationId ?? null,
-        quotationNumber: f.quotationNumber ?? null,
-        quotationValue: f.quotationValue ?? null,
-        status: f.status.toUpperCase(),
-        nextFollowUpDate: f.nextFollowUpDate.toISOString(),
-        lastContactedAt: f.lastContactedAt?.toISOString() ?? null,
-        notes: f.notes ?? null,
-        assignedTo: f.assignedTo ?? null,
-        createdAt: f.createdAt.toISOString(),
-        updatedAt: f.updatedAt.toISOString(),
-        responses: f.responses.map((r) => ({
-          id: r.id,
-          date: r.date.toISOString(),
-          method: r.method.toUpperCase(),
-          outcome: r.outcome,
-          nextAction: r.nextAction ?? null,
-          staffMember: r.staffMember,
-        })),
-      }))
-
       return NextResponse.json({
-        followUps,
+        followUps: [],
         kpis: {
-          active: mockActive.length,
-          overdue: mockOverdue.length,
-          wonThisMonth: mockWonMonth.length,
-          wonValueThisMonth: mockWonValue,
-          lostThisMonth: mockLostMonth.length,
+          active: 0,
+          overdue: 0,
+          wonThisMonth: 0,
+          wonValueThisMonth: 0,
+          lostThisMonth: 0,
         },
       } satisfies FollowUpsListResponse)
     }

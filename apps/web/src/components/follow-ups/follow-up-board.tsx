@@ -26,7 +26,7 @@ import {
   getEffectiveStatus,
   type FollowUp,
   type FollowUpStatus,
-} from '@/lib/mock/followup-data'
+} from '@/lib/follow-up-types'
 import { formatINR } from '@/lib/mock/dashboard-data'
 
 // Statuses shown as columns (won/lost are separate "terminal" columns)

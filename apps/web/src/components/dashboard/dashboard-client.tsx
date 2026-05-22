@@ -13,9 +13,9 @@ import { PipelineChart } from './pipeline-chart'
 import { ActivityFeed } from './activity-feed'
 import { TopCustomers } from './top-customers'
 import { QuickActions } from './quick-actions'
-import type { DashboardData } from '@/app/api/dashboard/route'
+import type { DashboardStats } from '@/app/api/dashboard/stats/route'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json()) as Promise<DashboardData>
+const fetcher = (url: string) => fetch(url).then((r) => r.json()) as Promise<DashboardStats>
 
 // ─── Greeting ─────────────────────────────────────────────────────────────────
 
@@ -64,9 +64,9 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ firstName = '' }: DashboardClientProps) {
-  const { data, isLoading, mutate } = useSWR<DashboardData>('/api/dashboard', fetcher, {
+  const { data, isLoading, mutate } = useSWR<DashboardStats>('/api/dashboard/stats', fetcher, {
     revalidateOnFocus: true,
-    refreshInterval: 60_000,
+    refreshInterval: 30_000,
   })
   const [isRefetching, setIsRefetching] = React.useState(false)
 
@@ -81,11 +81,12 @@ export function DashboardClient({ firstName = '' }: DashboardClientProps) {
     const kpis = data?.kpis
     const rows = [
       ['Metric', 'Value'],
-      ['Active Follow-ups', String(kpis?.activeFollowUps ?? 0)],
-      ['Overdue Follow-ups', String(kpis?.overdueFollowUps ?? 0)],
-      ['Open Quotations', String(kpis?.openQuotationsCount ?? 0)],
-      ['PO Lines In Transit', String(kpis?.poLinesInTransit ?? 0)],
-      ['Outstanding Payments', String(kpis?.outstandingPayments ?? 0)],
+      ['Revenue MTD', String(kpis?.totalRevenue ?? 0)],
+      ['Revenue MoM Change %', String(kpis?.totalRevenueChange ?? 0)],
+      ['Active Quotations', String(kpis?.activeQuotations ?? 0)],
+      ['Quotation Pipeline Value', String(kpis?.quotationValue ?? 0)],
+      ['Open Purchase Orders', String(kpis?.openPurchaseOrders ?? 0)],
+      ['Pending Follow-ups', String(kpis?.pendingFollowUps ?? 0)],
     ]
     const csv = rows.map((r) => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -158,10 +159,10 @@ export function DashboardClient({ firstName = '' }: DashboardClientProps) {
           {/* Section 2: Charts Row */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
             <div className="lg:col-span-8">
-              <RevenueChart isLoading={isLoading} data={data?.revenueByMonth} />
+              <RevenueChart isLoading={isLoading} data={data?.revenueChart} />
             </div>
             <div className="lg:col-span-4">
-              <PipelineChart isLoading={isLoading} data={data?.purchaseStages} />
+              <PipelineChart isLoading={isLoading} data={data?.pipelineStages} />
             </div>
           </div>
 

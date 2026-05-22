@@ -308,7 +308,7 @@ function SortableCartItem({
         {...attributes}
         {...listeners}
         style={{
-          flexShrink: 0, width: 18, height: 18, marginTop: 2,
+          flexShrink: 0, width: 18, height: 18,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           borderRadius: 3, border: 'none', background: 'transparent',
           cursor: 'grab', color: 'var(--text-muted)',
@@ -320,9 +320,45 @@ function SortableCartItem({
         <GripVertical size={11} />
       </button>
 
-      {/* Emoji */}
-      <div style={{ fontSize: 16, flexShrink: 0, lineHeight: 1, marginTop: 2 }}>
-        {item.product.emoji}
+      <div style={{ flexShrink: 0, marginTop: 1 }}>
+        {item.product.imageUrl ? (
+          <img
+            src={item.product.imageUrl}
+            alt=""
+            style={{
+              width: 36,
+              height: 36,
+              objectFit: 'contain',
+              borderRadius: 5,
+              border: '1px solid var(--border)',
+              background: '#fafafa',
+              display: 'block',
+            }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        ) : (
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: 5,
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: 14 }}>
+              {item.product.category === 'Showers'     ? '🚿' :
+               item.product.category === 'Thermostats' ? '🌡️' :
+               item.product.category === 'Kitchen'     ? '🍳' :
+               item.product.category === 'Basins'      ? '🫧' :
+               item.product.category === 'WCs'         ? '🚽' :
+               '🔩'}
+            </span>
+          </div>
+        )}
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -793,7 +829,36 @@ export function RoomPanel({ collapsed, onToggle }: RoomPanelProps) {
                         opacity: 0.8,
                       }}
                     >
-                      <div style={{ fontSize: 14, flexShrink: 0 }}>{item.product.emoji}</div>
+                      <div style={{ flexShrink: 0 }}>
+                        {item.product.imageUrl ? (
+                          <img
+                            src={item.product.imageUrl}
+                            alt=""
+                            style={{
+                              width: 28,
+                              height: 28,
+                              objectFit: 'contain',
+                              borderRadius: 4,
+                              border: '1px solid var(--border)',
+                              background: '#fafafa',
+                              display: 'block',
+                            }}
+                            onError={(e) => { e.currentTarget.style.display = 'none' }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 4,
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12,
+                          }}>🔩</div>
+                        )}
+                      </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{

@@ -49,6 +49,7 @@ export async function GET(request: Request) {
         isActive: true,
         variants: true,
         concealedPartId: true,
+        finishName: true,
         imageUrl: true,
       },
     })

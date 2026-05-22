@@ -12,7 +12,7 @@ import {
   Tooltip,
 } from 'recharts'
 import { formatINR } from '@/lib/mock/dashboard-data'
-import type { DashboardRevenuePoint } from '@/app/api/dashboard/route'
+import type { StatsRevenuePoint } from '@/app/api/dashboard/stats/route'
 
 // ── Custom Tooltip ────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ function RevenueChartSkeleton() {
 
 interface RevenueChartProps {
   isLoading?: boolean
-  data?: DashboardRevenuePoint[]
+  data?: StatsRevenuePoint[]
 }
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
@@ -88,7 +88,7 @@ export function RevenueChart({ isLoading = false, data }: RevenueChartProps) {
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Revenue Trend</div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
-            Last 12 months ·{' '}
+            Last 6 months ·{' '}
             {hasData
               ? <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{formatINR(totalRevenue, true)} collected</span>
               : <span>No payment data yet</span>

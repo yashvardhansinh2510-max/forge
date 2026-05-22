@@ -17,7 +17,6 @@ const BRANDS = [
   { id: 'axor',      name: 'Axor',      dbKey: 'AXOR',      color: '#1C1C1E' },
   { id: 'vitra',     name: 'Vitra',     dbKey: 'VITRA',     color: '#E5002B' },
   { id: 'geberit',   name: 'Geberit',   dbKey: 'GEBERIT',   color: '#6B7280' },
-  { id: 'kajaria',   name: 'Kajaria',   dbKey: 'KAJARIA',   color: '#F59E0B' },
 ]
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json()) as Promise<BrandEntry[]>
