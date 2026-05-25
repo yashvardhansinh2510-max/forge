@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@forge/db'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
@@ -54,6 +55,9 @@ const createContactSchema = z.object({
 
 export async function GET(req: NextRequest) {
   return withErrorHandling(async () => {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+
     const { searchParams } = new URL(req.url)
     const search = searchParams.get('search') ?? ''
     const type = searchParams.get('type') ?? ''
@@ -114,6 +118,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+
     const body = await req.json() as unknown
     const data = createContactSchema.parse(body)
 

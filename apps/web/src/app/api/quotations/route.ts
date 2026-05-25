@@ -35,6 +35,9 @@ const CreateSchema = z.object({
 
 export async function GET() {
   return withErrorHandling(async () => {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+
     const revisions = await prisma.quotationRevision.findMany({
       orderBy: { createdAt: 'desc' },
       include: {

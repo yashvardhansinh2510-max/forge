@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
 
@@ -50,6 +51,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandling(async () => {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+
     const { id } = await params
 
     const revision = await prisma.quotationRevision.findUnique({
@@ -113,6 +117,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandling(async () => {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+
     const { id } = await params
     const body = PatchSchema.parse(await req.json())
 

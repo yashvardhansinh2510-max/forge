@@ -66,8 +66,8 @@ export function POSHeader() {
   const setClientPhone = usePOSStore((s) => s.setClientPhone)
   const setSiteAddress = usePOSStore((s) => s.setSiteAddress)
   const setReferenceBy = usePOSStore((s) => s.setReferenceBy)
-  const resetBuilder   = usePOSStore((s) => s.resetBuilder)
-  const addRoom        = usePOSStore((s) => s.addRoom)
+  const resetBuilder      = usePOSStore((s) => s.resetBuilder)
+  const loadFromRevision  = usePOSStore((s) => s.loadFromRevision)
   const totals         = useTotals()
 
   const router = useRouter()
@@ -212,15 +212,18 @@ export function POSHeader() {
         customerName: string
         customerPhone: string
         siteAddress: string
-        lineItems: Array<{
-          sku: string
-          productName: string
-          qty: number
-          unitPrice: number
-          discount: number
-          gstRate: number
-          section: string
-          imageUrl?: string
+        rooms: Array<{
+          id: string
+          name: string
+          items: Array<{
+            id: string
+            productId: string
+            sku: string
+            productName: string
+            mrp: number
+            qty: number
+            offerRate: number
+          }>
         }>
       }
 
@@ -228,20 +231,11 @@ export function POSHeader() {
       setClientName(data.customerName ?? '')
       setClientPhone(data.customerPhone ?? '')
       setSiteAddress(data.siteAddress ?? '')
+      loadFromRevision(data.rooms)
 
-      const bySection = new Map<string, typeof data.lineItems>()
-      for (const item of data.lineItems) {
-        const section = item.section ?? 'GENERAL'
-        if (!bySection.has(section)) bySection.set(section, [])
-        bySection.get(section)!.push(item)
-      }
-
-      for (const [sectionName] of bySection) {
-        addRoom(sectionName)
-      }
-
+      const totalItems = data.rooms.reduce((s, r) => s + r.items.length, 0)
       toast.success('Project loaded', {
-        description: `${data.customerName} — ${data.lineItems.length} items restored`,
+        description: `${data.customerName} — ${totalItems} items restored`,
       })
     } catch {
       toast.error('Could not load saved project')
