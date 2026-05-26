@@ -28,7 +28,7 @@ forge/
 │           ├── app/          # App Router pages
 │           ├── components/   # Feature components (one folder per module)
 │           └── lib/
-│               ├── mock/     # ALL data is mock — no real DB yet
+│               ├── mock/     # Mock data for modules not yet on live DB
 │               └── navigation.ts
 ├── packages/
 │   ├── ui/                   # Shared component library (@forge/ui)
@@ -55,8 +55,8 @@ forge/
 | Tables | TanStack Table + TanStack Virtual |
 | Drag & Drop | @dnd-kit |
 | Toasts | Sonner |
-| Database | PostgreSQL + Prisma (`packages/db`) — **schema currently empty** |
-| Data | **100% mock data** in `apps/web/src/lib/mock/` |
+| Database | PostgreSQL + Prisma (`packages/db`) — live schema with CRM, quotations, PO, settings models |
+| Data | Mix: live DB APIs for CRM, dashboard, quotations, purchase orders; mock data in `apps/web/src/lib/mock/` for remaining modules |
 
 ---
 
@@ -81,9 +81,9 @@ pnpm build
 
 ## Current App State
 
-- **All data is mock** — `src/lib/mock/*.ts` files. Prisma schema is a placeholder.
+- **Live DB APIs**: CRM contacts, dashboard stats, quotations, purchase orders — all backed by PostgreSQL via Prisma. Remaining modules still use mock data in `src/lib/mock/*.ts`.
 - **Auth is optional** — Clerk is wired but gracefully degrades if `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is not set
-- **Routes that are placeholders**: `/manufacturing/orders`, `/reports`, `/settings` — show "module is being built" state
+- **Routes that are placeholders**: `/manufacturing/orders`, `/reports` — show "module is being built" state
 - **Catalogue** — empty state UI (no data yet)
 - **Agent teams** — enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings
 
@@ -103,7 +103,7 @@ pnpm build
 | Reports | `/reports` | 🚧 Placeholder |
 | Catalogue | `/catalogue` | 🚧 Empty state |
 | Price Lists | `/settings/price-lists` | ✅ Full |
-| Settings | `/settings` | 🚧 Placeholder |
+| Settings | `/settings`, `/settings/company`, `/settings/users` | ✅ Full (company profile, users & roles) |
 
 ---
 
