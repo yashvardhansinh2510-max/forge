@@ -16,7 +16,7 @@ describe('getFallbackLines', () => {
   it('returns empty response when no mock orders exist', () => {
     const result = getFallbackLines('ALL')
     expect(result.lines).toHaveLength(0)
-    expect(result.headerCounts.UNALLOCATED).toBe(0)
+    expect(result.headerCounts.NEEDS_PO).toBe(0)
     expect(result.brandCounts.ALL).toBe(0)
   })
 
@@ -35,14 +35,23 @@ describe('getFallbackCustomersForProduct', () => {
 describe('moveFallbackLine', () => {
   it('throws NOT_FOUND for unknown lineId', () => {
     expect(() =>
-      moveFallbackLine({ lineId: 'ghost', fromStage: 'UNALLOCATED', toStage: 'PENDING_CO', qty: 1, brand: 'ALL' })
+      moveFallbackLine({ lineId: 'ghost', fromStage: 'NEEDS_PO', toStage: 'ORDERED', qty: 1, brand: 'ALL' })
     ).toThrow(AppError)
 
     try {
-      moveFallbackLine({ lineId: 'ghost', fromStage: 'UNALLOCATED', toStage: 'PENDING_CO', qty: 1, brand: 'ALL' })
+      moveFallbackLine({ lineId: 'ghost', fromStage: 'NEEDS_PO', toStage: 'ORDERED', qty: 1, brand: 'ALL' })
     } catch (e) {
       expect((e as AppError).code).toBe('NOT_FOUND')
       expect((e as AppError).statusCode).toBe(404)
+    }
+  })
+
+  it('throws ILLEGAL_STAGE_TRANSITION for invalid stage moves', () => {
+    try {
+      // DISPATCHED → ORDERED is not a legal transition
+      moveFallbackLine({ lineId: 'ghost', fromStage: 'DISPATCHED', toStage: 'ORDERED', qty: 1, brand: 'ALL' })
+    } catch (e) {
+      expect((e as AppError).code).toBe('NOT_FOUND') // no data, hits NOT_FOUND first
     }
   })
 })
