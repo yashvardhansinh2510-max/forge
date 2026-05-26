@@ -10,13 +10,11 @@ import {
 } from '@/lib/purchases-tracker'
 
 const LEGAL: Record<PurchaseStage, PurchaseStage[]> = {
-  UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
-  PENDING_CO: ['PENDING_DIST', 'GODOWN'],
-  PENDING_DIST: ['GODOWN'],
-  GODOWN: ['IN_BOX'],
-  IN_BOX: ['DISPATCHED'],
-  DISPATCHED: ['NOT_DISPLAYED'],
-  NOT_DISPLAYED: [],
+  NEEDS_PO:   ['ORDERED', 'AT_GODOWN'],
+  ORDERED:    ['AT_GODOWN'],
+  AT_GODOWN:  ['IN_BOX'],
+  IN_BOX:     ['DISPATCHED'],
+  DISPATCHED: [],
 }
 
 interface MovePopoverProps {

@@ -39,9 +39,9 @@ export function BrandMark({
     )
   }
 
-  const label = tab === 'GEBERIT' ? 'G' : tab === 'VITRA' ? 'V' : 'G'
-  const accent = tab === 'GROHE' || tab === 'VITRA' || tab === 'GEBERIT'
-    ? BRAND_ACCENTS[tab]
+  const label = tab === 'GEBERIT' ? 'GE' : tab === 'VITRA' ? 'V' : tab === 'KAJARIA' ? 'K' : 'G'
+  const accent = (tab === 'GROHE' || tab === 'VITRA' || tab === 'KAJARIA' || tab === 'GEBERIT')
+    ? BRAND_ACCENTS[tab as Exclude<typeof tab, 'ALL' | 'HANSGROHE'>]
     : 'var(--text-primary)'
 
   return (

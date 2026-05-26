@@ -16,38 +16,26 @@ export async function GET(
         po: { projectId: customerId },
       },
       select: {
-        qtyOrdered: true,
+        qtyOrdered:   true,
         qtyPendingCo: true,
-        qtyPendingDist: true,
-        qtyAtGodown: true,
-        qtyInBox: true,
+        qtyAtGodown:  true,
+        qtyInBox:     true,
         qtyDispatched: true,
-        qtyNotDisplayed: true,
       },
     })
 
     const sum = (field: keyof (typeof items)[0]) =>
       items.reduce((acc, i) => acc + (i[field] as number), 0)
 
-    const ordered = sum('qtyOrdered')
-    const pendingCo = sum('qtyPendingCo')
-    const pendingDist = sum('qtyPendingDist')
-    const godown = sum('qtyAtGodown')
-    const inBox = sum('qtyInBox')
+    const ordered    = sum('qtyOrdered')
+    const pendingCo  = sum('qtyPendingCo')
+    const godown     = sum('qtyAtGodown')
+    const inBox      = sum('qtyInBox')
     const dispatched = sum('qtyDispatched')
-    const notDisplayed = sum('qtyNotDisplayed')
-    const staged = pendingCo + pendingDist + godown + inBox + dispatched + notDisplayed
+    const staged      = pendingCo + godown + inBox + dispatched
     const unallocated = Math.max(0, ordered - staged)
 
-    return NextResponse.json({
-      unallocated,
-      pendingCo,
-      pendingDist,
-      godown,
-      inBox,
-      dispatched,
-      notDisplayed,
-    })
+    return NextResponse.json({ unallocated, pendingCo, godown, inBox, dispatched })
   } catch (err) {
     console.error('[customer-stage-totals]', err)
     return NextResponse.json(

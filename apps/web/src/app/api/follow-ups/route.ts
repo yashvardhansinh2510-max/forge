@@ -51,7 +51,7 @@ export type FollowUpsListResponse = {
 // ── Validation ─────────────────────────────────────────────────────────────────
 
 const createFollowUpSchema = z.object({
-  type: z.enum(['WALK_IN', 'QUOTATION']).default('WALK_IN'),
+  type: z.enum(['WALK_IN', 'QUOTATION', 'QUOTATION_FOLLOWUP']).default('WALK_IN'),
   customerName: z.string().min(1),
   customerPhone: z.string().min(1),
   customerType: z.enum(['ARCHITECT', 'INTERIOR_DESIGNER', 'BUILDER', 'RETAIL', 'OTHER']).default('RETAIL'),
@@ -152,6 +152,15 @@ export async function POST(request: NextRequest) {
   return withErrorHandling(async () => {
     const body = await request.json() as unknown
     const data = createFollowUpSchema.parse(body)
+
+    // Dedup: if a follow-up for this quotation already exists, return it
+    if (data.quotationId) {
+      const existing = await prisma.followUp.findFirst({
+        where: { quotationId: data.quotationId },
+        include: { responses: true },
+      })
+      if (existing) return NextResponse.json({ followUp: existing }, { status: 200 })
+    }
 
     const followUp = await prisma.followUp.create({
       data: {

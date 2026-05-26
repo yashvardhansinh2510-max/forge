@@ -21,6 +21,11 @@ export interface LineItem {
   section?: string   // room grouping for PDF, e.g. "BATHROOM 1,2"
   imageUrl?: string  // product thumbnail URL for PDF
   selectedColor?: string
+  // Custom (non-catalog) item fields — set only when isCustom is true
+  isCustom?: boolean
+  brand?: string     // GROHE | HANSGROHE | AXOR | VITRA | KAJARIA | OTHER
+  hsnCode?: string
+  notes?: string
 }
 
 export interface Quotation {

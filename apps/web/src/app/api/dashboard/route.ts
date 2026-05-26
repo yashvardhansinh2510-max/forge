@@ -110,10 +110,10 @@ export async function GET() {
       // 3 — PO line stage aggregates (used for KPI and chart)
       prisma.pOLineItem.aggregate({
         _sum: {
-          qtyPendingCo: true,
-          qtyPendingDist: true,
-          qtyAtGodown: true,
-          qtyInBox: true,
+          qtyOrdered:    true,
+          qtyPendingCo:  true,
+          qtyAtGodown:   true,
+          qtyInBox:      true,
           qtyDispatched: true,
         },
       }),
@@ -178,7 +178,7 @@ export async function GET() {
     }, 0)
 
     const s = stageAgg._sum
-    const poLinesInTransit = (s.qtyPendingCo ?? 0) + (s.qtyPendingDist ?? 0) + (s.qtyAtGodown ?? 0)
+    const poLinesInTransit = (s.qtyPendingCo ?? 0) + (s.qtyAtGodown ?? 0)
 
     let outstandingPayments = 0
     let collectedThisMonth = 0
@@ -234,11 +234,10 @@ export async function GET() {
     // ── Purchase Stages ────────────────────────────────────────────────────────
 
     const purchaseStages: DashboardPurchaseStage[] = [
-      { stage: 'Pending CO',   qty: s.qtyPendingCo   ?? 0 },
-      { stage: 'Pending Dist', qty: s.qtyPendingDist  ?? 0 },
-      { stage: 'At Godown',    qty: s.qtyAtGodown     ?? 0 },
-      { stage: 'In Box',       qty: s.qtyInBox        ?? 0 },
-      { stage: 'Dispatched',   qty: s.qtyDispatched   ?? 0 },
+      { stage: 'Ordered',    qty: s.qtyPendingCo  ?? 0 },
+      { stage: 'At Godown',  qty: s.qtyAtGodown   ?? 0 },
+      { stage: 'In Box',     qty: s.qtyInBox      ?? 0 },
+      { stage: 'Dispatched', qty: s.qtyDispatched ?? 0 },
     ]
 
     // ── Recent Activity ────────────────────────────────────────────────────────

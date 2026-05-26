@@ -1,72 +1,64 @@
 export const STAGE_ORDER = [
-  'UNALLOCATED',
-  'PENDING_CO',
-  'PENDING_DIST',
-  'GODOWN',
+  'NEEDS_PO',
+  'ORDERED',
+  'AT_GODOWN',
   'IN_BOX',
   'DISPATCHED',
-  'NOT_DISPLAYED',
 ] as const
 
 export type PurchaseStage = typeof STAGE_ORDER[number]
 
 export interface HeaderCounts {
-  UNALLOCATED: number
-  PENDING_CO: number
-  PENDING_DIST: number
-  GODOWN: number
+  NEEDS_PO: number
+  ORDERED: number
+  AT_GODOWN: number
   IN_BOX: number
   DISPATCHED: number
-  NOT_DISPLAYED: number
 }
 
 export const STAGE_LABEL: Record<PurchaseStage, string> = {
-  UNALLOCATED: 'Unallocated',
-  PENDING_CO: 'Pend. Company',
-  PENDING_DIST: 'Pend. Distributor',
-  GODOWN: 'At Godown',
-  IN_BOX: 'In Box',
+  NEEDS_PO:   'Needs PO',
+  ORDERED:    'Ordered',
+  AT_GODOWN:  'At Godown',
+  IN_BOX:     'In Box',
   DISPATCHED: 'Dispatched',
-  NOT_DISPLAYED: 'Not Displayed',
 }
 
 export const STAGE_SHORT_LABEL: Record<PurchaseStage, string> = {
-  UNALLOCATED: 'UNALLOCATED',
-  PENDING_CO: 'PEND.CO',
-  PENDING_DIST: 'PEND.DIST',
-  GODOWN: 'GODOWN',
-  IN_BOX: 'IN BOX',
+  NEEDS_PO:   'NEEDS PO',
+  ORDERED:    'ORDERED',
+  AT_GODOWN:  'AT GODOWN',
+  IN_BOX:     'IN BOX',
   DISPATCHED: 'DISPATCHED',
-  NOT_DISPLAYED: 'NOT DISPLAYED',
 }
 
 export const STAGE_COLORS: Record<PurchaseStage, string> = {
-  UNALLOCATED: '#3B82F6',
-  PENDING_CO: '#F59E0B',
-  PENDING_DIST: '#F97316',
-  GODOWN: '#8B5CF6',
-  IN_BOX: '#06B6D4',
+  NEEDS_PO:   '#3B82F6',
+  ORDERED:    '#F59E0B',
+  AT_GODOWN:  '#8B5CF6',
+  IN_BOX:     '#06B6D4',
   DISPATCHED: '#10B981',
-  NOT_DISPLAYED: '#6B7280',
 }
 
-export const BRAND_TABS = ['ALL', 'GROHE', 'HANSGROHE', 'VITRA', 'GEBERIT'] as const
+export const BRAND_TABS = ['ALL', 'GROHE', 'HANSGROHE', 'VITRA', 'KAJARIA', 'GEBERIT'] as const
 
 export type BrandTab = typeof BRAND_TABS[number]
 export type BrandTabFilter = Exclude<BrandTab, 'ALL'>
 
 export const BRAND_GROUPS: Record<BrandTabFilter, string[]> = {
-  GROHE: ['GROHE'],
+  GROHE:     ['GROHE'],
   HANSGROHE: ['HANSGROHE', 'AXOR'],
-  VITRA: ['VITRA'],
-  GEBERIT: ['GEBERIT'],
+  VITRA:     ['VITRA'],
+  KAJARIA:   ['KAJARIA'],
+  GEBERIT:   ['GEBERIT'],
 }
 
 export const BRAND_ACCENTS: Record<BrandTabFilter, string> = {
-  GROHE: '#00A3E0',
+  GROHE:     '#00A3E0',
   HANSGROHE: '#E30613',
-  VITRA: '#005BAC',
-  GEBERIT: '#003087',
+  VITRA:     '#005BAC',
+  KAJARIA:   '#C84B1F',
+  GEBERIT:   '#003087',
 }
 
 export interface PurchaseTrackerLine {
@@ -92,6 +84,7 @@ export interface PurchaseTrackerLine {
   stages: HeaderCounts
   followUpStatus?: string | null
   createdAt?: string | null
+  landingCost?: number | null
 }
 
 export interface PurchaseLinesResponse {
@@ -107,23 +100,22 @@ export interface CustomerOption {
 
 export function createEmptyHeaderCounts(): HeaderCounts {
   return {
-    UNALLOCATED: 0,
-    PENDING_CO: 0,
-    PENDING_DIST: 0,
-    GODOWN: 0,
-    IN_BOX: 0,
+    NEEDS_PO:   0,
+    ORDERED:    0,
+    AT_GODOWN:  0,
+    IN_BOX:     0,
     DISPATCHED: 0,
-    NOT_DISPLAYED: 0,
   }
 }
 
 export function createEmptyBrandCounts(): Record<BrandTab, number> {
   return {
-    ALL: 0,
-    GROHE: 0,
+    ALL:       0,
+    GROHE:     0,
     HANSGROHE: 0,
-    VITRA: 0,
-    GEBERIT: 0,
+    VITRA:     0,
+    KAJARIA:   0,
+    GEBERIT:   0,
   }
 }
 
@@ -137,6 +129,7 @@ export function getBrandTabForBrand(brand: string): BrandTabFilter | null {
   if (brand === 'AXOR' || brand === 'HANSGROHE') return 'HANSGROHE'
   if (brand === 'GROHE') return 'GROHE'
   if (brand === 'VITRA') return 'VITRA'
+  if (brand === 'KAJARIA') return 'KAJARIA'
   if (brand === 'GEBERIT') return 'GEBERIT'
   return null
 }
@@ -155,43 +148,41 @@ export function matchesBrandTab(brand: string, tab: BrandTab): boolean {
   return brands === null ? true : brands.includes(brand)
 }
 
+// Maps DB qty columns (POLineItem) to the 5 tracker stages.
+// qtyPendingCo  → ORDERED
+// qtyAtGodown   → AT_GODOWN
+// qtyInBox      → IN_BOX
+// qtyDispatched → DISPATCHED
+// NEEDS_PO is derived: qtyOrdered minus all staged qty
 export function countsFromDbLine(line: {
   qtyOrdered: number
   qtyPendingCo: number
-  qtyPendingDist: number
   qtyAtGodown: number
   qtyInBox: number
   qtyDispatched: number
-  qtyNotDisplayed: number
 }): HeaderCounts {
   const staged =
     line.qtyPendingCo +
-    line.qtyPendingDist +
     line.qtyAtGodown +
     line.qtyInBox +
-    line.qtyDispatched +
-    line.qtyNotDisplayed
+    line.qtyDispatched
 
   return {
-    UNALLOCATED: Math.max(0, line.qtyOrdered - staged),
-    PENDING_CO: line.qtyPendingCo,
-    PENDING_DIST: line.qtyPendingDist,
-    GODOWN: line.qtyAtGodown,
-    IN_BOX: line.qtyInBox,
+    NEEDS_PO:   Math.max(0, line.qtyOrdered - staged),
+    ORDERED:    line.qtyPendingCo,
+    AT_GODOWN:  line.qtyAtGodown,
+    IN_BOX:     line.qtyInBox,
     DISPATCHED: line.qtyDispatched,
-    NOT_DISPLAYED: line.qtyNotDisplayed,
   }
 }
 
 export function addCounts(target: HeaderCounts, source: HeaderCounts): HeaderCounts {
   return {
-    UNALLOCATED: target.UNALLOCATED + source.UNALLOCATED,
-    PENDING_CO: target.PENDING_CO + source.PENDING_CO,
-    PENDING_DIST: target.PENDING_DIST + source.PENDING_DIST,
-    GODOWN: target.GODOWN + source.GODOWN,
-    IN_BOX: target.IN_BOX + source.IN_BOX,
+    NEEDS_PO:   target.NEEDS_PO   + source.NEEDS_PO,
+    ORDERED:    target.ORDERED    + source.ORDERED,
+    AT_GODOWN:  target.AT_GODOWN  + source.AT_GODOWN,
+    IN_BOX:     target.IN_BOX     + source.IN_BOX,
     DISPATCHED: target.DISPATCHED + source.DISPATCHED,
-    NOT_DISPLAYED: target.NOT_DISPLAYED + source.NOT_DISPLAYED,
   }
 }
 

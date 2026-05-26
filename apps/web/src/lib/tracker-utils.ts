@@ -17,13 +17,11 @@ export interface FlatLine {
 }
 
 export interface TrackerKPIs {
-  totalOrdered:    number
-  pendingFromCo:   number
-  pendingFromDist: number
-  atGodown:        number
-  inBox:           number
-  dispatched:      number
-  notDisplayed:    number
+  totalOrdered:  number
+  pendingFromCo: number
+  atGodown:      number
+  inBox:         number
+  dispatched:    number
 }
 
 export interface DrillDownLine {
@@ -102,41 +100,35 @@ export function getVendorCompanies(
 // ─── KPI computation — stage qty fields ──────────────────────────────────────
 
 export function computeKPIs(lines: FlatLine[]): TrackerKPIs {
-  let totalOrdered    = 0
-  let pendingFromCo   = 0
-  let pendingFromDist = 0
-  let atGodown        = 0
-  let inBox           = 0
-  let dispatched      = 0
-  let notDisplayed    = 0
+  let totalOrdered  = 0
+  let pendingFromCo = 0
+  let atGodown      = 0
+  let inBox         = 0
+  let dispatched    = 0
 
   for (const { line } of lines) {
-    totalOrdered    += line.qtyOrdered
-    pendingFromCo   += line.qtyPendingCo
-    pendingFromDist += line.qtyPendingDist
-    atGodown        += line.qtyAtGodown
-    inBox           += line.qtyInBox
-    dispatched      += line.qtyDispatched
-    notDisplayed    += line.qtyNotDisplayed
+    totalOrdered  += line.qtyOrdered
+    pendingFromCo += line.qtyPendingCo
+    atGodown      += line.qtyAtGodown
+    inBox         += line.qtyInBox
+    dispatched    += line.qtyDispatched
   }
 
-  return { totalOrdered, pendingFromCo, pendingFromDist, atGodown, inBox, dispatched, notDisplayed }
+  return { totalOrdered, pendingFromCo, atGodown, inBox, dispatched }
 }
 
 // ─── Stage qty field for a KPI key ───────────────────────────────────────────
 
 type StageQtyKey = keyof Pick<
   MockPOLineItem,
-  'qtyPendingCo' | 'qtyPendingDist' | 'qtyAtGodown' | 'qtyInBox' | 'qtyDispatched' | 'qtyNotDisplayed'
+  'qtyPendingCo' | 'qtyAtGodown' | 'qtyInBox' | 'qtyDispatched'
 >
 
 const CARD_TO_STAGE_FIELD: Partial<Record<KPICardKey, StageQtyKey>> = {
-  pendingFromCo:   'qtyPendingCo',
-  pendingFromDist: 'qtyPendingDist',
-  atGodown:        'qtyAtGodown',
-  inBox:           'qtyInBox',
-  dispatched:      'qtyDispatched',
-  notDisplayed:    'qtyNotDisplayed',
+  pendingFromCo: 'qtyPendingCo',
+  atGodown:      'qtyAtGodown',
+  inBox:         'qtyInBox',
+  dispatched:    'qtyDispatched',
 }
 
 // ─── KPI drill-down ───────────────────────────────────────────────────────────
@@ -187,7 +179,7 @@ export function getLineAggregates(line: MockPOLineItem): LineAggregates {
   return {
     inBoxQty,
     dispatchedQty,
-    pendingQty: line.qtyPendingCo + line.qtyPendingDist,
+    pendingQty: line.qtyPendingCo,
     customers:  Array.from(customerSet),
   }
 }
@@ -218,13 +210,11 @@ export function getLinesForCustomer(
 // ─── Customer stage counts ───────────────────────────────────────────────────
 
 export interface CustomerStageCounts {
-  totalOrdered:    number
-  pendingFromCo:   number
-  pendingFromDist: number
-  atGodown:        number
-  inBox:           number
-  dispatched:      number
-  notDisplayed:    number
+  totalOrdered:  number
+  pendingFromCo: number
+  atGodown:      number
+  inBox:         number
+  dispatched:    number
 }
 
 /**
@@ -236,8 +226,7 @@ export function getCustomerStageCounts(
   brandTab:   string,
 ): CustomerStageCounts {
   const counts: CustomerStageCounts = {
-    totalOrdered: 0, pendingFromCo: 0, pendingFromDist: 0,
-    atGodown: 0, inBox: 0, dispatched: 0, notDisplayed: 0,
+    totalOrdered: 0, pendingFromCo: 0, atGodown: 0, inBox: 0, dispatched: 0,
   }
 
   for (const order of orders) {
@@ -245,16 +234,12 @@ export function getCustomerStageCounts(
       if (!lineMatchesBrand(line, brandTab)) continue
       const alloc = line.customerAllocations.find((a) => a.customerId === customerId)
       if (!alloc) continue
-      // Use allocation qty as the total for this customer's portion
       counts.totalOrdered += alloc.qty
-      // Stage qtys are at line level — prorate by alloc.qty / line.qtyOrdered
       const ratio = line.qtyOrdered > 0 ? alloc.qty / line.qtyOrdered : 0
-      counts.pendingFromCo   += Math.round(line.qtyPendingCo   * ratio)
-      counts.pendingFromDist += Math.round(line.qtyPendingDist * ratio)
-      counts.atGodown        += Math.round(line.qtyAtGodown    * ratio)
-      counts.inBox           += Math.round(line.qtyInBox       * ratio)
-      counts.dispatched      += Math.round(line.qtyDispatched  * ratio)
-      counts.notDisplayed    += Math.round(line.qtyNotDisplayed * ratio)
+      counts.pendingFromCo += Math.round(line.qtyPendingCo * ratio)
+      counts.atGodown      += Math.round(line.qtyAtGodown  * ratio)
+      counts.inBox         += Math.round(line.qtyInBox     * ratio)
+      counts.dispatched    += Math.round(line.qtyDispatched * ratio)
     }
   }
 

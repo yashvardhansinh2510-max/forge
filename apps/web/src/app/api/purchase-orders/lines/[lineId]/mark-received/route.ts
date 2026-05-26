@@ -18,22 +18,18 @@ const MarkReceivedSchema = z.object({
 function buildStageTotals(lines: Array<{
   qtyOrdered: number
   qtyPendingCo: number
-  qtyPendingDist: number
   qtyAtGodown: number
   qtyInBox: number
   qtyDispatched: number
-  qtyNotDisplayed: number
 }>): HeaderCounts {
   return lines.reduce((acc, line) => {
     const next = countsFromDbLine(line)
     return {
-      UNALLOCATED: acc.UNALLOCATED + next.UNALLOCATED,
-      PENDING_CO: acc.PENDING_CO + next.PENDING_CO,
-      PENDING_DIST: acc.PENDING_DIST + next.PENDING_DIST,
-      GODOWN: acc.GODOWN + next.GODOWN,
-      IN_BOX: acc.IN_BOX + next.IN_BOX,
+      NEEDS_PO:   acc.NEEDS_PO   + next.NEEDS_PO,
+      ORDERED:    acc.ORDERED    + next.ORDERED,
+      AT_GODOWN:  acc.AT_GODOWN  + next.AT_GODOWN,
+      IN_BOX:     acc.IN_BOX     + next.IN_BOX,
       DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
-      NOT_DISPLAYED: acc.NOT_DISPLAYED + next.NOT_DISPLAYED,
     }
   }, createEmptyHeaderCounts())
 }
@@ -50,14 +46,12 @@ export async function POST(
     const line = await prisma.pOLineItem.findUnique({
       where: { id: lineId },
       select: {
-        id: true,
-        qtyOrdered: true,
-        qtyPendingCo: true,
-        qtyPendingDist: true,
-        qtyAtGodown: true,
-        qtyInBox: true,
+        id:            true,
+        qtyOrdered:    true,
+        qtyPendingCo:  true,
+        qtyAtGodown:   true,
+        qtyInBox:      true,
         qtyDispatched: true,
-        qtyNotDisplayed: true,
       },
     })
 
@@ -65,18 +59,18 @@ export async function POST(
       throw new AppError('NOT_FOUND', `POLineItem '${lineId}' not found`, 404)
     }
 
-    const unallocated = countsFromDbLine(line).UNALLOCATED
-    if (qty > unallocated) {
+    const needsPo = countsFromDbLine(line).NEEDS_PO
+    if (qty > needsPo) {
       throw new AppError(
         'INSUFFICIENT_QTY',
-        `Only ${unallocated} unallocated unit(s) available.`,
+        `Only ${needsPo} unallocated unit(s) available.`,
         422,
-        { available: unallocated, requested: qty },
+        { available: needsPo, requested: qty },
       )
     }
 
-    // Move UNALLOCATED → GODOWN by incrementing qtyAtGodown
-    // UNALLOCATED is derived (qtyOrdered - staged), so no field to decrement
+    // Move NEEDS_PO → AT_GODOWN by incrementing qtyAtGodown.
+    // NEEDS_PO is derived (qtyOrdered - staged), so no field to decrement.
     await prisma.pOLineItem.update({
       where: { id: lineId },
       data: { qtyAtGodown: { increment: qty } },
@@ -84,13 +78,11 @@ export async function POST(
 
     const allLines = await prisma.pOLineItem.findMany({
       select: {
-        qtyOrdered: true,
-        qtyPendingCo: true,
-        qtyPendingDist: true,
-        qtyAtGodown: true,
-        qtyInBox: true,
+        qtyOrdered:    true,
+        qtyPendingCo:  true,
+        qtyAtGodown:   true,
+        qtyInBox:      true,
         qtyDispatched: true,
-        qtyNotDisplayed: true,
       },
     })
 

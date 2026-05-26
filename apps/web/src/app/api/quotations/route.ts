@@ -3,13 +3,16 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { type Prisma } from '@forge/db'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
 
-const LineItemSchema = z.object({
+// Catalog line item (has a SKU → looked up in Product table)
+const CatalogLineItemSchema = z.object({
+  isCustom:      z.literal(false).optional(),
   sku:           z.string().min(1),
-  productName:   z.string(),
+  productName:   z.string().optional(),
   articleNumber: z.string().optional(),
   qty:           z.number().int().positive(),
   unitPrice:     z.number().min(0),
@@ -21,6 +24,23 @@ const LineItemSchema = z.object({
   seriesName:    z.string().optional(),
 })
 
+// Custom (non-catalog) line item — stored in QuotationItem with isCustom=true
+const CustomLineItemSchema = z.object({
+  isCustom:          z.literal(true),
+  customDescription: z.string().min(1),
+  customBrand:       z.string().optional(),
+  customUnit:        z.string().optional(),
+  customHsnCode:     z.string().optional(),
+  customNotes:       z.string().optional(),
+  qty:               z.number().int().positive(),
+  unitPrice:         z.number().min(0),
+  discount:          z.number().min(0).max(100).default(0),
+  gstRate:           z.number().min(0).default(18),
+  section:           z.string().optional(),
+})
+
+const AnyLineItemSchema = z.union([CustomLineItemSchema, CatalogLineItemSchema])
+
 const CreateSchema = z.object({
   customerName:   z.string().min(1),
   customerPhone:  z.string().optional(),
@@ -30,7 +50,7 @@ const CreateSchema = z.object({
   projectName:    z.string().optional(),
   notes:          z.string().optional(),
   validDays:      z.number().int().positive().default(30),
-  lineItems:      z.array(LineItemSchema),
+  lineItems:      z.array(AnyLineItemSchema),
 })
 
 export async function GET() {
@@ -49,6 +69,7 @@ export async function GET() {
                 id: true,
                 offerRate: true,
                 quantity: true,
+                isCustom: true,
                 product: { select: { gstRate: true } },
               },
             },
@@ -61,7 +82,8 @@ export async function GET() {
       const allItems = rev.rooms.flatMap((r) => r.items)
       const lineItemCount = allItems.length
       const grandTotal = allItems.reduce(
-        (sum, item) => sum + item.offerRate * item.quantity * (1 + item.product.gstRate / 100),
+        // Custom items default to 18% GST (product relation is null)
+        (sum, item) => sum + item.offerRate * item.quantity * (1 + (item.product?.gstRate ?? 18) / 100),
         0,
       )
       return {
@@ -95,15 +117,16 @@ export async function POST(req: NextRequest) {
     const count = await prisma.quotation.count()
     const quotationNumber = `Q-${year}-${String(count + 1).padStart(4, '0')}`
 
-    // Look up products by SKU for all line items
-    const skus = body.lineItems.map((li) => li.sku)
+    // Look up catalog items by SKU (custom items skip the SKU lookup)
+    const catalogItems = body.lineItems.filter((li): li is z.infer<typeof CatalogLineItemSchema> => !li.isCustom)
+    const skus = catalogItems.map((li) => li.sku)
     const products = await prisma.product.findMany({
       where: { sku: { in: skus } },
       select: { id: true, sku: true, mrp: true },
     })
     const productBySku = new Map(products.map((p) => [p.sku, p]))
 
-    // Group line items by section (each unique section → one QuotationRoom)
+    // Group all line items by section (each unique section → one QuotationRoom)
     const sectionMap = new Map<string, typeof body.lineItems>()
     for (const li of body.lineItems) {
       const key = li.section?.trim() || body.projectName || 'General'
@@ -144,26 +167,48 @@ export async function POST(req: NextRequest) {
         )
       )
 
-      const allItems = sections.flatMap(([, items], sIdx) => {
+      // Build typed arrays for catalog and custom items separately to satisfy
+      // Prisma's QuotationItemCreateManyInput union discriminant.
+      const allItems: Prisma.QuotationItemCreateManyInput[] = sections.flatMap(([, items], sIdx) => {
         const roomId = rooms[sIdx]!.id
-        return items.flatMap((li, itemIdx) => {
+        return items.flatMap((li, itemIdx): Prisma.QuotationItemCreateManyInput[] => {
+          if (li.isCustom) {
+            const offerRate = li.unitPrice * (1 - li.discount / 100)
+            return [{
+              roomId,
+              productId: undefined,
+              isCustom: true,
+              customDescription: li.customDescription,
+              customBrand:  li.customBrand  ?? undefined,
+              customUnit:   li.customUnit   ?? undefined,
+              customHsnCode: li.customHsnCode ?? undefined,
+              customNotes:  li.customNotes  ?? undefined,
+              quantity:    li.qty,
+              mrp:         li.unitPrice,
+              discountPct: li.discount,
+              offerRate,
+              totalOffer:  offerRate * li.qty,
+              sortOrder:   itemIdx,
+            }]
+          }
+
           const product = productBySku.get(li.sku)
           if (!product) return []
           const discountFraction = li.discount / 100
           const offerRate = li.unitPrice > 0 ? li.unitPrice : product.mrp * (1 - discountFraction)
           return [{
             roomId,
-            productId: product.id,
-            quantity: li.qty,
-            mrp: product.mrp,
-            discountPct: li.discount,
+            productId:    product.id,
+            quantity:     li.qty,
+            mrp:          product.mrp,
+            discountPct:  li.discount,
             offerRate,
-            totalOffer: offerRate * li.qty,
-            sortOrder: itemIdx,
-            imageUrl: li.imageUrl ?? null,
-            finishName: li.finishName ?? null,
-            seriesName: li.seriesName ?? null,
-            articleNumber: li.articleNumber ?? null,
+            totalOffer:   offerRate * li.qty,
+            sortOrder:    itemIdx,
+            imageUrl:     li.imageUrl    ?? undefined,
+            finishName:   li.finishName  ?? undefined,
+            seriesName:   li.seriesName  ?? undefined,
+            articleNumber: li.articleNumber ?? undefined,
           }]
         })
       })

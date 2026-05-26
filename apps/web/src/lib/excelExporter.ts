@@ -27,13 +27,11 @@ const BORDER: Partial<ExcelJS.Borders> = {
 }
 
 const STAGE_LABEL: Record<KPICardKey, string> = {
-  totalOrdered:    'All Ordered',
-  pendingFromCo:   'Pending from Co.',
-  pendingFromDist: 'Pending from Dist.',
-  atGodown:        'At Godown',
-  inBox:           'In Box',
-  dispatched:      'Dispatched',
-  notDisplayed:    'Not Displayed',
+  totalOrdered:  'All Ordered',
+  pendingFromCo: 'Pending from Co.',
+  atGodown:      'At Godown',
+  inBox:         'In Box',
+  dispatched:    'Dispatched',
 }
 
 function applyHeaderRow(row: ExcelJS.Row) {
@@ -96,13 +94,11 @@ export async function exportStageLines(
     { header: 'Product Name',     key: 'productName',     width: 34 },
     { header: 'SKU',              key: 'sku',             width: 18 },
     { header: 'Brand',            key: 'brand',           width: 12 },
-    { header: 'Qty Ordered',      key: 'qtyOrdered',      width: 12 },
-    { header: 'Pend. from Co.',   key: 'qtyPendingCo',   width: 14 },
-    { header: 'Pend. from Dist.', key: 'qtyPendingDist', width: 16 },
-    { header: 'At Godown',        key: 'qtyAtGodown',    width: 12 },
-    { header: 'In Box',           key: 'qtyInBox',       width: 10 },
-    { header: 'Dispatched',       key: 'qtyDispatched',  width: 12 },
-    { header: 'Not Displayed',    key: 'qtyNotDisplayed', width: 14 },
+    { header: 'Qty Ordered',      key: 'qtyOrdered',   width: 12 },
+    { header: 'Pend. from Co.',   key: 'qtyPendingCo', width: 14 },
+    { header: 'At Godown',        key: 'qtyAtGodown',  width: 12 },
+    { header: 'In Box',           key: 'qtyInBox',     width: 10 },
+    { header: 'Dispatched',       key: 'qtyDispatched', width: 12 },
     { header: 'Expected Delivery', key: 'expectedDelivery', width: 18 },
   ]
 
@@ -110,18 +106,16 @@ export async function exportStageLines(
 
   lines.forEach(({ order, line }, i) => {
     const row = ws.addRow({
-      poNumber:        order.poNumber,
-      vendor:          order.vendorName ?? '',
-      productName:     line.productName,
-      sku:             line.productSku,
-      brand:           line.productBrand,
-      qtyOrdered:      line.qtyOrdered,
-      qtyPendingCo:   line.qtyPendingCo,
-      qtyPendingDist: line.qtyPendingDist,
-      qtyAtGodown:    line.qtyAtGodown,
-      qtyInBox:       line.qtyInBox,
-      qtyDispatched:  line.qtyDispatched,
-      qtyNotDisplayed: line.qtyNotDisplayed,
+      poNumber:    order.poNumber,
+      vendor:      order.vendorName ?? '',
+      productName: line.productName,
+      sku:         line.productSku,
+      brand:       line.productBrand,
+      qtyOrdered:  line.qtyOrdered,
+      qtyPendingCo: line.qtyPendingCo,
+      qtyAtGodown: line.qtyAtGodown,
+      qtyInBox:    line.qtyInBox,
+      qtyDispatched: line.qtyDispatched,
       expectedDelivery: order.expectedDelivery
         ? new Date(order.expectedDelivery).toLocaleDateString('en-IN')
         : '—',
@@ -163,14 +157,12 @@ export async function exportTrackerLines(
     { header: 'Product Name',     key: 'productName',     width: 34 },
     { header: 'SKU',              key: 'sku',             width: 18 },
     { header: 'Brand',            key: 'brand',           width: 12 },
-    { header: 'Qty Ordered',      key: 'qtyOrdered',      width: 12 },
-    { header: 'Pend. from Co.',   key: 'qtyPendingCo',   width: 14 },
-    { header: 'Pend. from Dist.', key: 'qtyPendingDist', width: 16 },
-    { header: 'At Godown',        key: 'qtyAtGodown',    width: 12 },
-    { header: 'In Box',           key: 'qtyInBox',       width: 10 },
-    { header: 'Dispatched',       key: 'qtyDispatched',  width: 12 },
-    { header: 'Not Displayed',    key: 'qtyNotDisplayed', width: 14 },
-    { header: 'Landing Cost',     key: 'landingCost',    width: 14 },
+    { header: 'Qty Ordered',    key: 'qtyOrdered',   width: 12 },
+    { header: 'Pend. from Co.', key: 'qtyPendingCo', width: 14 },
+    { header: 'At Godown',      key: 'qtyAtGodown',  width: 12 },
+    { header: 'In Box',         key: 'qtyInBox',     width: 10 },
+    { header: 'Dispatched',     key: 'qtyDispatched', width: 12 },
+    { header: 'Landing Cost',   key: 'landingCost',  width: 14 },
     { header: 'Client Rate',      key: 'clientRate',     width: 14 },
     { header: 'Expected Delivery', key: 'expectedDelivery', width: 18 },
     { header: 'Status',           key: 'status',         width: 18 },
@@ -185,14 +177,12 @@ export async function exportTrackerLines(
       productName:     line.productName,
       sku:             line.productSku,
       brand:           line.productBrand,
-      qtyOrdered:      line.qtyOrdered,
-      qtyPendingCo:   line.qtyPendingCo,
-      qtyPendingDist: line.qtyPendingDist,
-      qtyAtGodown:    line.qtyAtGodown,
-      qtyInBox:       line.qtyInBox,
-      qtyDispatched:  line.qtyDispatched,
-      qtyNotDisplayed: line.qtyNotDisplayed,
-      landingCost:    line.landingCost ?? '',
+      qtyOrdered:   line.qtyOrdered,
+      qtyPendingCo: line.qtyPendingCo,
+      qtyAtGodown:  line.qtyAtGodown,
+      qtyInBox:     line.qtyInBox,
+      qtyDispatched: line.qtyDispatched,
+      landingCost:  line.landingCost ?? '',
       clientRate:     line.clientOfferRate ?? '',
       expectedDelivery: order.expectedDelivery
         ? new Date(order.expectedDelivery).toLocaleDateString('en-IN')
@@ -275,6 +265,83 @@ export async function exportCustomerLines(
 
   const blob = await workbookToBlob(wb)
   downloadBlob(blob, filename ?? `${customerName.replace(/\s+/g, '-')}-${stage}-${yyyymmdd()}.xlsx`)
+}
+
+// ─── Export: Billing view (per-vendor line items) ─────────────────────────────
+
+export interface BillingLineRow {
+  productName:    string
+  sku:            string
+  brand:          string
+  qtyOrdered:     number
+  qtyReceived:    number
+  pendingUnits:   number
+  landingCost:    number | null
+  estValuePending: number
+}
+
+/**
+ * Exports all line items for a single vendor from the Billing view.
+ */
+export async function exportVendorBillingLines(
+  vendorName: string,
+  rows:        BillingLineRow[],
+  filename?:   string,
+) {
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Forge – Buildcon House'
+  wb.created = new Date()
+
+  const ws = wb.addWorksheet(`${vendorName} – Billing`)
+
+  ws.columns = [
+    { header: 'Product Name',      key: 'productName',     width: 34 },
+    { header: 'SKU',               key: 'sku',             width: 18 },
+    { header: 'Brand',             key: 'brand',           width: 12 },
+    { header: 'Qty Ordered',       key: 'qtyOrdered',      width: 12 },
+    { header: 'Qty Received',      key: 'qtyReceived',     width: 13 },
+    { header: 'Pending Units',     key: 'pendingUnits',    width: 13 },
+    { header: 'Landing Cost (₹)',  key: 'landingCost',     width: 16 },
+    { header: 'Est. Value Pending (₹)', key: 'estValuePending', width: 20 },
+  ]
+
+  applyHeaderRow(ws.getRow(1))
+
+  rows.forEach((r, i) => {
+    const row = ws.addRow({
+      productName:     r.productName,
+      sku:             r.sku,
+      brand:           r.brand,
+      qtyOrdered:      r.qtyOrdered,
+      qtyReceived:     r.qtyReceived,
+      pendingUnits:    r.pendingUnits,
+      landingCost:     r.landingCost ?? '—',
+      estValuePending: r.estValuePending,
+    })
+    applyBodyRow(row, i % 2 === 1)
+  })
+
+  // Totals row
+  const totalsRow = ws.addRow({
+    productName:     'TOTAL',
+    qtyOrdered:      rows.reduce((s, r) => s + r.qtyOrdered, 0),
+    qtyReceived:     rows.reduce((s, r) => s + r.qtyReceived, 0),
+    pendingUnits:    rows.reduce((s, r) => s + r.pendingUnits, 0),
+    estValuePending: rows.reduce((s, r) => s + r.estValuePending, 0),
+  })
+  totalsRow.font   = { ...HEADER_FONT, color: { argb: 'FF111827' } }
+  totalsRow.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
+  totalsRow.height = 20
+
+  ws.autoFilter = {
+    from: { row: 1, column: 1 },
+    to:   { row: 1, column: ws.columns.length },
+  }
+  ws.views = [{ state: 'frozen', ySplit: 1 }]
+
+  const safe = vendorName.replace(/[/\\?%*:|"<>]/g, '-')
+  const blob = await workbookToBlob(wb)
+  downloadBlob(blob, filename ?? `billing-${safe}-${yyyymmdd()}.xlsx`)
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────

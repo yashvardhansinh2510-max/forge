@@ -16,12 +16,11 @@ function mapLine(line: {
   qtyOrdered: number
   qtyReceived: number
   qtyPendingCo: number
-  qtyPendingDist: number
   qtyAtGodown: number
   qtyInBox: number
   qtyDispatched: number
-  qtyNotDisplayed: number
   followUpStatus: string | null
+  landingCost: number | null
   product: {
     id: string
     sku: string
@@ -66,6 +65,7 @@ function mapLine(line: {
     stages: countsFromDbLine(line),
     followUpStatus: line.followUpStatus,
     createdAt: line.createdAt.toISOString(),
+    landingCost: line.landingCost,
   }
 }
 
@@ -83,37 +83,27 @@ export async function GET(req: NextRequest) {
 
     const [dbLines, total] = await Promise.all([
       prisma.pOLineItem.findMany({
-      skip,
-      take: limit,
-      where: brandWhere,
-      include: {
-        product: {
-          select: {
-            id: true,
-            sku: true,
-            name: true,
-            brand: true,
-            imageUrl: true,
+        skip,
+        take: limit,
+        where: brandWhere,
+        include: {
+          product: {
+            select: { id: true, sku: true, name: true, brand: true, imageUrl: true },
           },
-        },
-        po: {
-          select: {
-            id: true,
-            poNumber: true,
-            vendorName: true,
-            customerName: true,
-            customerSiteAddress: true,
-            project: {
-              select: {
-                id: true,
-                clientName: true,
-                siteAddress: true,
+          po: {
+            select: {
+              id: true,
+              poNumber: true,
+              vendorName: true,
+              customerName: true,
+              customerSiteAddress: true,
+              project: {
+                select: { id: true, clientName: true, siteAddress: true },
               },
             },
           },
         },
-      },
-      orderBy: [{ createdAt: 'desc' }],
+        orderBy: [{ createdAt: 'desc' }],
       }),
       prisma.pOLineItem.count({ where: brandWhere }),
     ])
@@ -122,24 +112,34 @@ export async function GET(req: NextRequest) {
 
     const agg = await prisma.pOLineItem.aggregate({
       _sum: {
-        qtyOrdered: true,
-        qtyPendingCo: true,
-        qtyPendingDist: true,
-        qtyAtGodown: true,
-        qtyInBox: true,
+        qtyOrdered:    true,
+        qtyPendingCo:  true,
+        qtyAtGodown:   true,
+        qtyInBox:      true,
         qtyDispatched: true,
-        qtyNotDisplayed: true,
       },
     })
+
+    const s = agg._sum
     const headerCounts = {
-      UNALLOCATED:   agg._sum.qtyOrdered      ?? 0,
-      PENDING_CO:    agg._sum.qtyPendingCo    ?? 0,
-      PENDING_DIST:  agg._sum.qtyPendingDist  ?? 0,
-      GODOWN:        agg._sum.qtyAtGodown     ?? 0,
-      IN_BOX:        agg._sum.qtyInBox        ?? 0,
-      DISPATCHED:    agg._sum.qtyDispatched   ?? 0,
-      NOT_DISPLAYED: agg._sum.qtyNotDisplayed ?? 0,
+      NEEDS_PO:   Math.max(0,
+        (s.qtyOrdered ?? 0) -
+        (s.qtyPendingCo ?? 0) -
+        (s.qtyAtGodown ?? 0) -
+        (s.qtyInBox ?? 0) -
+        (s.qtyDispatched ?? 0),
+      ),
+      ORDERED:    s.qtyPendingCo  ?? 0,
+      AT_GODOWN:  s.qtyAtGodown   ?? 0,
+      IN_BOX:     s.qtyInBox      ?? 0,
+      DISPATCHED: s.qtyDispatched ?? 0,
     }
-    return NextResponse.json({ lines: allLines, headerCounts, brandCounts: computeBrandCounts(allLines), pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+
+    return NextResponse.json({
+      lines: allLines,
+      headerCounts,
+      brandCounts: computeBrandCounts(allLines),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    })
   })
 }

@@ -16,38 +16,32 @@ import {
 } from '@/lib/purchases-tracker'
 
 const TO_STAGES = [
-  'PENDING_CO',
-  'PENDING_DIST',
-  'GODOWN',
+  'ORDERED',
+  'AT_GODOWN',
   'IN_BOX',
   'DISPATCHED',
-  'NOT_DISPLAYED',
 ] as const
 
 const LEGAL_TRANSITIONS: Record<PurchaseStage, typeof TO_STAGES[number][]> = {
-  UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
-  PENDING_CO: ['PENDING_DIST', 'GODOWN'],
-  PENDING_DIST: ['GODOWN'],
-  GODOWN: ['IN_BOX'],
-  IN_BOX: ['DISPATCHED'],
-  DISPATCHED: ['NOT_DISPLAYED'],
-  NOT_DISPLAYED: [],
+  NEEDS_PO:   ['ORDERED', 'AT_GODOWN'],
+  ORDERED:    ['AT_GODOWN'],
+  AT_GODOWN:  ['IN_BOX'],
+  IN_BOX:     ['DISPATCHED'],
+  DISPATCHED: [],
 }
 
 const DB_FIELD_BY_STAGE = {
-  PENDING_CO: 'qtyPendingCo',
-  PENDING_DIST: 'qtyPendingDist',
-  GODOWN: 'qtyAtGodown',
-  IN_BOX: 'qtyInBox',
+  ORDERED:    'qtyPendingCo',
+  AT_GODOWN:  'qtyAtGodown',
+  IN_BOX:     'qtyInBox',
   DISPATCHED: 'qtyDispatched',
-  NOT_DISPLAYED: 'qtyNotDisplayed',
 } as const
 
 type PersistedStage = keyof typeof DB_FIELD_BY_STAGE
 type QtyField = typeof DB_FIELD_BY_STAGE[PersistedStage]
 
 const MoveStageSchema = z.object({
-  fromStage: z.enum(['UNALLOCATED', ...TO_STAGES]),
+  fromStage: z.enum(['NEEDS_PO', ...TO_STAGES]),
   toStage: z.enum(TO_STAGES),
   qty: z.number().int().min(1),
   customerId: z.string().optional(),
@@ -58,38 +52,32 @@ const MoveStageSchema = z.object({
 function getCurrentQtyAtStage(line: {
   qtyOrdered: number
   qtyPendingCo: number
-  qtyPendingDist: number
   qtyAtGodown: number
   qtyInBox: number
   qtyDispatched: number
-  qtyNotDisplayed: number
 }, stage: PurchaseStage): number {
-  if (stage === 'UNALLOCATED') {
-    return countsFromDbLine(line).UNALLOCATED
+  if (stage === 'NEEDS_PO') {
+    return countsFromDbLine(line).NEEDS_PO
   }
 
-  return line[DB_FIELD_BY_STAGE[stage]]
+  return line[DB_FIELD_BY_STAGE[stage as PersistedStage]]
 }
 
 function buildStageTotals(lines: Array<{
   qtyOrdered: number
   qtyPendingCo: number
-  qtyPendingDist: number
   qtyAtGodown: number
   qtyInBox: number
   qtyDispatched: number
-  qtyNotDisplayed: number
 }>): HeaderCounts {
   return lines.reduce((acc, line) => {
     const next = countsFromDbLine(line)
     return {
-      UNALLOCATED: acc.UNALLOCATED + next.UNALLOCATED,
-      PENDING_CO: acc.PENDING_CO + next.PENDING_CO,
-      PENDING_DIST: acc.PENDING_DIST + next.PENDING_DIST,
-      GODOWN: acc.GODOWN + next.GODOWN,
-      IN_BOX: acc.IN_BOX + next.IN_BOX,
+      NEEDS_PO:   acc.NEEDS_PO   + next.NEEDS_PO,
+      ORDERED:    acc.ORDERED    + next.ORDERED,
+      AT_GODOWN:  acc.AT_GODOWN  + next.AT_GODOWN,
+      IN_BOX:     acc.IN_BOX     + next.IN_BOX,
       DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
-      NOT_DISPLAYED: acc.NOT_DISPLAYED + next.NOT_DISPLAYED,
     }
   }, createEmptyHeaderCounts())
 }
@@ -98,22 +86,14 @@ async function getStageTotalsForScope(scope: BrandTab): Promise<HeaderCounts> {
   const brands = getBrandsForTab(scope)
   const lines = await prisma.pOLineItem.findMany({
     where: brands
-      ? {
-          product: {
-            brand: {
-              in: brands as never[],
-            },
-          },
-        }
+      ? { product: { brand: { in: brands as never[] } } }
       : undefined,
     select: {
-      qtyOrdered: true,
+      qtyOrdered:   true,
       qtyPendingCo: true,
-      qtyPendingDist: true,
-      qtyAtGodown: true,
-      qtyInBox: true,
+      qtyAtGodown:  true,
+      qtyInBox:     true,
       qtyDispatched: true,
-      qtyNotDisplayed: true,
     },
   })
 
@@ -127,13 +107,7 @@ export async function PATCH(
   return withErrorHandling(async () => {
     const { lineId } = await params
     const body = MoveStageSchema.parse(await req.json())
-    const {
-      fromStage,
-      toStage,
-      qty,
-      customerId,
-      note,
-    } = body
+    const { fromStage, toStage, qty, customerId, note } = body
 
     const allowedTargets = LEGAL_TRANSITIONS[fromStage] ?? []
     if (!allowedTargets.includes(toStage)) {
@@ -148,14 +122,12 @@ export async function PATCH(
       const line = await prisma.pOLineItem.findUnique({
         where: { id: lineId },
         select: {
-          id: true,
-          qtyOrdered: true,
-          qtyPendingCo: true,
-          qtyPendingDist: true,
-          qtyAtGodown: true,
-          qtyInBox: true,
+          id:            true,
+          qtyOrdered:    true,
+          qtyPendingCo:  true,
+          qtyAtGodown:   true,
+          qtyInBox:      true,
           qtyDispatched: true,
-          qtyNotDisplayed: true,
         },
       })
 
@@ -175,14 +147,12 @@ export async function PATCH(
 
       const updates: Array<ReturnType<typeof prisma.pOLineItem.update> | ReturnType<typeof prisma.stageMovement.create>> = []
 
-      if (fromStage !== 'UNALLOCATED') {
+      if (fromStage !== 'NEEDS_PO') {
         updates.push(
           prisma.pOLineItem.update({
             where: { id: lineId },
             data: {
-              [DB_FIELD_BY_STAGE[fromStage] as QtyField]: {
-                decrement: qty,
-              },
+              [DB_FIELD_BY_STAGE[fromStage as PersistedStage] as QtyField]: { decrement: qty },
             },
           }),
         )
@@ -192,9 +162,7 @@ export async function PATCH(
         prisma.pOLineItem.update({
           where: { id: lineId },
           data: {
-            [DB_FIELD_BY_STAGE[toStage] as QtyField]: {
-              increment: qty,
-            },
+            [DB_FIELD_BY_STAGE[toStage] as QtyField]: { increment: qty },
           },
         }),
       )
@@ -220,13 +188,7 @@ export async function PATCH(
         where: { id: lineId },
         include: {
           product: {
-            select: {
-              id: true,
-              sku: true,
-              name: true,
-              brand: true,
-              imageUrl: true,
-            },
+            select: { id: true, sku: true, name: true, brand: true, imageUrl: true },
           },
           po: {
             select: {
@@ -234,11 +196,7 @@ export async function PATCH(
               poNumber: true,
               vendorName: true,
               project: {
-                select: {
-                  id: true,
-                  clientName: true,
-                  siteAddress: true,
-                },
+                select: { id: true, clientName: true, siteAddress: true },
               },
             },
           },
@@ -251,10 +209,7 @@ export async function PATCH(
 
       const stageTotals = await getStageTotalsForScope(normalizeBrandTab(body.brand))
 
-      return NextResponse.json({
-        lineItem,
-        stageTotals,
-      })
+      return NextResponse.json({ lineItem, stageTotals })
     } catch (error) {
       if (shouldUseFallback(error)) {
         return NextResponse.json(moveFallbackLine({

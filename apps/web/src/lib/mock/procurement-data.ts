@@ -42,41 +42,33 @@ export interface DraftPOLine {
 // ─── Stage types ──────────────────────────────────────────────────────────────
 
 export type POStage =
-  | 'PENDING_CO'
-  | 'PENDING_DIST'
+  | 'ORDERED'
   | 'AT_GODOWN'
   | 'IN_BOX'
   | 'DISPATCHED'
-  | 'NOT_DISPLAYED'
 
 /** Legal next stages for each stage — includes backward moves for corrections */
-export const LEGAL_TRANSITIONS: Record<'ORDERED' | POStage, POStage[]> = {
-  ORDERED:       ['PENDING_CO', 'PENDING_DIST', 'AT_GODOWN'],  // direct-to-godown shortcut
-  PENDING_CO:    ['PENDING_DIST', 'AT_GODOWN'],
-  PENDING_DIST:  ['AT_GODOWN', 'PENDING_CO'],                  // ← back to co
-  AT_GODOWN:     ['IN_BOX', 'PENDING_DIST'],                   // ← back to dist
-  IN_BOX:        ['DISPATCHED', 'AT_GODOWN'],                  // ← back to godown
-  DISPATCHED:    ['NOT_DISPLAYED', 'IN_BOX'],                  // ← back to box
-  NOT_DISPLAYED: ['DISPATCHED'],                               // ← back to dispatched
+export const LEGAL_TRANSITIONS: Record<'NEEDS_PO' | POStage, POStage[]> = {
+  NEEDS_PO:  ['ORDERED', 'AT_GODOWN'],   // direct-to-godown shortcut
+  ORDERED:   ['AT_GODOWN'],
+  AT_GODOWN: ['IN_BOX', 'ORDERED'],      // ← back to ordered
+  IN_BOX:    ['DISPATCHED', 'AT_GODOWN'], // ← back to godown
+  DISPATCHED: [],
 }
 
-export const STAGE_LABELS: Record<'ORDERED' | POStage, string> = {
-  ORDERED:       'Total Ordered',
-  PENDING_CO:    'Pending from Co.',
-  PENDING_DIST:  'Pending from Dist.',
-  AT_GODOWN:     'At Godown',
-  IN_BOX:        'In Box',
-  DISPATCHED:    'Dispatched',
-  NOT_DISPLAYED: 'Not Displayed',
+export const STAGE_LABELS: Record<'NEEDS_PO' | POStage, string> = {
+  NEEDS_PO:  'Needs PO',
+  ORDERED:   'Ordered',
+  AT_GODOWN: 'At Godown',
+  IN_BOX:    'In Box',
+  DISPATCHED: 'Dispatched',
 }
 
 export const STAGE_COLORS: Record<POStage, string> = {
-  PENDING_CO:    '#F5A623',
-  PENDING_DIST:  '#E8762C',
-  AT_GODOWN:     '#4A90D9',
-  IN_BOX:        '#7B68EE',
-  DISPATCHED:    '#27AE60',
-  NOT_DISPLAYED: '#95A5A6',
+  ORDERED:   '#F5A623',
+  AT_GODOWN: '#4A90D9',
+  IN_BOX:    '#7B68EE',
+  DISPATCHED: '#27AE60',
 }
 
 export interface MockStageMovement {
@@ -102,11 +94,9 @@ export interface MockPOLineItem {
   qtyReceived:          number
   // Stage-by-stage quantity tracking (invariant: sum of stages <= qtyOrdered)
   qtyPendingCo:         number
-  qtyPendingDist:       number
   qtyAtGodown:          number
   qtyInBox:             number
   qtyDispatched:        number
-  qtyNotDisplayed:      number
   landingCost:          number | null
   clientOfferRate:      number | null
   status:               POLineStatus
@@ -279,5 +269,43 @@ export const ALLOC_STATUS_CONFIG: Record<BoxAllocationStatus, {
   DEL_PENDING: { label: 'Del. Pending',     color: '#d97706', bg: 'rgba(217,119,6,0.08)',   border: '1px solid #fde68a',    emoji: '🚚' },
   DELIVERED:   { label: 'Delivered',        color: '#16a34a', bg: 'rgba(22,163,74,0.08)',   border: '1px solid #bbf7d0',    emoji: '✓' },
   GIVEN_OTHER: { label: 'Given to Other',   color: '#ea580c', bg: 'rgba(234,88,12,0.08)',   border: '1px solid #fed7aa',    emoji: '👤' },
+}
+
+// ─── Transfer history record ──────────────────────────────────────────────────
+
+export type TransferStage = 'AT_GODOWN' | 'IN_BOX' | 'DISPATCHED'
+
+export interface TransferRecord {
+  id:               string
+  poId:             string
+  lineId:           string
+  productId:        string
+  productName:      string
+  productSku:       string
+  fromCustomerId:   string
+  fromCustomerName: string
+  toCustomerId:     string
+  toCustomerName:   string
+  qty:              number
+  stage:            TransferStage
+  notes:            string
+  timestamp:        string
+}
+
+// ─── Priority Transfer audit record ──────────────────────────────────────────
+
+export interface PriorityTransfer {
+  id:               string
+  productId:        string
+  productName:      string
+  qty:              number
+  fromCustomerId:   string
+  fromCustomerName: string
+  toCustomerId:     string
+  toCustomerName:   string
+  reorderCreated:   boolean
+  note:             string
+  transferredAt:    string
+  transferredBy:    string
 }
 

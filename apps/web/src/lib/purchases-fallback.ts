@@ -17,22 +17,18 @@ import {
 } from '@/lib/purchases-tracker'
 
 const DB_FIELD_BY_STAGE = {
-  PENDING_CO: 'qtyPendingCo',
-  PENDING_DIST: 'qtyPendingDist',
-  GODOWN: 'qtyAtGodown',
-  IN_BOX: 'qtyInBox',
+  ORDERED:    'qtyPendingCo',
+  AT_GODOWN:  'qtyAtGodown',
+  IN_BOX:     'qtyInBox',
   DISPATCHED: 'qtyDispatched',
-  NOT_DISPLAYED: 'qtyNotDisplayed',
 } as const
 
 const LEGAL_TRANSITIONS: Record<PurchaseStage, PurchaseStage[]> = {
-  UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
-  PENDING_CO: ['PENDING_DIST', 'GODOWN'],
-  PENDING_DIST: ['GODOWN'],
-  GODOWN: ['IN_BOX'],
-  IN_BOX: ['DISPATCHED'],
-  DISPATCHED: ['NOT_DISPLAYED'],
-  NOT_DISPLAYED: [],
+  NEEDS_PO:   ['ORDERED', 'AT_GODOWN'],
+  ORDERED:    ['AT_GODOWN'],
+  AT_GODOWN:  ['IN_BOX'],
+  IN_BOX:     ['DISPATCHED'],
+  DISPATCHED: [],
 }
 
 let mockOrders: MockPurchaseOrder[] | null = null
@@ -69,13 +65,11 @@ function mapMockLine(order: MockPurchaseOrder, line: MockPOLineItem): PurchaseTr
     qtyOrdered: line.qtyOrdered,
     qtyReceived: line.qtyReceived,
     stages: countsFromDbLine({
-      qtyOrdered: line.qtyOrdered,
-      qtyPendingCo: line.qtyPendingCo,
-      qtyPendingDist: line.qtyPendingDist,
-      qtyAtGodown: line.qtyAtGodown,
-      qtyInBox: line.qtyInBox,
+      qtyOrdered:    line.qtyOrdered,
+      qtyPendingCo:  line.qtyPendingCo,
+      qtyAtGodown:   line.qtyAtGodown,
+      qtyInBox:      line.qtyInBox,
       qtyDispatched: line.qtyDispatched,
-      qtyNotDisplayed: line.qtyNotDisplayed,
     }),
   }
 }
@@ -95,13 +89,11 @@ function getMutableLine(lineId: string): { order: MockPurchaseOrder; line: MockP
 
 function getAvailableQty(line: MockPOLineItem, stage: PurchaseStage): number {
   const counts = countsFromDbLine({
-    qtyOrdered: line.qtyOrdered,
-    qtyPendingCo: line.qtyPendingCo,
-    qtyPendingDist: line.qtyPendingDist,
-    qtyAtGodown: line.qtyAtGodown,
-    qtyInBox: line.qtyInBox,
+    qtyOrdered:    line.qtyOrdered,
+    qtyPendingCo:  line.qtyPendingCo,
+    qtyAtGodown:   line.qtyAtGodown,
+    qtyInBox:      line.qtyInBox,
     qtyDispatched: line.qtyDispatched,
-    qtyNotDisplayed: line.qtyNotDisplayed,
   })
 
   return counts[stage]
@@ -153,7 +145,7 @@ export function moveFallbackLine({
 }: {
   lineId: string
   fromStage: PurchaseStage
-  toStage: Exclude<PurchaseStage, 'UNALLOCATED'>
+  toStage: Exclude<PurchaseStage, 'NEEDS_PO'>
   qty: number
   brand: BrandTab
 }): { lineItem: PurchaseTrackerLine; stageTotals: HeaderCounts } {
@@ -176,7 +168,7 @@ export function moveFallbackLine({
     )
   }
 
-  if (fromStage !== 'UNALLOCATED') {
+  if (fromStage !== 'NEEDS_PO') {
     const fromField = DB_FIELD_BY_STAGE[fromStage]
     target.line[fromField] -= qty
   }

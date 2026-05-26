@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.1] - 2026-05-27
+
+### Fixed
+- Auth guards added to `/api/crm/contacts/[id]`, `/api/purchase-orders/lines/[lineId]/mark-received`, `/api/purchase-orders/lines/[lineId]/move-stage`, `/api/dashboard/stats`, `/api/customers/[customerId]/by-stage` and `/api/customers/[customerId]/stage-totals`
+- CI: pnpm version conflict resolved; Vercel Prisma generate step added
+- Restored items in `loadProject` (regression from POS series DB migration)
+
+### Tests
+- Coverage for `follow-up-types.ts` (`getEffectiveStatus` — all 3 paths)
+- API route tests: follow-ups (GET/POST), quotations (auth guard), dashboard (empty state), products (happy path + DB error)
+- `purchases-fallback.test.ts`: illegal-stage-transition branch
+
 ## [0.1.0] - 2026-05-22
 
 ### Features

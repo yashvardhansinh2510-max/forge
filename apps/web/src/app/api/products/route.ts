@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
     const where: Prisma.ProductWhereInput = {
       isActive: true,
-      ...(brand     && { brand }),
+      ...(brand      && { brand }),
       ...(seriesParam && { seriesName: seriesParam }),
       ...(searchParam && {
         OR: [
@@ -28,36 +28,53 @@ export async function GET(request: Request) {
       }),
     }
 
-    const products = await prisma.product.findMany({
-      where,
-      orderBy: [{ brand: 'asc' }, { name: 'asc' }],
-      take: limitParam > 0 ? limitParam : undefined,
-      select: {
-        id: true,
-        sku: true,
-        articleNumber: true,
-        name: true,
-        description: true,
-        brand: true,
-        category: true,
-        subcategory: true,
-        seriesName: true,
-        mrp: true,
-        unit: true,
-        gstRate: true,
-        tier: true,
-        isActive: true,
-        variants: true,
-        concealedPartId: true,
-        finishName: true,
-        imageUrl: true,
-      },
-    })
+    // Try with new columns first (post-migration). Fall back to base columns if the
+    // migration hasn't been applied yet (column-not-found error from Postgres).
+    let products: Array<{
+      id: string; sku: string; articleNumber: string | null; name: string
+      description: string | null; brand: string; category: string
+      subcategory: string | null; seriesName: string | null; mrp: number
+      unit: string; gstRate: number; tier: string; isActive: boolean
+      variants: unknown; concealedPartId: string | null; finishName: string | null
+      imageUrl: string | null; hsnCode?: string | null
+      filterTags?: string[]; sortOrder?: number | null
+    }>
+
+    try {
+      products = await prisma.product.findMany({
+        where,
+        orderBy: [{ sortOrder: 'asc' }, { brand: 'asc' }, { name: 'asc' }],
+        take: limitParam > 0 ? limitParam : undefined,
+        select: {
+          id: true, sku: true, articleNumber: true, name: true, description: true,
+          brand: true, category: true, subcategory: true, seriesName: true,
+          mrp: true, unit: true, gstRate: true, tier: true, isActive: true,
+          variants: true, concealedPartId: true, finishName: true, imageUrl: true,
+          hsnCode: true, filterTags: true, sortOrder: true,
+        },
+      })
+    } catch {
+      // Migration not yet applied — fall back to base columns
+      products = await prisma.product.findMany({
+        where,
+        orderBy: [{ brand: 'asc' }, { name: 'asc' }],
+        take: limitParam > 0 ? limitParam : undefined,
+        select: {
+          id: true, sku: true, articleNumber: true, name: true, description: true,
+          brand: true, category: true, subcategory: true, seriesName: true,
+          mrp: true, unit: true, gstRate: true, tier: true, isActive: true,
+          variants: true, concealedPartId: true, finishName: true, imageUrl: true,
+        },
+      })
+    }
 
     return NextResponse.json({
       products: products.map((p) => ({
         ...p,
         articleNumber: p.articleNumber ?? p.sku,
+        hsnCode:    p.hsnCode    ?? null,
+        filterTags: p.filterTags ?? [],
+        sortOrder:  p.sortOrder  ?? null,
       })),
       generatedAt: new Date().toISOString(),
     })

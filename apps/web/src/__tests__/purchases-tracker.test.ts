@@ -56,7 +56,8 @@ describe('normalizeBrandTab', () => {
   it('returns ALL for null', () => expect(normalizeBrandTab(null)).toBe('ALL'))
   it('returns ALL for undefined', () => expect(normalizeBrandTab(undefined)).toBe('ALL'))
   it('returns ALL for empty string', () => expect(normalizeBrandTab('')).toBe('ALL'))
-  it('returns ALL for unknown value', () => expect(normalizeBrandTab('KAJARIA')).toBe('ALL'))
+  it('returns ALL for unknown value', () => expect(normalizeBrandTab('UNKNOWN_XYZ')).toBe('ALL'))
+  it('KAJARIA is now a known tab', () => expect(normalizeBrandTab('KAJARIA')).toBe('KAJARIA'))
   it('is case-insensitive', () => expect(normalizeBrandTab('grohe')).toBe('GROHE'))
   it('returns valid tab unchanged', () => expect(normalizeBrandTab('VITRA')).toBe('VITRA'))
 })
@@ -67,12 +68,13 @@ describe('getBrandTabForBrand', () => {
   it('GROHE maps to GROHE', () => expect(getBrandTabForBrand('GROHE')).toBe('GROHE'))
   it('VITRA maps to VITRA', () => expect(getBrandTabForBrand('VITRA')).toBe('VITRA'))
   it('GEBERIT maps to GEBERIT', () => expect(getBrandTabForBrand('GEBERIT')).toBe('GEBERIT'))
-  it('unknown brand returns null', () => expect(getBrandTabForBrand('KAJARIA')).toBeNull())
+  it('KAJARIA maps to KAJARIA', () => expect(getBrandTabForBrand('KAJARIA')).toBe('KAJARIA'))
+  it('unknown brand returns null', () => expect(getBrandTabForBrand('UNKNOWN_XYZ')).toBeNull())
 })
 
 describe('getBrandSectionKey', () => {
   it('returns tab for known brand', () => expect(getBrandSectionKey('AXOR')).toBe('HANSGROHE'))
-  it('returns brand itself for unknown', () => expect(getBrandSectionKey('KAJARIA')).toBe('KAJARIA'))
+  it('returns brand itself for unknown', () => expect(getBrandSectionKey('UNKNOWN_XYZ')).toBe('UNKNOWN_XYZ'))
 })
 
 describe('getBrandsForTab', () => {
@@ -91,55 +93,49 @@ describe('matchesBrandTab', () => {
 })
 
 describe('countsFromDbLine', () => {
-  it('computes UNALLOCATED as max(0, ordered - staged)', () => {
+  it('computes NEEDS_PO as max(0, ordered - staged)', () => {
     const c = countsFromDbLine({
-      qtyOrdered: 10,
-      qtyPendingCo: 3,
-      qtyPendingDist: 2,
-      qtyAtGodown: 1,
-      qtyInBox: 0,
+      qtyOrdered:    10,
+      qtyPendingCo:  3,
+      qtyAtGodown:   2,
+      qtyInBox:      1,
       qtyDispatched: 0,
-      qtyNotDisplayed: 0,
     })
-    expect(c.UNALLOCATED).toBe(4)
+    expect(c.NEEDS_PO).toBe(4)
   })
 
-  it('UNALLOCATED floors at 0 (never negative)', () => {
+  it('NEEDS_PO floors at 0 (never negative)', () => {
     const c = countsFromDbLine({
-      qtyOrdered: 5,
-      qtyPendingCo: 3,
-      qtyPendingDist: 3,
-      qtyAtGodown: 0,
-      qtyInBox: 0,
+      qtyOrdered:    5,
+      qtyPendingCo:  3,
+      qtyAtGodown:   3,
+      qtyInBox:      0,
       qtyDispatched: 0,
-      qtyNotDisplayed: 0,
     })
-    expect(c.UNALLOCATED).toBe(0)
+    expect(c.NEEDS_PO).toBe(0)
   })
 
   it('passes staged quantities through directly', () => {
     const c = countsFromDbLine({
-      qtyOrdered: 10,
-      qtyPendingCo: 2,
-      qtyPendingDist: 1,
-      qtyAtGodown: 3,
-      qtyInBox: 1,
+      qtyOrdered:    10,
+      qtyPendingCo:  2,
+      qtyAtGodown:   3,
+      qtyInBox:      1,
       qtyDispatched: 2,
-      qtyNotDisplayed: 0,
     })
-    expect(c.PENDING_CO).toBe(2)
-    expect(c.GODOWN).toBe(3)
+    expect(c.ORDERED).toBe(2)
+    expect(c.AT_GODOWN).toBe(3)
     expect(c.DISPATCHED).toBe(2)
   })
 })
 
 describe('addCounts', () => {
   it('adds each stage independently', () => {
-    const a = { ...createEmptyHeaderCounts(), GODOWN: 3, PENDING_CO: 1 }
-    const b = { ...createEmptyHeaderCounts(), GODOWN: 2, DISPATCHED: 5 }
+    const a = { ...createEmptyHeaderCounts(), AT_GODOWN: 3, ORDERED: 1 }
+    const b = { ...createEmptyHeaderCounts(), AT_GODOWN: 2, DISPATCHED: 5 }
     const result = addCounts(a, b)
-    expect(result.GODOWN).toBe(5)
-    expect(result.PENDING_CO).toBe(1)
+    expect(result.AT_GODOWN).toBe(5)
+    expect(result.ORDERED).toBe(1)
     expect(result.DISPATCHED).toBe(5)
   })
 })
@@ -150,10 +146,10 @@ describe('computeHeaderCounts', () => {
   })
 
   it('sums stages across multiple lines', () => {
-    const l1 = makeLine({ stages: { ...createEmptyHeaderCounts(), GODOWN: 2 } })
-    const l2 = makeLine({ stages: { ...createEmptyHeaderCounts(), GODOWN: 3, DISPATCHED: 1 } })
+    const l1 = makeLine({ stages: { ...createEmptyHeaderCounts(), AT_GODOWN: 2 } })
+    const l2 = makeLine({ stages: { ...createEmptyHeaderCounts(), AT_GODOWN: 3, DISPATCHED: 1 } })
     const result = computeHeaderCounts([l1, l2])
-    expect(result.GODOWN).toBe(5)
+    expect(result.AT_GODOWN).toBe(5)
     expect(result.DISPATCHED).toBe(1)
   })
 })
@@ -178,33 +174,31 @@ describe('computeBrandCounts', () => {
 
 describe('getStageQuantity', () => {
   it('returns stage value from line', () => {
-    const l = makeLine({ stages: { ...createEmptyHeaderCounts(), GODOWN: 7 } })
-    expect(getStageQuantity(l, 'GODOWN')).toBe(7)
+    const l = makeLine({ stages: { ...createEmptyHeaderCounts(), AT_GODOWN: 7 } })
+    expect(getStageQuantity(l, 'AT_GODOWN')).toBe(7)
   })
 })
 
 describe('getActiveStages / getVisibleMoveStages / getOverflowStages', () => {
   const l = makeLine({
     stages: {
-      UNALLOCATED: 2,
-      PENDING_CO: 1,
-      PENDING_DIST: 0,
-      GODOWN: 3,
-      IN_BOX: 0,
+      NEEDS_PO:   2,
+      ORDERED:    1,
+      AT_GODOWN:  3,
+      IN_BOX:     0,
       DISPATCHED: 1,
-      NOT_DISPLAYED: 0,
     },
   })
 
   it('getActiveStages returns only non-zero stages in order', () => {
-    expect(getActiveStages(l)).toEqual(['UNALLOCATED', 'PENDING_CO', 'GODOWN', 'DISPATCHED'])
+    expect(getActiveStages(l)).toEqual(['NEEDS_PO', 'ORDERED', 'AT_GODOWN', 'DISPATCHED'])
   })
 
   it('getVisibleMoveStages returns first two active stages', () => {
-    expect(getVisibleMoveStages(l)).toEqual(['UNALLOCATED', 'PENDING_CO'])
+    expect(getVisibleMoveStages(l)).toEqual(['NEEDS_PO', 'ORDERED'])
   })
 
   it('getOverflowStages returns stages beyond the first two', () => {
-    expect(getOverflowStages(l)).toEqual(['GODOWN', 'DISPATCHED'])
+    expect(getOverflowStages(l)).toEqual(['AT_GODOWN', 'DISPATCHED'])
   })
 })

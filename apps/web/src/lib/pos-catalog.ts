@@ -22,6 +22,9 @@ export interface ProductApiItem {
   variants: unknown
   concealedPartId: string | null
   imageUrl: string | null
+  hsnCode: string | null
+  filterTags: string[]
+  sortOrder: number | null
 }
 
 const BRAND_DISPLAY: Record<string, string> = {

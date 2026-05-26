@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { type Prisma } from '@forge/db'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
@@ -18,6 +19,39 @@ const RoomSchema = z.object({
   items: z.array(RoomItemSchema),
 })
 
+// Catalog line item for the legacy slide-over builder path
+const LegacyCatalogItemSchema = z.object({
+  isCustom:     z.literal(false).optional(),
+  sku:          z.string().min(1),
+  productName:  z.string().optional(),
+  articleNumber: z.string().optional(),
+  qty:          z.number().int().positive(),
+  unitPrice:    z.number().min(0),
+  discount:     z.number().min(0).max(100).default(0),
+  gstRate:      z.number().min(0).default(18),
+  section:      z.string().optional(),
+  imageUrl:     z.string().optional(),
+  finishName:   z.string().optional(),
+  seriesName:   z.string().optional(),
+})
+
+// Custom (non-catalog) line item for the legacy slide-over builder path
+const LegacyCustomItemSchema = z.object({
+  isCustom:          z.literal(true),
+  customDescription: z.string().min(1),
+  customBrand:       z.string().optional(),
+  customUnit:        z.string().optional(),
+  customHsnCode:     z.string().optional(),
+  customNotes:       z.string().optional(),
+  qty:               z.number().int().positive(),
+  unitPrice:         z.number().min(0),
+  discount:          z.number().min(0).max(100).default(0),
+  gstRate:           z.number().min(0).default(18),
+  section:           z.string().optional(),
+})
+
+const AnyLegacyItemSchema = z.union([LegacyCustomItemSchema, LegacyCatalogItemSchema])
+
 const PatchSchema = z.object({
   customerName:       z.string().optional(),
   customerPhone:      z.string().optional(),
@@ -29,21 +63,10 @@ const PatchSchema = z.object({
   notes:              z.string().optional(),
   termsAndConditions: z.string().optional(),
   rooms:              z.array(RoomSchema).optional(),
-  // Legacy line-items path (kept for backwards compat with slide-over builder)
-  lineItems: z.array(z.object({
-    sku:          z.string().min(1),
-    productName:  z.string().optional(),
-    articleNumber: z.string().optional(),
-    qty:          z.number().int().positive(),
-    unitPrice:    z.number().min(0),
-    discount:     z.number().min(0).max(100).default(0),
-    gstRate:      z.number().min(0).default(18),
-    section:      z.string().optional(),
-    imageUrl:     z.string().optional(),
-    finishName:   z.string().optional(),
-    seriesName:   z.string().optional(),
-  })).optional(),
-  projectName: z.string().optional(),
+  // Legacy line-items path (kept for backwards compat with slide-over builder).
+  // Accepts both catalog and custom items.
+  lineItems:          z.array(AnyLegacyItemSchema).optional(),
+  projectName:        z.string().optional(),
 })
 
 export async function GET(
@@ -98,15 +121,39 @@ export async function GET(
         id:    room.id,
         name:  room.roomName,
         order: room.order,
-        items: room.items.map((item) => ({
-          id:          item.id,
-          productId:   item.productId,
-          sku:         item.product.sku,
-          productName: item.product.name,
-          mrp:         item.mrp,
-          qty:         item.quantity,
-          offerRate:   item.offerRate,
-        })),
+        items: room.items.map((item) => {
+          // Custom item: reconstruct full LineItem shape from stored custom fields.
+          // mrp stores the entered unitPrice; discountPct stores the discount %.
+          // gstRate is not stored per-item — custom items are always 18%.
+          if (item.isCustom) {
+            return {
+              id:          item.id,
+              productId:   '',
+              sku:         '',
+              productName: item.customDescription ?? '',
+              description: '',
+              unit:        item.customUnit ?? 'Nos',
+              qty:         item.quantity,
+              unitPrice:   item.mrp,
+              discount:    item.discountPct,
+              gstRate:     18,
+              offerRate:   item.offerRate,
+              isCustom:    true,
+              brand:       item.customBrand   ?? undefined,
+              hsnCode:     item.customHsnCode ?? undefined,
+              notes:       item.customNotes   ?? undefined,
+            }
+          }
+          return {
+            id:          item.id,
+            productId:   item.productId,
+            sku:         item.product?.sku ?? '',
+            productName: item.product?.name ?? '',
+            mrp:         item.mrp,
+            qty:         item.quantity,
+            offerRate:   item.offerRate,
+          }
+        }),
       })),
     })
   })
@@ -141,16 +188,16 @@ export async function PATCH(
       if (body.customerName   !== undefined) quotationUpdate.customerName   = body.customerName
       if (body.siteAddress    !== undefined) quotationUpdate.siteAddress    = body.siteAddress
       if (body.billingAddress !== undefined) quotationUpdate.billingAddress = body.billingAddress
-      if (body.salesRep       !== undefined) (quotationUpdate as any).salesRep    = body.salesRep
-      if (body.brandLabel     !== undefined) (quotationUpdate as any).brandLabel  = body.brandLabel
+      if (body.salesRep       !== undefined) (quotationUpdate as any).salesRep   = body.salesRep
+      if (body.brandLabel     !== undefined) (quotationUpdate as any).brandLabel = body.brandLabel
       if (Object.keys(quotationUpdate).length > 0) {
         await tx.quotation.update({ where: { id: revision.quotationId }, data: quotationUpdate })
       }
 
       // Update Revision metadata
       const revUpdate: Record<string, unknown> = {}
-      if (body.notes              !== undefined) revUpdate.notes             = body.notes
-      if (body.customerPhone      !== undefined) revUpdate.customerPhone     = body.customerPhone
+      if (body.notes              !== undefined) revUpdate.notes         = body.notes
+      if (body.customerPhone      !== undefined) revUpdate.customerPhone = body.customerPhone
       if (body.validUntil         !== undefined) (revUpdate as any).validUntil         = new Date(body.validUntil)
       if (body.termsAndConditions !== undefined) (revUpdate as any).termsAndConditions = body.termsAndConditions
       if (Object.keys(revUpdate).length > 0) {
@@ -185,15 +232,20 @@ export async function PATCH(
 
       // --- Legacy line-items sync (slide-over builder) ---
       if (body.lineItems !== undefined) {
-        const skus = body.lineItems.map((li) => li.sku)
+        const catalogLIs = body.lineItems.filter(
+          (li): li is z.infer<typeof LegacyCatalogItemSchema> => !li.isCustom
+        )
+        const skus = catalogLIs.map((li) => li.sku)
         const products = await tx.product.findMany({ where: { sku: { in: skus } }, select: { id: true, sku: true, mrp: true } })
+        // Only throw if there are catalog items but none resolve — custom-only quotations are fine
         if (skus.length > 0 && products.length === 0) {
           throw new Error('No valid SKUs found in payload')
         }
         await tx.quotationRoom.deleteMany({ where: { revisionId: id } })
         const productBySku = new Map(products.map((p) => [p.sku, p]))
+
         const sectionMap = new Map<string, typeof body.lineItems>()
-        for (const li of body.lineItems!) {
+        for (const li of body.lineItems) {
           const key = li.section?.trim() || body.projectName || 'General'
           if (!sectionMap.has(key)) sectionMap.set(key, [])
           sectionMap.get(key)!.push(li)
@@ -204,12 +256,44 @@ export async function PATCH(
             tx.quotationRoom.create({ data: { revisionId: id, roomName: sectionName, order: idx } })
           )
         )
-        const legacyItems = sections.flatMap(([, items], sIdx) =>
-          items.flatMap((li, iIdx) => {
+        const legacyItems: Prisma.QuotationItemCreateManyInput[] = sections.flatMap(([, items], sIdx) =>
+          items.flatMap((li, iIdx): Prisma.QuotationItemCreateManyInput[] => {
+            if (li.isCustom) {
+              const offerRate = li.unitPrice * (1 - li.discount / 100)
+              return [{
+                roomId:            rooms[sIdx]!.id,
+                productId:         undefined,
+                isCustom:          true,
+                customDescription: li.customDescription,
+                customBrand:  li.customBrand  ?? undefined,
+                customUnit:   li.customUnit   ?? undefined,
+                customHsnCode: li.customHsnCode ?? undefined,
+                customNotes:  li.customNotes  ?? undefined,
+                quantity:    li.qty,
+                mrp:         li.unitPrice,
+                discountPct: li.discount,
+                offerRate,
+                totalOffer:  offerRate * li.qty,
+                sortOrder:   iIdx,
+              }]
+            }
             const product = productBySku.get(li.sku)
             if (!product) return []
             const offerRate = li.unitPrice > 0 ? li.unitPrice : product.mrp * (1 - li.discount / 100)
-            return [{ roomId: rooms[sIdx]!.id, productId: product.id, quantity: li.qty, mrp: product.mrp, discountPct: li.discount, offerRate, totalOffer: offerRate * li.qty, sortOrder: iIdx, imageUrl: li.imageUrl ?? null, finishName: li.finishName ?? null, seriesName: li.seriesName ?? null, articleNumber: li.articleNumber ?? null }]
+            return [{
+              roomId:       rooms[sIdx]!.id,
+              productId:    product.id,
+              quantity:     li.qty,
+              mrp:          product.mrp,
+              discountPct:  li.discount,
+              offerRate,
+              totalOffer:   offerRate * li.qty,
+              sortOrder:    iIdx,
+              imageUrl:     li.imageUrl      ?? undefined,
+              finishName:   li.finishName    ?? undefined,
+              seriesName:   li.seriesName    ?? undefined,
+              articleNumber: li.articleNumber ?? undefined,
+            }]
           })
         )
         if (legacyItems.length > 0) await tx.quotationItem.createMany({ data: legacyItems })

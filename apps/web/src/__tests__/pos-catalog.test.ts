@@ -20,6 +20,9 @@ const base: ProductApiItem = {
   variants: [],
   concealedPartId: null,
   imageUrl: null,
+  hsnCode: null,
+  filterTags: [],
+  sortOrder: null,
 }
 
 describe('mapToPOSProduct', () => {
@@ -50,7 +53,7 @@ describe('mapToPOSProduct', () => {
       variants: [{ name: 'Chrome', code: 'CR', color: '#C8D0D8', priceAdj: 0 }],
     })
     expect(p.finishes).toHaveLength(1)
-    expect(p.finishes[0].name).toBe('Chrome')
+    expect(p.finishes[0]?.name).toBe('Chrome')
     expect(p.defaultFinish).toBe('Chrome')
   })
 
