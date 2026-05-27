@@ -17,19 +17,13 @@ import {
 } from '@/lib/purchases-tracker'
 
 const DB_FIELD_BY_STAGE = {
-  ORDERED:    'qtyPendingCo',
-  AT_GODOWN:  'qtyAtGodown',
-  IN_BOX:     'qtyInBox',
-  DISPATCHED: 'qtyDispatched',
+  CO_BILLING: 'qtyPendingCo',
+  INBOX:      'qtyAtGodown',
+  DISPATCHED: 'qtyInBox',
+  COMPLETED:  'qtyDispatched',
 } as const
 
-const LEGAL_TRANSITIONS: Record<PurchaseStage, PurchaseStage[]> = {
-  NEEDS_PO:   ['ORDERED', 'AT_GODOWN'],
-  ORDERED:    ['AT_GODOWN'],
-  AT_GODOWN:  ['IN_BOX'],
-  IN_BOX:     ['DISPATCHED'],
-  DISPATCHED: [],
-}
+type PersistedStage = keyof typeof DB_FIELD_BY_STAGE
 
 let mockOrders: MockPurchaseOrder[] | null = null
 
@@ -145,7 +139,7 @@ export function moveFallbackLine({
 }: {
   lineId: string
   fromStage: PurchaseStage
-  toStage: Exclude<PurchaseStage, 'NEEDS_PO'>
+  toStage: Exclude<PurchaseStage, 'ORDER_IN_CO'>
   qty: number
   brand: BrandTab
 }): { lineItem: PurchaseTrackerLine; stageTotals: HeaderCounts } {
@@ -153,10 +147,6 @@ export function moveFallbackLine({
 
   if (!target) {
     throw new AppError('NOT_FOUND', `POLineItem '${lineId}' not found`, 404)
-  }
-
-  if (!(LEGAL_TRANSITIONS[fromStage] ?? []).includes(toStage)) {
-    throw new AppError('ILLEGAL_STAGE_TRANSITION', `Cannot move from ${fromStage} to ${toStage}.`, 422)
   }
 
   const availableQty = getAvailableQty(target.line, fromStage)
@@ -168,12 +158,12 @@ export function moveFallbackLine({
     )
   }
 
-  if (fromStage !== 'NEEDS_PO') {
-    const fromField = DB_FIELD_BY_STAGE[fromStage]
+  if (fromStage !== 'ORDER_IN_CO') {
+    const fromField = DB_FIELD_BY_STAGE[fromStage as PersistedStage]
     target.line[fromField] -= qty
   }
 
-  const toField = DB_FIELD_BY_STAGE[toStage]
+  const toField = DB_FIELD_BY_STAGE[toStage as PersistedStage]
   target.line[toField] += qty
 
   return {

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { ArrowRightLeft } from 'lucide-react'
+import useSWR from 'swr'
 import TransferModal from '@/components/purchases/TransferModal'
 import MoveStageModal from '@/components/purchases/MoveStageModal'
-import { useTransferHistory } from '@/lib/procurement-store'
 import {
   STAGE_LABEL,
   STAGE_ORDER,
@@ -59,11 +59,11 @@ function ProgressBar({ stages, total }: { stages: HeaderCounts; total: number })
   if (total === 0) return <div className="h-1.5 w-full rounded-full bg-[var(--n-100)]" />
 
   const segments = [
-    { qty: stages.DISPATCHED, color: '#10B981' },
-    { qty: stages.IN_BOX,     color: '#06B6D4' },
-    { qty: stages.AT_GODOWN,  color: '#8B5CF6' },
-    { qty: stages.ORDERED,    color: '#F59E0B' },
-    { qty: stages.NEEDS_PO,   color: '#E5E7EB' },
+    { qty: stages.COMPLETED,   color: '#10B981' },
+    { qty: stages.DISPATCHED,  color: '#06B6D4' },
+    { qty: stages.INBOX,       color: '#8B5CF6' },
+    { qty: stages.CO_BILLING,  color: '#F59E0B' },
+    { qty: stages.ORDER_IN_CO, color: '#E5E7EB' },
   ]
 
   return (
@@ -92,6 +92,26 @@ interface LineTableRowProps {
   onMoved:            (newCounts: HeaderCounts) => void
 }
 
+function ProductThumb({ product }: { product: PurchaseTrackerLine['product'] }) {
+  const [failed, setFailed] = useState(false)
+  if (product.imageUrl && !failed) {
+    return (
+      <img
+        src={product.imageUrl}
+        alt={product.name}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="h-10 w-10 shrink-0 rounded-xl border border-[var(--border)] object-cover"
+      />
+    )
+  }
+  return (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[linear-gradient(135deg,#eff6ff,white_52%,#ecfeff)] text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+      {product.brand.slice(0, 2)}
+    </div>
+  )
+}
+
 function LineTableRow({
   line,
   activeBrand,
@@ -108,22 +128,27 @@ function LineTableRow({
 
   const activeStages = STAGE_ORDER.filter((s) => stages[s] > 0)
   const firstStage   = activeStages[0] as PurchaseStage | undefined
-  const canTransfer  = stages.AT_GODOWN > 0 || stages.IN_BOX > 0
-  const canMove      = firstStage !== undefined && firstStage !== 'DISPATCHED'
+  const canTransfer  = stages.INBOX > 0 || stages.DISPATCHED > 0
+  const canMove      = firstStage !== undefined && firstStage !== 'COMPLETED'
 
   return (
     <>
       <tr className="border-t border-[var(--border)] transition hover:bg-[var(--n-50)]">
         <td className="py-3 pr-4 pl-5">
-          <p className="text-sm font-semibold text-[var(--text-primary)]">{line.product.name}</p>
-          <p
-            className="text-xs text-[var(--text-muted)]"
-            style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
-          >
-            {line.product.sku}
-          </p>
-          <div className="mt-2 w-full max-w-[180px]">
-            <ProgressBar stages={stages} total={total} />
+          <div className="flex items-center gap-3">
+            <ProductThumb product={line.product} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">{line.product.name}</p>
+              <p
+                className="text-xs text-[var(--text-muted)]"
+                style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
+              >
+                {line.product.sku}
+              </p>
+              <div className="mt-2 w-full max-w-[180px]">
+                <ProgressBar stages={stages} total={total} />
+              </div>
+            </div>
           </div>
         </td>
         <td
@@ -136,25 +161,25 @@ function LineTableRow({
           className="py-3 pr-3 text-center text-sm tabular-nums text-emerald-600"
           style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
         >
-          {stages.DISPATCHED || <span className="text-[var(--text-muted)]">—</span>}
+          {stages.COMPLETED || <span className="text-[var(--text-muted)]">—</span>}
         </td>
         <td
           className="py-3 pr-3 text-center text-sm tabular-nums text-violet-600"
           style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
         >
-          {stages.AT_GODOWN + stages.IN_BOX || <span className="text-[var(--text-muted)]">—</span>}
+          {stages.INBOX + stages.DISPATCHED || <span className="text-[var(--text-muted)]">—</span>}
         </td>
         <td
           className="py-3 pr-3 text-center text-sm tabular-nums text-amber-600"
           style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
         >
-          {stages.ORDERED || <span className="text-[var(--text-muted)]">—</span>}
+          {stages.CO_BILLING || <span className="text-[var(--text-muted)]">—</span>}
         </td>
         <td
           className="py-3 pr-3 text-center text-sm tabular-nums text-blue-600"
           style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
         >
-          {stages.NEEDS_PO || <span className="text-[var(--text-muted)]">—</span>}
+          {stages.ORDER_IN_CO || <span className="text-[var(--text-muted)]">—</span>}
         </td>
         <td className="py-3 pr-5 text-right">
           <div className="flex items-center justify-end gap-2">
@@ -210,16 +235,41 @@ function LineTableRow({
 // ─── Transfer history section ────────────────────────────────────────────────
 
 const STAGE_LABELS_SHORT: Record<string, string> = {
-  AT_GODOWN:  'Godown',
-  IN_BOX:     'In Box',
+  INBOX:      'Inbox',
   DISPATCHED: 'Dispatched',
+  COMPLETED:  'Completed',
 }
 
+interface TransferRecord {
+  id:               string
+  fromCustomerId:   string
+  fromCustomerName: string
+  toCustomerId:     string
+  toCustomerName:   string
+  productName:      string
+  qty:              number
+  stage:            string
+  notes:            string | null
+  transferredAt:    string
+}
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json()) as Promise<{ transfers: TransferRecord[] }>
+
 function TransfersSection({ customerId }: { customerId: string }) {
-  const history = useTransferHistory()
-  const records = history.filter(
-    (r) => r.fromCustomerId === customerId || r.toCustomerId === customerId,
+  const { data, isLoading } = useSWR(
+    `/api/transfers?customerId=${customerId}`,
+    fetcher,
+    { revalidateOnFocus: false },
   )
+  const records = data?.transfers ?? []
+
+  if (isLoading) {
+    return (
+      <div className="mx-6 mb-6 rounded-2xl border border-[var(--border)] bg-[var(--n-50)] py-8 text-center text-sm text-[var(--text-muted)]">
+        Loading transfers…
+      </div>
+    )
+  }
 
   if (records.length === 0) {
     return (
@@ -253,10 +303,10 @@ function TransfersSection({ customerId }: { customerId: string }) {
                 className="border-t border-[var(--border)] text-sm transition hover:bg-[var(--n-50)]"
               >
                 <td className="py-2.5 pr-4 pl-6 text-xs tabular-nums text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
-                  {new Date(r.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                  {new Date(r.transferredAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                 </td>
                 <td className="py-2.5 pr-4 text-xs font-medium text-[var(--text-primary)]">
-                  {r.productName}
+                  {r.productName || <span className="text-[var(--text-muted)]">—</span>}
                 </td>
                 <td className="py-2.5 pr-4 text-xs tabular-nums text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
                   {r.qty}
@@ -280,7 +330,7 @@ function TransfersSection({ customerId }: { customerId: string }) {
                   {STAGE_LABELS_SHORT[r.stage] ?? r.stage}
                 </td>
                 <td className="py-2.5 pr-6 text-xs text-[var(--text-muted)]">
-                  {r.notes || <span className="opacity-40">—</span>}
+                  {r.notes ?? <span className="opacity-40">—</span>}
                 </td>
               </tr>
             )
@@ -345,13 +395,13 @@ export default function CustomerView({ lines, activeBrand, onMoved }: CustomerVi
   const summary = selectedLines.reduce(
     (acc, l) => {
       acc.total      += l.qtyOrdered
-      acc.dispatched += l.stages.DISPATCHED
-      acc.atGodown   += l.stages.AT_GODOWN + l.stages.IN_BOX
-      acc.ordered    += l.stages.ORDERED
-      acc.needsPo    += l.stages.NEEDS_PO
+      acc.completed  += l.stages.COMPLETED
+      acc.inbox      += l.stages.INBOX + l.stages.DISPATCHED
+      acc.coBilling  += l.stages.CO_BILLING
+      acc.orderInCo  += l.stages.ORDER_IN_CO
       return acc
     },
-    { total: 0, dispatched: 0, atGodown: 0, ordered: 0, needsPo: 0 },
+    { total: 0, completed: 0, inbox: 0, coBilling: 0, orderInCo: 0 },
   )
 
   return (
@@ -371,10 +421,10 @@ export default function CustomerView({ lines, activeBrand, onMoved }: CustomerVi
           ) : (
             customerList.map((c) => {
               const pending   = c.lines.reduce(
-                (s, l) => s + l.stages.NEEDS_PO + l.stages.ORDERED + l.stages.AT_GODOWN + l.stages.IN_BOX,
+                (s, l) => s + l.stages.ORDER_IN_CO + l.stages.CO_BILLING + l.stages.INBOX + l.stages.DISPATCHED,
                 0,
               )
-              const delivered = c.lines.reduce((s, l) => s + l.stages.DISPATCHED, 0)
+              const delivered = c.lines.reduce((s, l) => s + l.stages.COMPLETED, 0)
               const active    = c.id === selectedId
 
               return (
@@ -432,11 +482,11 @@ export default function CustomerView({ lines, activeBrand, onMoved }: CustomerVi
 
             {/* Summary chips */}
             <div className="grid grid-cols-2 gap-3 px-6 sm:grid-cols-5">
-              <SummaryChip label="Total items" value={summary.total}      color="var(--text-primary)" />
-              <SummaryChip label="Delivered"   value={summary.dispatched} color="#10B981" />
-              <SummaryChip label="At godown"   value={summary.atGodown}   color="#8B5CF6" />
-              <SummaryChip label="On order"    value={summary.ordered}    color="#F59E0B" />
-              <SummaryChip label="Needs PO"    value={summary.needsPo}    color="#3B82F6" />
+              <SummaryChip label="Total items"  value={summary.total}      color="var(--text-primary)" />
+              <SummaryChip label="Completed"    value={summary.completed}  color="#10B981" />
+              <SummaryChip label="In pipeline"  value={summary.inbox}      color="#8B5CF6" />
+              <SummaryChip label="Co. Billing"  value={summary.coBilling}  color="#F59E0B" />
+              <SummaryChip label="Order In Co." value={summary.orderInCo}  color="#3B82F6" />
             </div>
 
             {/* Line item table */}
@@ -456,16 +506,16 @@ export default function CustomerView({ lines, activeBrand, onMoved }: CustomerVi
                         Total
                       </th>
                       <th className="py-2.5 pr-3 text-center text-[10px] font-semibold uppercase tracking-widest text-emerald-500">
-                        Delivered
+                        Completed
                       </th>
                       <th className="py-2.5 pr-3 text-center text-[10px] font-semibold uppercase tracking-widest text-violet-500">
-                        At godown
+                        In pipeline
                       </th>
                       <th className="py-2.5 pr-3 text-center text-[10px] font-semibold uppercase tracking-widest text-amber-500">
-                        On order
+                        Co. Billing
                       </th>
                       <th className="py-2.5 pr-3 text-center text-[10px] font-semibold uppercase tracking-widest text-blue-500">
-                        Needs PO
+                        Order In Co.
                       </th>
                       <th className="py-2.5 pr-6 text-right text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                         Actions

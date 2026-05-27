@@ -9,7 +9,7 @@ import {
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
 
-type ReadyStage = 'AT_GODOWN' | 'IN_BOX'
+type ReadyStage = 'INBOX' | 'DISPATCHED'
 
 interface ReadyLine {
   line: PurchaseTrackerLine
@@ -28,8 +28,8 @@ type DateFilter = 'all' | 'today'
 
 function StagePill({ stage }: { stage: ReadyStage }) {
   const config = {
-    AT_GODOWN: { label: 'At Godown', color: STAGE_COLORS.AT_GODOWN },
-    IN_BOX:    { label: 'Packed',    color: STAGE_COLORS.IN_BOX },
+    INBOX:      { label: 'Inbox',      color: STAGE_COLORS.INBOX },
+    DISPATCHED: { label: 'Dispatched', color: STAGE_COLORS.DISPATCHED },
   }[stage]
 
   return (
@@ -52,8 +52,8 @@ interface DispatchRowProps {
 function DispatchRow({ item, onMoved }: DispatchRowProps) {
   const [dispatching, setDispatching] = useState(false)
 
-  const nextStage = item.stage === 'AT_GODOWN' ? 'IN_BOX' : 'DISPATCHED'
-  const actionLabel = item.stage === 'AT_GODOWN' ? 'Move to Packed' : 'Mark Dispatched'
+  const nextStage = item.stage === 'INBOX' ? 'DISPATCHED' : 'COMPLETED'
+  const actionLabel = item.stage === 'INBOX' ? 'Mark Dispatched' : 'Mark Completed'
 
   async function handleAction() {
     setDispatching(true)
@@ -77,9 +77,9 @@ function DispatchRow({ item, onMoved }: DispatchRowProps) {
       }
       onMoved(data.stageTotals)
       toast.success(
-        nextStage === 'DISPATCHED'
-          ? `${item.qty} unit${item.qty !== 1 ? 's' : ''} dispatched`
-          : `${item.qty} unit${item.qty !== 1 ? 's' : ''} moved to packed`,
+        nextStage === 'COMPLETED'
+          ? `${item.qty} unit${item.qty !== 1 ? 's' : ''} completed`
+          : `${item.qty} unit${item.qty !== 1 ? 's' : ''} dispatched`,
       )
     } catch {
       toast.error('Network error')
@@ -128,7 +128,7 @@ function DispatchRow({ item, onMoved }: DispatchRowProps) {
           disabled={dispatching}
           className={[
             'rounded-xl px-3.5 py-2 text-xs font-semibold transition disabled:opacity-40',
-            item.stage === 'IN_BOX'
+            item.stage === 'DISPATCHED'
               ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
               : 'border border-[var(--border)] bg-[var(--n-50)] text-[var(--text-secondary)] hover:bg-white hover:text-[var(--text-primary)]',
           ].join(' ')}
@@ -154,11 +154,11 @@ export default function DispatchList({ lines, activeBrand, onMoved }: DispatchLi
 
   const readyLines: ReadyLine[] = lines.flatMap((line) => {
     const items: ReadyLine[] = []
-    if (line.stages.AT_GODOWN > 0) {
-      items.push({ line, stage: 'AT_GODOWN', qty: line.stages.AT_GODOWN })
+    if (line.stages.INBOX > 0) {
+      items.push({ line, stage: 'INBOX', qty: line.stages.INBOX })
     }
-    if (line.stages.IN_BOX > 0) {
-      items.push({ line, stage: 'IN_BOX', qty: line.stages.IN_BOX })
+    if (line.stages.DISPATCHED > 0) {
+      items.push({ line, stage: 'DISPATCHED', qty: line.stages.DISPATCHED })
     }
     return items
   }).filter((item) => {
@@ -243,7 +243,7 @@ export default function DispatchList({ lines, activeBrand, onMoved }: DispatchLi
             Nothing ready to dispatch
           </p>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Items reach this list when they move to At Godown or Packed.
+            Items reach this list when they move to Inbox or Dispatched.
           </p>
         </div>
       ) : (

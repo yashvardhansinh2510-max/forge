@@ -1,43 +1,43 @@
 export const STAGE_ORDER = [
-  'NEEDS_PO',
-  'ORDERED',
-  'AT_GODOWN',
-  'IN_BOX',
+  'ORDER_IN_CO',
+  'CO_BILLING',
+  'INBOX',
   'DISPATCHED',
+  'COMPLETED',
 ] as const
 
 export type PurchaseStage = typeof STAGE_ORDER[number]
 
 export interface HeaderCounts {
-  NEEDS_PO: number
-  ORDERED: number
-  AT_GODOWN: number
-  IN_BOX: number
-  DISPATCHED: number
+  ORDER_IN_CO: number
+  CO_BILLING:  number
+  INBOX:       number
+  DISPATCHED:  number
+  COMPLETED:   number
 }
 
 export const STAGE_LABEL: Record<PurchaseStage, string> = {
-  NEEDS_PO:   'Needs PO',
-  ORDERED:    'Ordered',
-  AT_GODOWN:  'At Godown',
-  IN_BOX:     'In Box',
-  DISPATCHED: 'Dispatched',
+  ORDER_IN_CO: 'Order In Co.',
+  CO_BILLING:  'Co. Billing',
+  INBOX:       'Inbox',
+  DISPATCHED:  'Dispatched',
+  COMPLETED:   'Completed',
 }
 
 export const STAGE_SHORT_LABEL: Record<PurchaseStage, string> = {
-  NEEDS_PO:   'NEEDS PO',
-  ORDERED:    'ORDERED',
-  AT_GODOWN:  'AT GODOWN',
-  IN_BOX:     'IN BOX',
-  DISPATCHED: 'DISPATCHED',
+  ORDER_IN_CO: 'ORDER IN CO',
+  CO_BILLING:  'CO. BILLING',
+  INBOX:       'INBOX',
+  DISPATCHED:  'DISPATCHED',
+  COMPLETED:   'COMPLETED',
 }
 
 export const STAGE_COLORS: Record<PurchaseStage, string> = {
-  NEEDS_PO:   '#3B82F6',
-  ORDERED:    '#F59E0B',
-  AT_GODOWN:  '#8B5CF6',
-  IN_BOX:     '#06B6D4',
-  DISPATCHED: '#10B981',
+  ORDER_IN_CO: '#3B82F6',
+  CO_BILLING:  '#F59E0B',
+  INBOX:       '#8B5CF6',
+  DISPATCHED:  '#06B6D4',
+  COMPLETED:   '#10B981',
 }
 
 export const BRAND_TABS = ['ALL', 'GROHE', 'HANSGROHE', 'VITRA', 'KAJARIA', 'GEBERIT'] as const
@@ -100,11 +100,11 @@ export interface CustomerOption {
 
 export function createEmptyHeaderCounts(): HeaderCounts {
   return {
-    NEEDS_PO:   0,
-    ORDERED:    0,
-    AT_GODOWN:  0,
-    IN_BOX:     0,
-    DISPATCHED: 0,
+    ORDER_IN_CO: 0,
+    CO_BILLING:  0,
+    INBOX:       0,
+    DISPATCHED:  0,
+    COMPLETED:   0,
   }
 }
 
@@ -149,11 +149,11 @@ export function matchesBrandTab(brand: string, tab: BrandTab): boolean {
 }
 
 // Maps DB qty columns (POLineItem) to the 5 tracker stages.
-// qtyPendingCo  → ORDERED
-// qtyAtGodown   → AT_GODOWN
-// qtyInBox      → IN_BOX
-// qtyDispatched → DISPATCHED
-// NEEDS_PO is derived: qtyOrdered minus all staged qty
+// qtyPendingCo  → CO_BILLING
+// qtyAtGodown   → INBOX
+// qtyInBox      → DISPATCHED
+// qtyDispatched → COMPLETED
+// ORDER_IN_CO is derived: qtyOrdered minus all staged qty
 export function countsFromDbLine(line: {
   qtyOrdered: number
   qtyPendingCo: number
@@ -168,21 +168,21 @@ export function countsFromDbLine(line: {
     line.qtyDispatched
 
   return {
-    NEEDS_PO:   Math.max(0, line.qtyOrdered - staged),
-    ORDERED:    line.qtyPendingCo,
-    AT_GODOWN:  line.qtyAtGodown,
-    IN_BOX:     line.qtyInBox,
-    DISPATCHED: line.qtyDispatched,
+    ORDER_IN_CO: Math.max(0, line.qtyOrdered - staged),
+    CO_BILLING:  line.qtyPendingCo,
+    INBOX:       line.qtyAtGodown,
+    DISPATCHED:  line.qtyInBox,
+    COMPLETED:   line.qtyDispatched,
   }
 }
 
 export function addCounts(target: HeaderCounts, source: HeaderCounts): HeaderCounts {
   return {
-    NEEDS_PO:   target.NEEDS_PO   + source.NEEDS_PO,
-    ORDERED:    target.ORDERED    + source.ORDERED,
-    AT_GODOWN:  target.AT_GODOWN  + source.AT_GODOWN,
-    IN_BOX:     target.IN_BOX     + source.IN_BOX,
-    DISPATCHED: target.DISPATCHED + source.DISPATCHED,
+    ORDER_IN_CO: target.ORDER_IN_CO + source.ORDER_IN_CO,
+    CO_BILLING:  target.CO_BILLING  + source.CO_BILLING,
+    INBOX:       target.INBOX       + source.INBOX,
+    DISPATCHED:  target.DISPATCHED  + source.DISPATCHED,
+    COMPLETED:   target.COMPLETED   + source.COMPLETED,
   }
 }
 

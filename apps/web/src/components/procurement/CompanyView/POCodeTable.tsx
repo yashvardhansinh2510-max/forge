@@ -57,7 +57,7 @@ interface LineRowProps {
 function LineRow({ line, activeBrand, onMoved }: LineRowProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const stage    = primaryStage(line)
-  const received = line.stages.AT_GODOWN + line.stages.IN_BOX + line.stages.DISPATCHED
+  const received = line.stages.INBOX + line.stages.DISPATCHED + line.stages.COMPLETED
 
   return (
     <>
@@ -112,7 +112,7 @@ function LineRow({ line, activeBrand, onMoved }: LineRowProps) {
         </td>
 
         <td className="py-3.5 pr-5 text-right">
-          {line.stages.NEEDS_PO > 0 ? (
+          {line.stages.ORDER_IN_CO > 0 ? (
             <button
               type="button"
               onClick={() => setModalOpen(true)}
@@ -179,11 +179,11 @@ export default function POCodeTable({ lines, activeBrand, onMoved }: POCodeTable
       case 'pending_desc':
         return copy.sort(
           (a, b) =>
-            (b.stages.NEEDS_PO + b.stages.ORDERED) -
-            (a.stages.NEEDS_PO + a.stages.ORDERED),
+            (b.stages.ORDER_IN_CO + b.stages.CO_BILLING) -
+            (a.stages.ORDER_IN_CO + a.stages.CO_BILLING),
         )
       case 'inbox_desc':
-        return copy.sort((a, b) => b.stages.IN_BOX - a.stages.IN_BOX)
+        return copy.sort((a, b) => b.stages.INBOX - a.stages.INBOX)
       default:
         return copy.sort((a, b) => a.product.name.localeCompare(b.product.name))
     }

@@ -25,11 +25,11 @@ function buildStageTotals(lines: Array<{
   return lines.reduce((acc, line) => {
     const next = countsFromDbLine(line)
     return {
-      NEEDS_PO:   acc.NEEDS_PO   + next.NEEDS_PO,
-      ORDERED:    acc.ORDERED    + next.ORDERED,
-      AT_GODOWN:  acc.AT_GODOWN  + next.AT_GODOWN,
-      IN_BOX:     acc.IN_BOX     + next.IN_BOX,
-      DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
+      ORDER_IN_CO: acc.ORDER_IN_CO + next.ORDER_IN_CO,
+      CO_BILLING:  acc.CO_BILLING  + next.CO_BILLING,
+      INBOX:       acc.INBOX       + next.INBOX,
+      DISPATCHED:  acc.DISPATCHED  + next.DISPATCHED,
+      COMPLETED:   acc.COMPLETED   + next.COMPLETED,
     }
   }, createEmptyHeaderCounts())
 }
@@ -59,18 +59,18 @@ export async function POST(
       throw new AppError('NOT_FOUND', `POLineItem '${lineId}' not found`, 404)
     }
 
-    const needsPo = countsFromDbLine(line).NEEDS_PO
-    if (qty > needsPo) {
+    const orderInCo = countsFromDbLine(line).ORDER_IN_CO
+    if (qty > orderInCo) {
       throw new AppError(
         'INSUFFICIENT_QTY',
-        `Only ${needsPo} unallocated unit(s) available.`,
+        `Only ${orderInCo} unallocated unit(s) available.`,
         422,
-        { available: needsPo, requested: qty },
+        { available: orderInCo, requested: qty },
       )
     }
 
-    // Move NEEDS_PO → AT_GODOWN by incrementing qtyAtGodown.
-    // NEEDS_PO is derived (qtyOrdered - staged), so no field to decrement.
+    // Move ORDER_IN_CO → INBOX by incrementing qtyAtGodown.
+    // ORDER_IN_CO is derived (qtyOrdered - staged), so no field to decrement.
     await prisma.pOLineItem.update({
       where: { id: lineId },
       data: { qtyAtGodown: { increment: qty } },

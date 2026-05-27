@@ -3,19 +3,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   STAGE_LABEL,
+  STAGE_ORDER,
   type BrandTab,
   type CustomerOption,
   type HeaderCounts,
   type PurchaseStage,
 } from '@/lib/purchases-tracker'
-
-const LEGAL: Record<PurchaseStage, PurchaseStage[]> = {
-  NEEDS_PO:   ['ORDERED', 'AT_GODOWN'],
-  ORDERED:    ['AT_GODOWN'],
-  AT_GODOWN:  ['IN_BOX'],
-  IN_BOX:     ['DISPATCHED'],
-  DISPATCHED: [],
-}
 
 interface MovePopoverProps {
   lineItemId: string
@@ -34,7 +27,7 @@ export default function MovePopover({
   onMoved,
   brandScope = 'ALL',
 }: MovePopoverProps) {
-  const targets = LEGAL[currentStage] ?? []
+  const targets = STAGE_ORDER.filter((s) => s !== currentStage)
   const ref = useRef<HTMLDivElement>(null)
 
   const [open, setOpen] = useState(false)
@@ -75,14 +68,6 @@ export default function MovePopover({
 
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
-
-  if (targets.length === 0) {
-    return (
-      <span className="rounded-full border border-[var(--border)] bg-[var(--n-100)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)]">
-        Final stage
-      </span>
-    )
-  }
 
   const handleMove = async () => {
     if (!to) {

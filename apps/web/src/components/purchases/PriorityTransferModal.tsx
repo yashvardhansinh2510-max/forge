@@ -24,7 +24,7 @@ export default function PriorityTransferModal({
 }: PriorityTransferModalProps) {
   const logTransfer = useProcurementStore((s) => s.logTransfer)
 
-  const availableQty = line.stages.AT_GODOWN + line.stages.IN_BOX
+  const availableQty = line.stages.INBOX + line.stages.DISPATCHED
 
   const otherCustomers = allLines
     .filter(

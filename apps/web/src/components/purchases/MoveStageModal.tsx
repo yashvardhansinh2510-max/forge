@@ -13,14 +13,6 @@ import {
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
 
-const STAGE_INDEX: Record<PurchaseStage, number> = {
-  NEEDS_PO:   0,
-  ORDERED:    1,
-  AT_GODOWN:  2,
-  IN_BOX:     3,
-  DISPATCHED: 4,
-}
-
 interface MoveStageModalProps {
   line:          PurchaseTrackerLine
   currentStage:  PurchaseStage
@@ -41,7 +33,7 @@ export default function MoveStageModal({
   const otherStages = STAGE_ORDER.filter((s) => s !== currentStage)
 
   const [targetStage, setTargetStage] = useState<PurchaseStage>(
-    otherStages[0] ?? 'ORDERED',
+    otherStages[0] ?? 'CO_BILLING',
   )
   const [qty, setQty] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -51,7 +43,7 @@ export default function MoveStageModal({
     return Math.min(availableQty, Math.max(1, v))
   }
 
-  const isBackward = STAGE_INDEX[targetStage] < STAGE_INDEX[currentStage]
+  const isBackward = STAGE_ORDER.indexOf(targetStage) < STAGE_ORDER.indexOf(currentStage)
 
   const handleMove = async () => {
     setSaving(true)

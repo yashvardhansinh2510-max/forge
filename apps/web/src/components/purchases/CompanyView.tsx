@@ -51,9 +51,9 @@ function LineRow({ line, activeBrand, allLines, onMoved }: RowProps) {
   const [moveOpen,     setMoveOpen]     = useState(false)
 
   const stage     = primaryStage(line)
-  const received  = line.stages.AT_GODOWN + line.stages.IN_BOX + line.stages.DISPATCHED
-  const canTransfer = line.stages.AT_GODOWN > 0 || line.stages.IN_BOX > 0
-  const canMove     = stage !== null && stage !== 'DISPATCHED'
+  const received  = line.stages.INBOX + line.stages.DISPATCHED + line.stages.COMPLETED
+  const canTransfer = line.stages.INBOX > 0 || line.stages.DISPATCHED > 0
+  const canMove     = stage !== null && stage !== 'COMPLETED'
 
   const sourceCustomerId   = line.customer?.id   ?? ''
   const sourceCustomerName = line.customer?.name ?? ''
@@ -127,7 +127,7 @@ function LineRow({ line, activeBrand, allLines, onMoved }: RowProps) {
                 Move →
               </button>
             )}
-            {line.stages.NEEDS_PO > 0 && (
+            {line.stages.ORDER_IN_CO > 0 && (
               <button
                 type="button"
                 onClick={() => setMarkOpen(true)}

@@ -5,13 +5,14 @@ import { ArrowRightLeft } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useProcurementStore } from '@/lib/procurement-store'
-import type { TransferStage } from '@/lib/mock/procurement-data'
 import type { HeaderCounts, PurchaseTrackerLine } from '@/lib/purchases-tracker'
 
+type TransferStage = 'INBOX' | 'DISPATCHED' | 'COMPLETED'
+
 const STAGE_LABELS: Record<TransferStage, string> = {
-  AT_GODOWN:  'At Godown',
-  IN_BOX:     'In Box',
+  INBOX:      'Inbox',
   DISPATCHED: 'Dispatched',
+  COMPLETED:  'Completed',
 }
 
 interface TransferModalProps {
@@ -35,7 +36,7 @@ export default function TransferModal({
 }: TransferModalProps) {
   const transferAllocation = useProcurementStore((s) => s.transferAllocation)
 
-  const availableQty = line.stages.AT_GODOWN + line.stages.IN_BOX
+  const availableQty = line.stages.INBOX + line.stages.DISPATCHED
 
   const otherCustomers = allLines
     .filter(
@@ -56,7 +57,7 @@ export default function TransferModal({
   )
   const [freeCustomerName, setFreeCustomerName] = useState('')
   const [qty, setQty] = useState(Math.min(1, availableQty))
-  const [stage, setStage] = useState<TransferStage>('IN_BOX')
+  const [stage, setStage] = useState<TransferStage>('INBOX')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -69,7 +70,7 @@ export default function TransferModal({
       ? freeCustomerName.trim()
       : (otherCustomers.find((c) => c.id === targetCustomerId)?.name ?? '')
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!targetName) {
       toast.error('Select or enter a target customer')
       return
@@ -86,6 +87,34 @@ export default function TransferModal({
         ? `free-${Date.now()}`
         : targetCustomerId
 
+    try {
+      const res = await fetch('/api/transfers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poLineItemId:     line.id,
+          productId:        line.product.id,
+          productName:      line.product.name,
+          fromCustomerId:   sourceCustomerId,
+          fromCustomerName: sourceCustomerName,
+          toCustomerId,
+          toCustomerName:   targetName,
+          qty,
+          stage,
+          notes: notes.trim() || undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json() as { message?: string }
+        toast.error(data.message ?? 'Transfer failed')
+        return
+      }
+    } catch {
+      // Network error — fall through to Zustand-only update
+    }
+
+    // Keep Zustand in sync for immediate UI response (optimistic)
     transferAllocation(
       line.poId,
       line.id,
@@ -97,7 +126,7 @@ export default function TransferModal({
       line.product.name,
       line.product.sku,
       qty,
-      stage,
+      stage as never,
       notes,
     )
 
@@ -261,7 +290,7 @@ export default function TransferModal({
             </Dialog.Close>
             <button
               type="button"
-              onClick={handleConfirm}
+              onClick={() => void handleConfirm()}
               disabled={saving || availableQty === 0}
               className="flex-1 rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:opacity-40"
             >

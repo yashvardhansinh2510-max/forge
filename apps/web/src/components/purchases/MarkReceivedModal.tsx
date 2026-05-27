@@ -20,7 +20,7 @@ export default function MarkReceivedModal({
   onMoved,
   brandScope = 'ALL',
 }: MarkReceivedModalProps) {
-  const maxQty = line.stages.NEEDS_PO
+  const maxQty = line.stages.ORDER_IN_CO
   const [qty, setQty] = useState(maxQty)
   const [saving, setSaving] = useState(false)
 

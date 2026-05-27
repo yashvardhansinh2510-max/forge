@@ -4,7 +4,7 @@
 // Used by stat card drill-down panels.
 //
 // Query params:
-//   stage      (required) NEEDS_PO | ORDERED | AT_GODOWN | IN_BOX | DISPATCHED | ALL
+//   stage      (required) ORDER_IN_CO | CO_BILLING | INBOX | DISPATCHED | COMPLETED | ALL
 //   brand      (optional) tab key — GROHE | HANSGROHE | VITRA | GEBERIT | ALL (default)
 //              HANSGROHE matches HANSGROHE + AXOR (via BRAND_GROUPS)
 //   customerId (optional) filter to a single customer's allocations
@@ -15,7 +15,7 @@ import { withErrorHandling } from '@/lib/api-helpers'
 import { BRAND_GROUPS } from '@/lib/mock/procurement-data'
 import { prisma } from '@forge/db'
 
-const STAGES = ['ALL', 'NEEDS_PO', 'ORDERED', 'AT_GODOWN', 'IN_BOX', 'DISPATCHED'] as const
+const STAGES = ['ALL', 'ORDER_IN_CO', 'CO_BILLING', 'INBOX', 'DISPATCHED', 'COMPLETED'] as const
 type StageParam = typeof STAGES[number]
 
 const QuerySchema = z.object({
@@ -24,12 +24,12 @@ const QuerySchema = z.object({
   customerId: z.string().optional(),
 })
 
-// Stage → Prisma field mapping (NEEDS_PO is derived, handled separately)
+// Stage → Prisma field mapping (ORDER_IN_CO is derived, handled separately)
 const STAGE_FIELD_MAP: Partial<Record<StageParam, string>> = {
-  ORDERED:    'qtyPendingCo',
-  AT_GODOWN:  'qtyAtGodown',
-  IN_BOX:     'qtyInBox',
-  DISPATCHED: 'qtyDispatched',
+  CO_BILLING: 'qtyPendingCo',
+  INBOX:      'qtyAtGodown',
+  DISPATCHED: 'qtyInBox',
+  COMPLETED:  'qtyDispatched',
 }
 
 export async function GET(req: NextRequest) {
@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
         ? undefined
         : (BRAND_GROUPS[brand] ?? [brand])
 
-    // NEEDS_PO is derived — items where (qtyOrdered - staged) > 0
-    const stageFilter = stage === 'ALL' || stage === 'NEEDS_PO'
+    // ORDER_IN_CO is derived — items where (qtyOrdered - staged) > 0
+    const stageFilter = stage === 'ALL' || stage === 'ORDER_IN_CO'
       ? undefined
       : { [STAGE_FIELD_MAP[stage]!]: { gt: 0 } }
 
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
         let qtyAtStage: number
         if (stage === 'ALL') {
           qtyAtStage = line.qtyOrdered
-        } else if (stage === 'NEEDS_PO') {
+        } else if (stage === 'ORDER_IN_CO') {
           const staged = line.qtyPendingCo + line.qtyAtGodown + line.qtyInBox + line.qtyDispatched
           qtyAtStage = Math.max(0, line.qtyOrdered - staged)
         } else {
@@ -76,8 +76,8 @@ export async function GET(req: NextRequest) {
         }
         return { ...line, qtyAtStage }
       })
-      // For NEEDS_PO, filter out lines where derived qty = 0
-      .filter((line) => stage !== 'NEEDS_PO' || line.qtyAtStage > 0)
+      // For ORDER_IN_CO, filter out lines where derived qty = 0
+      .filter((line) => stage !== 'ORDER_IN_CO' || line.qtyAtStage > 0)
 
     return NextResponse.json({ lines: result, total: result.reduce((s, l) => s + l.qtyAtStage, 0) })
   })

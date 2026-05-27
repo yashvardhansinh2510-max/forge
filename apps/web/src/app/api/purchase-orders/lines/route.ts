@@ -122,17 +122,17 @@ export async function GET(req: NextRequest) {
 
     const s = agg._sum
     const headerCounts = {
-      NEEDS_PO:   Math.max(0,
+      ORDER_IN_CO: Math.max(0,
         (s.qtyOrdered ?? 0) -
         (s.qtyPendingCo ?? 0) -
         (s.qtyAtGodown ?? 0) -
         (s.qtyInBox ?? 0) -
         (s.qtyDispatched ?? 0),
       ),
-      ORDERED:    s.qtyPendingCo  ?? 0,
-      AT_GODOWN:  s.qtyAtGodown   ?? 0,
-      IN_BOX:     s.qtyInBox      ?? 0,
-      DISPATCHED: s.qtyDispatched ?? 0,
+      CO_BILLING:  s.qtyPendingCo  ?? 0,
+      INBOX:       s.qtyAtGodown   ?? 0,
+      DISPATCHED:  s.qtyInBox      ?? 0,
+      COMPLETED:   s.qtyDispatched ?? 0,
     }
 
     return NextResponse.json({

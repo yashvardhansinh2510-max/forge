@@ -93,7 +93,7 @@ describe('matchesBrandTab', () => {
 })
 
 describe('countsFromDbLine', () => {
-  it('computes NEEDS_PO as max(0, ordered - staged)', () => {
+  it('computes ORDER_IN_CO as max(0, ordered - staged)', () => {
     const c = countsFromDbLine({
       qtyOrdered:    10,
       qtyPendingCo:  3,
@@ -101,10 +101,10 @@ describe('countsFromDbLine', () => {
       qtyInBox:      1,
       qtyDispatched: 0,
     })
-    expect(c.NEEDS_PO).toBe(4)
+    expect(c.ORDER_IN_CO).toBe(4)
   })
 
-  it('NEEDS_PO floors at 0 (never negative)', () => {
+  it('ORDER_IN_CO floors at 0 (never negative)', () => {
     const c = countsFromDbLine({
       qtyOrdered:    5,
       qtyPendingCo:  3,
@@ -112,7 +112,7 @@ describe('countsFromDbLine', () => {
       qtyInBox:      0,
       qtyDispatched: 0,
     })
-    expect(c.NEEDS_PO).toBe(0)
+    expect(c.ORDER_IN_CO).toBe(0)
   })
 
   it('passes staged quantities through directly', () => {
@@ -123,20 +123,20 @@ describe('countsFromDbLine', () => {
       qtyInBox:      1,
       qtyDispatched: 2,
     })
-    expect(c.ORDERED).toBe(2)
-    expect(c.AT_GODOWN).toBe(3)
-    expect(c.DISPATCHED).toBe(2)
+    expect(c.CO_BILLING).toBe(2)
+    expect(c.INBOX).toBe(3)
+    expect(c.COMPLETED).toBe(2)
   })
 })
 
 describe('addCounts', () => {
   it('adds each stage independently', () => {
-    const a = { ...createEmptyHeaderCounts(), AT_GODOWN: 3, ORDERED: 1 }
-    const b = { ...createEmptyHeaderCounts(), AT_GODOWN: 2, DISPATCHED: 5 }
+    const a = { ...createEmptyHeaderCounts(), INBOX: 3, CO_BILLING: 1 }
+    const b = { ...createEmptyHeaderCounts(), INBOX: 2, COMPLETED: 5 }
     const result = addCounts(a, b)
-    expect(result.AT_GODOWN).toBe(5)
-    expect(result.ORDERED).toBe(1)
-    expect(result.DISPATCHED).toBe(5)
+    expect(result.INBOX).toBe(5)
+    expect(result.CO_BILLING).toBe(1)
+    expect(result.COMPLETED).toBe(5)
   })
 })
 
@@ -146,11 +146,11 @@ describe('computeHeaderCounts', () => {
   })
 
   it('sums stages across multiple lines', () => {
-    const l1 = makeLine({ stages: { ...createEmptyHeaderCounts(), AT_GODOWN: 2 } })
-    const l2 = makeLine({ stages: { ...createEmptyHeaderCounts(), AT_GODOWN: 3, DISPATCHED: 1 } })
+    const l1 = makeLine({ stages: { ...createEmptyHeaderCounts(), INBOX: 2 } })
+    const l2 = makeLine({ stages: { ...createEmptyHeaderCounts(), INBOX: 3, COMPLETED: 1 } })
     const result = computeHeaderCounts([l1, l2])
-    expect(result.AT_GODOWN).toBe(5)
-    expect(result.DISPATCHED).toBe(1)
+    expect(result.INBOX).toBe(5)
+    expect(result.COMPLETED).toBe(1)
   })
 })
 
@@ -174,31 +174,31 @@ describe('computeBrandCounts', () => {
 
 describe('getStageQuantity', () => {
   it('returns stage value from line', () => {
-    const l = makeLine({ stages: { ...createEmptyHeaderCounts(), AT_GODOWN: 7 } })
-    expect(getStageQuantity(l, 'AT_GODOWN')).toBe(7)
+    const l = makeLine({ stages: { ...createEmptyHeaderCounts(), INBOX: 7 } })
+    expect(getStageQuantity(l, 'INBOX')).toBe(7)
   })
 })
 
 describe('getActiveStages / getVisibleMoveStages / getOverflowStages', () => {
   const l = makeLine({
     stages: {
-      NEEDS_PO:   2,
-      ORDERED:    1,
-      AT_GODOWN:  3,
-      IN_BOX:     0,
-      DISPATCHED: 1,
+      ORDER_IN_CO: 2,
+      CO_BILLING:  1,
+      INBOX:       3,
+      DISPATCHED:  0,
+      COMPLETED:   1,
     },
   })
 
   it('getActiveStages returns only non-zero stages in order', () => {
-    expect(getActiveStages(l)).toEqual(['NEEDS_PO', 'ORDERED', 'AT_GODOWN', 'DISPATCHED'])
+    expect(getActiveStages(l)).toEqual(['ORDER_IN_CO', 'CO_BILLING', 'INBOX', 'COMPLETED'])
   })
 
   it('getVisibleMoveStages returns first two active stages', () => {
-    expect(getVisibleMoveStages(l)).toEqual(['NEEDS_PO', 'ORDERED'])
+    expect(getVisibleMoveStages(l)).toEqual(['ORDER_IN_CO', 'CO_BILLING'])
   })
 
   it('getOverflowStages returns stages beyond the first two', () => {
-    expect(getOverflowStages(l)).toEqual(['AT_GODOWN', 'DISPATCHED'])
+    expect(getOverflowStages(l)).toEqual(['INBOX', 'COMPLETED'])
   })
 })

@@ -108,7 +108,7 @@ export default function LineCard({
     : 0
 
   const isStalled =
-    (line.stages.NEEDS_PO > 0 || line.stages.ORDERED > 0) &&
+    (line.stages.ORDER_IN_CO > 0 || line.stages.CO_BILLING > 0) &&
     daysSinceOrder > 7
 
   const meta = context === 'company'
@@ -131,7 +131,7 @@ export default function LineCard({
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ qty: line.stages.NEEDS_PO, brand: brandScope }),
+          body: JSON.stringify({ qty: line.stages.ORDER_IN_CO, brand: brandScope }),
         },
       )
       const data = await res.json() as { stageTotals?: HeaderCounts; message?: string; error?: string }
@@ -140,7 +140,7 @@ export default function LineCard({
         return
       }
       onMoved(data.stageTotals)
-      toast.success(`${line.stages.NEEDS_PO} unit${line.stages.NEEDS_PO !== 1 ? 's' : ''} marked as received at godown`)
+      toast.success(`${line.stages.ORDER_IN_CO} unit${line.stages.ORDER_IN_CO !== 1 ? 's' : ''} marked as received at godown`)
     } catch {
       toast.error('Network error')
     } finally {
@@ -225,7 +225,7 @@ export default function LineCard({
             )}
           </div>
 
-          {line.stages.NEEDS_PO > 0 && (
+          {line.stages.ORDER_IN_CO > 0 && (
             <button
               type="button"
               onClick={() => void handleMarkReceived()}
@@ -234,7 +234,7 @@ export default function LineCard({
             >
               {marking
                 ? 'Marking…'
-                : `Mark ${line.stages.NEEDS_PO} as Received`}
+                : `Mark ${line.stages.ORDER_IN_CO} as Received`}
             </button>
           )}
 

@@ -111,7 +111,7 @@ export function FollowUpView({ lines, onStatusChange }: Props) {
                     {/* Qty dispatched */}
                     <td style={{ padding: '10px 8px', textAlign: 'center' }}>
                       <span style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {line.stages.DISPATCHED}
+                        {line.stages.COMPLETED}
                       </span>
                     </td>
 

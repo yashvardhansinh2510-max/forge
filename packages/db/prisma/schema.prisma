@@ -21,6 +21,7 @@ model User {
   purchaseOrders   PurchaseOrder[]   @relation("CreatedPurchaseOrders")
   quotations       Quotation[]       @relation("CreatedBy")
   stageMovements   StageMovement[]   @relation("StageMovements")
+  transfers        Transfer[]        @relation("Transfers")
   ownedContacts    Contact[]         @relation("OwnedContacts")
 }
 
@@ -306,6 +307,7 @@ model POLineItem {
   quotationItem   QuotationItem?  @relation(fields: [quotationItemId], references: [id])
   stageMovements  StageMovement[]
   purchaseItems   PurchaseItem[]
+  transfers       Transfer[]
 }
 
 model StageMovement {
@@ -319,6 +321,28 @@ model StageMovement {
   movedAt      DateTime   @default(now())
   movedBy      User       @relation("StageMovements", fields: [movedById], references: [id])
   poLineItem   POLineItem @relation(fields: [poLineItemId], references: [id])
+}
+
+model Transfer {
+  id               String     @id @default(cuid())
+  poLineItemId     String
+  productId        String
+  productName      String     @default("")
+  fromCustomerId   String
+  fromCustomerName String
+  toCustomerId     String
+  toCustomerName   String
+  qty              Int
+  stage            String
+  notes            String?
+  transferredById  String
+  transferredAt    DateTime   @default(now())
+  poLineItem       POLineItem @relation(fields: [poLineItemId], references: [id])
+  transferredBy    User       @relation("Transfers", fields: [transferredById], references: [id])
+
+  @@index([fromCustomerId])
+  @@index([toCustomerId])
+  @@index([poLineItemId])
 }
 
 model InventoryBox {

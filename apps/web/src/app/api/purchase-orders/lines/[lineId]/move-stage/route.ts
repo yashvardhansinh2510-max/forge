@@ -15,38 +15,33 @@ import {
   type PurchaseStage,
 } from '@/lib/purchases-tracker'
 
-const TO_STAGES = [
-  'ORDERED',
-  'AT_GODOWN',
-  'IN_BOX',
+const ALL_STAGES = [
+  'ORDER_IN_CO',
+  'CO_BILLING',
+  'INBOX',
   'DISPATCHED',
+  'COMPLETED',
 ] as const
 
-const LEGAL_TRANSITIONS: Record<PurchaseStage, typeof TO_STAGES[number][]> = {
-  NEEDS_PO:   ['ORDERED', 'AT_GODOWN'],
-  ORDERED:    ['AT_GODOWN'],
-  AT_GODOWN:  ['IN_BOX'],
-  IN_BOX:     ['DISPATCHED'],
-  DISPATCHED: [],
-}
-
 const DB_FIELD_BY_STAGE = {
-  ORDERED:    'qtyPendingCo',
-  AT_GODOWN:  'qtyAtGodown',
-  IN_BOX:     'qtyInBox',
-  DISPATCHED: 'qtyDispatched',
+  CO_BILLING: 'qtyPendingCo',
+  INBOX:      'qtyAtGodown',
+  DISPATCHED: 'qtyInBox',
+  COMPLETED:  'qtyDispatched',
 } as const
 
 type PersistedStage = keyof typeof DB_FIELD_BY_STAGE
 type QtyField = typeof DB_FIELD_BY_STAGE[PersistedStage]
 
+const TO_STAGES = ['CO_BILLING', 'INBOX', 'DISPATCHED', 'COMPLETED'] as const
+
 const MoveStageSchema = z.object({
-  fromStage: z.enum(['NEEDS_PO', ...TO_STAGES]),
-  toStage: z.enum(TO_STAGES),
-  qty: z.number().int().min(1),
+  fromStage:  z.enum(ALL_STAGES),
+  toStage:    z.enum(TO_STAGES),
+  qty:        z.number().int().min(1),
   customerId: z.string().optional(),
-  note: z.string().max(500).optional(),
-  brand: z.enum(BRAND_TABS).optional(),
+  note:       z.string().max(500).optional(),
+  brand:      z.enum(BRAND_TABS).optional(),
 })
 
 function getCurrentQtyAtStage(line: {
@@ -56,8 +51,8 @@ function getCurrentQtyAtStage(line: {
   qtyInBox: number
   qtyDispatched: number
 }, stage: PurchaseStage): number {
-  if (stage === 'NEEDS_PO') {
-    return countsFromDbLine(line).NEEDS_PO
+  if (stage === 'ORDER_IN_CO') {
+    return countsFromDbLine(line).ORDER_IN_CO
   }
 
   return line[DB_FIELD_BY_STAGE[stage as PersistedStage]]
@@ -73,11 +68,11 @@ function buildStageTotals(lines: Array<{
   return lines.reduce((acc, line) => {
     const next = countsFromDbLine(line)
     return {
-      NEEDS_PO:   acc.NEEDS_PO   + next.NEEDS_PO,
-      ORDERED:    acc.ORDERED    + next.ORDERED,
-      AT_GODOWN:  acc.AT_GODOWN  + next.AT_GODOWN,
-      IN_BOX:     acc.IN_BOX     + next.IN_BOX,
-      DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
+      ORDER_IN_CO: acc.ORDER_IN_CO + next.ORDER_IN_CO,
+      CO_BILLING:  acc.CO_BILLING  + next.CO_BILLING,
+      INBOX:       acc.INBOX       + next.INBOX,
+      DISPATCHED:  acc.DISPATCHED  + next.DISPATCHED,
+      COMPLETED:   acc.COMPLETED   + next.COMPLETED,
     }
   }, createEmptyHeaderCounts())
 }
@@ -109,13 +104,8 @@ export async function PATCH(
     const body = MoveStageSchema.parse(await req.json())
     const { fromStage, toStage, qty, customerId, note } = body
 
-    const allowedTargets = LEGAL_TRANSITIONS[fromStage] ?? []
-    if (!allowedTargets.includes(toStage)) {
-      throw new AppError(
-        'ILLEGAL_STAGE_TRANSITION',
-        `Cannot move from ${fromStage} to ${toStage}.`,
-        422,
-      )
+    if (fromStage === toStage) {
+      throw new AppError('INVALID_MOVE', 'Cannot move to the same stage.', 422)
     }
 
     try {
@@ -147,7 +137,7 @@ export async function PATCH(
 
       const updates: Array<ReturnType<typeof prisma.pOLineItem.update> | ReturnType<typeof prisma.stageMovement.create>> = []
 
-      if (fromStage !== 'NEEDS_PO') {
+      if (fromStage !== 'ORDER_IN_CO') {
         updates.push(
           prisma.pOLineItem.update({
             where: { id: lineId },
@@ -162,7 +152,7 @@ export async function PATCH(
         prisma.pOLineItem.update({
           where: { id: lineId },
           data: {
-            [DB_FIELD_BY_STAGE[toStage] as QtyField]: { increment: qty },
+            [DB_FIELD_BY_STAGE[toStage as PersistedStage] as QtyField]: { increment: qty },
           },
         }),
       )

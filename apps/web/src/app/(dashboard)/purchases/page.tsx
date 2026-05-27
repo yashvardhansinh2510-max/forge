@@ -2,14 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Download } from 'lucide-react'
 import useSWR from 'swr'
 import BrandTabs from '@/components/purchases/BrandTabs'
 import POCodeTable from '@/components/procurement/CompanyView/POCodeTable'
 import BillingView from '@/components/procurement/BillingView/BillingView'
 import CustomerView from '@/components/purchases/CustomerView'
 import DispatchList from '@/components/purchases/DispatchList'
+import FilterBar, { applyFilters, emptyFilters, type PurchaseFilters } from '@/components/purchases/FilterBar'
+import { FollowUpView } from '@/components/purchases/FollowUpView'
 import HeaderCards from '@/components/purchases/HeaderCards'
 import DrillPanel from '@/components/purchases/DrillPanel'
+import { exportCompanyView, exportCustomerView, exportDispatchList } from '@/lib/exportUtils'
 import {
   createEmptyBrandCounts,
   createEmptyHeaderCounts,
@@ -20,13 +24,14 @@ import {
   type PurchaseStage,
 } from '@/lib/purchases-tracker'
 
-type View = 'company' | 'customer' | 'dispatch' | 'billing'
+type View = 'company' | 'customer' | 'dispatch' | 'billing' | 'followups'
 
-const VIEWS: { id: View; label: string; description: string }[] = [
-  { id: 'company',  label: 'By Supplier',  description: "Outstanding per brand" },
-  { id: 'customer', label: 'By Customer',  description: "What each customer needs" },
-  { id: 'dispatch', label: 'Dispatch',     description: "Ready to go out today" },
-  { id: 'billing',  label: 'Billing',      description: "Vendor billing summary" },
+const VIEWS: { id: View; label: string }[] = [
+  { id: 'company',   label: 'By Supplier' },
+  { id: 'customer',  label: 'By Customer' },
+  { id: 'dispatch',  label: 'Dispatch'    },
+  { id: 'billing',   label: 'Billing'     },
+  { id: 'followups', label: 'Follow-Ups'  },
 ]
 
 const fetcher = async (url: string): Promise<PurchaseLinesResponse> => {
@@ -69,6 +74,8 @@ export default function PurchasesPage() {
   const [activeBrand, setActiveBrand] = useState<BrandTab>('ALL')
   const [activePanel, setActivePanel] = useState<PurchaseStage | null>(null)
   const [view, setView] = useState<View>('company')
+  const [filters, setFilters] = useState<PurchaseFilters>(emptyFilters())
+  const [exporting, setExporting] = useState(false)
 
   const { data, error, mutate, isLoading } = useSWR(
     `/api/purchase-orders/lines?brand=${encodeURIComponent(activeBrand)}`,
@@ -82,10 +89,11 @@ export default function PurchasesPage() {
     }
   }, [data])
 
-  const lines = data?.lines ?? []
-  const brandCounts = data?.brandCounts ?? createEmptyBrandCounts()
-  const drillLines = activePanel
-    ? lines.filter((line) => getStageQuantity(line, activePanel) > 0)
+  const lines        = data?.lines ?? []
+  const filteredLines = applyFilters(lines, filters)
+  const brandCounts  = data?.brandCounts ?? createEmptyBrandCounts()
+  const drillLines   = activePanel
+    ? filteredLines.filter((line) => getStageQuantity(line, activePanel) > 0)
     : []
 
   const handleMoved = (newCounts: HeaderCounts) => {
@@ -93,7 +101,19 @@ export default function PurchasesPage() {
     void mutate()
   }
 
-  const atGodownCount = headerCounts.AT_GODOWN + headerCounts.IN_BOX
+  async function handleExport() {
+    if (exporting || filteredLines.length === 0) return
+    setExporting(true)
+    try {
+      if (view === 'customer')      await exportCustomerView(filteredLines)
+      else if (view === 'dispatch') await exportDispatchList(filteredLines)
+      else                          await exportCompanyView(filteredLines)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const atGodownCount = headerCounts.INBOX + headerCounts.DISPATCHED
 
   return (
     <div className="h-full overflow-y-auto bg-[var(--bg)]">
@@ -153,6 +173,19 @@ export default function PurchasesPage() {
                   )
                 })}
               </div>
+
+              {/* Export */}
+              {view !== 'billing' && view !== 'followups' && (
+                <button
+                  type="button"
+                  onClick={() => void handleExport()}
+                  disabled={exporting || lines.length === 0}
+                  className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-white/90 px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                >
+                  <Download size={14} />
+                  {exporting ? 'Exporting…' : 'Export'}
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -171,6 +204,12 @@ export default function PurchasesPage() {
               activeBrand={activeBrand}
               brandCounts={brandCounts}
               onSelect={setActiveBrand}
+            />
+
+            <FilterBar
+              lines={lines}
+              filters={filters}
+              onChange={setFilters}
             />
 
             <HeaderCards
@@ -198,29 +237,34 @@ export default function PurchasesPage() {
               >
                 {view === 'company' && (
                   <POCodeTable
-                    lines={lines}
+                    lines={filteredLines}
                     activeBrand={activeBrand}
                     onMoved={handleMoved}
                   />
                 )}
                 {view === 'customer' && (
                   <CustomerView
-                    lines={lines}
+                    lines={filteredLines}
                     activeBrand={activeBrand}
                     onMoved={handleMoved}
                   />
                 )}
                 {view === 'dispatch' && (
                   <DispatchList
-                    lines={lines}
+                    lines={filteredLines}
                     activeBrand={activeBrand}
                     onMoved={handleMoved}
                   />
                 )}
                 {view === 'billing' && (
                   <BillingView
-                    lines={lines}
+                    lines={filteredLines}
                     activeBrand={activeBrand}
+                  />
+                )}
+                {view === 'followups' && (
+                  <FollowUpView
+                    lines={filteredLines.filter((l) => l.stages.COMPLETED > 0)}
                   />
                 )}
               </motion.div>
