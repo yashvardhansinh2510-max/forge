@@ -56,7 +56,7 @@ const SERIES_PREFIXES = [
   'Rainfinity', 'Raindance Select', 'Raindance',
   'Logis Fine', 'Logis E', 'Logis',
   'Focus E', 'Focus',
-  'Finoris', 'Vivenis',
+  'Finoris', 'Vivenis', 'Rebris',
   'Tecturis E', 'Tecturis S', 'Tecturis',
   'Crometta', 'Croma Select', 'Croma',
   'Ecostat Select', 'Ecostat',

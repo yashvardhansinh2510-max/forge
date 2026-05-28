@@ -5,6 +5,7 @@ import { Search } from 'lucide-react'
 import { usePOSStore } from '@/lib/pos-store'
 import { useProducts, type ProductApiItem, mapToPOSProduct } from '@/lib/pos-catalog'
 import type { POSProduct } from '@/lib/mock/pos-data'
+import { BRAND_LOGO } from '@/lib/product-image'
 
 function formatINR(n: number): string {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`
@@ -24,19 +25,8 @@ const TIER_COLORS: Record<string, { bg: string; text: string }> = {
   mid:     { bg: 'rgba(107,114,128,0.10)', text: '#4B5563' },
 }
 
-const BRAND_BG: Record<string, string> = {
-  'Grohe':     'linear-gradient(135deg, #009FE3 0%, #0077B6 100%)',
-  'Hansgrohe': 'linear-gradient(135deg, #00529A 0%, #003f7a 100%)',
-  'Axor':      'linear-gradient(135deg, #1C1C1E 0%, #3a3a3c 100%)',
-  'Vitra':     'linear-gradient(135deg, #E5002B 0%, #b0001f 100%)',
-  'Geberit':   'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)',
-  'Kajaria':   'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-}
-
-
 function ProductCard({ product, onClick }: { product: POSProduct; onClick: () => void }) {
   const tier = TIER_COLORS[product.tier] ?? TIER_COLORS.mid!
-  const bg   = BRAND_BG[product.brand] ?? 'linear-gradient(135deg, #6B7280, #4B5563)'
 
   return (
     <button
@@ -89,17 +79,15 @@ function ProductCard({ product, onClick }: { product: POSProduct; onClick: () =>
           display: product.imageUrl ? 'none' : 'flex',
           width: '100%',
           height: '100%',
-          background: bg,
+          background: '#F5F5F7',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 13,
-          fontWeight: 800,
-          color: '#fff',
-          letterSpacing: '0.06em',
         }}>
-          {product.brand === 'Axor' ? 'AX' :
-           product.brand === 'Hansgrohe' ? 'HG' :
-           product.brand.slice(0, 2).toUpperCase()}
+          <img
+            src={BRAND_LOGO[product.brand] ?? '/brands/brand-placeholder.svg'}
+            alt={product.brand}
+            style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 10 }}
+          />
         </div>
 
         {/* Brand + tier badges — always overlaid top-left */}
@@ -114,9 +102,7 @@ function ProductCard({ product, onClick }: { product: POSProduct; onClick: () =>
           <span style={{
             padding: '2px 7px',
             borderRadius: 999,
-            background: product.imageUrl
-              ? 'rgba(0,0,0,0.45)'
-              : 'rgba(255,255,255,0.20)',
+            background: 'rgba(0,0,0,0.50)',
             fontSize: 9,
             fontWeight: 700,
             color: '#fff',
@@ -276,16 +262,18 @@ function POSSearch() {
                   height: 36,
                   borderRadius: 5,
                   border: '1px solid var(--border)',
-                  background: p.brand === 'Axor' ? '#1C1C1E18' : '#00529A18',
+                  background: '#F5F5F7',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 9,
-                  fontWeight: 800,
-                  color: p.brand === 'Axor' ? '#1C1C1E' : '#00529A',
                   flexShrink: 0,
+                  overflow: 'hidden',
                 }}>
-                  {p.brand === 'Axor' ? 'AX' : 'HG'}
+                  <img
+                    src={BRAND_LOGO[p.brand] ?? '/brands/brand-placeholder.svg'}
+                    alt={p.brand}
+                    style={{ width: 26, height: 26, objectFit: 'contain', borderRadius: 4 }}
+                  />
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>

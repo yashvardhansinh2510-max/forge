@@ -13,6 +13,7 @@ import { PipelineChart } from './pipeline-chart'
 import { ActivityFeed } from './activity-feed'
 import { TopCustomers } from './top-customers'
 import { QuickActions } from './quick-actions'
+import { OperationalKPIs, EmployeeWorkload, SupplierDelays, AlertCenter } from './operational-kpis'
 import type { DashboardStats } from '@/app/api/dashboard/stats/route'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json()) as Promise<DashboardStats>
@@ -153,10 +154,16 @@ export function DashboardClient({ firstName = '' }: DashboardClientProps) {
         </div>
 
         <div className="relative space-y-5">
-          {/* Section 1: KPI Strip */}
+          {/* Section 1: Operational Alerts */}
+          <AlertCenter />
+
+          {/* Section 2: Financial KPI Strip */}
           <KPIStrip isLoading={isLoading} data={data?.kpis} />
 
-          {/* Section 2: Charts Row */}
+          {/* Section 3: Operational KPIs */}
+          <OperationalKPIs />
+
+          {/* Section 4: Charts Row */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
             <div className="lg:col-span-8">
               <RevenueChart isLoading={isLoading} data={data?.revenueChart} />
@@ -166,17 +173,19 @@ export function DashboardClient({ firstName = '' }: DashboardClientProps) {
             </div>
           </div>
 
-          {/* Section 3: Tables Row */}
+          {/* Section 5: Tables + Operational Intelligence Row */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12" style={{ minHeight: 400 }}>
             <div className="lg:col-span-7 lg:h-full">
               <ActivityFeed isLoading={isLoading} data={data?.recentActivity} />
             </div>
-            <div className="lg:col-span-5 lg:h-full">
+            <div className="flex flex-col gap-5 lg:col-span-5">
               <TopCustomers isLoading={isLoading} data={data?.topCustomers} />
+              <EmployeeWorkload />
+              <SupplierDelays />
             </div>
           </div>
 
-          {/* Section 4: Quick Actions */}
+          {/* Section 6: Quick Actions */}
           <QuickActions />
         </div>
       </PageContainer>

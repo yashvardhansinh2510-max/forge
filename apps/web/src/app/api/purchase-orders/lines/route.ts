@@ -108,7 +108,41 @@ export async function GET(req: NextRequest) {
       prisma.pOLineItem.count({ where: brandWhere }),
     ])
 
-    const allLines = dbLines.map(mapLine)
+    const baseLines = dbLines.map(mapLine)
+
+    // Fetch new fields (priority, assignedTo, stageEnteredAt) via raw query —
+    // Prisma client regeneration not yet run, so these columns aren't in the generated types.
+    const lineIds = baseLines.map((l) => l.id)
+    const extraFields = lineIds.length > 0
+      ? await prisma.$queryRaw<Array<{
+          id: string
+          priority: string
+          assignedToId: string | null
+          assignedName: string | null
+          stageEnteredAt: Date | null
+        }>>`
+          SELECT l.id, l.priority, l."assignedToId", u.name AS "assignedName", l."stageEnteredAt"
+          FROM "POLineItem" l
+          LEFT JOIN "User" u ON u.id = l."assignedToId"
+          WHERE l.id = ANY(${lineIds}::text[])
+        `.catch(() => [] as Array<{ id: string; priority: string; assignedToId: string | null; assignedName: string | null; stageEnteredAt: Date | null }>)
+      : []
+
+    const extraMap = new Map(extraFields.map((e) => [e.id, e]))
+
+    const allLines = baseLines.map((line) => {
+      const extra = extraMap.get(line.id)
+      return {
+        ...line,
+        priority: extra?.priority ?? 'MEDIUM',
+        assignedTo: extra?.assignedToId && extra.assignedName
+          ? { id: extra.assignedToId, name: extra.assignedName }
+          : null,
+        stageEnteredAt: extra?.stageEnteredAt
+          ? new Date(extra.stageEnteredAt).toISOString()
+          : null,
+      }
+    })
 
     const agg = await prisma.pOLineItem.aggregate({
       _sum: {

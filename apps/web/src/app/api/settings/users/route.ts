@@ -1,19 +1,22 @@
-import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
+import { hasPermission } from '@/lib/permissions'
+import { getCurrentRole } from '@/lib/permissions-server'
+import { withErrorHandling } from '@/lib/api-helpers'
 
 export async function GET() {
-  const { sessionClaims } = await auth()
-  const role = (sessionClaims?.metadata as { role?: string } | undefined)?.role
+  return withErrorHandling(async () => {
+    const role = await getCurrentRole()
+    if (!hasPermission(role, 'can_manage_users')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
-  if (role !== 'owner') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const users = await (prisma.user as any).findMany({
+      select: { id: true, name: true, email: true, role: true, clerkId: true, isActive: true },
+      orderBy: { name: 'asc' },
+    })
 
-  const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, clerkId: true },
-    orderBy: { name: 'asc' },
+    return NextResponse.json(users)
   })
-
-  return NextResponse.json(users)
 }

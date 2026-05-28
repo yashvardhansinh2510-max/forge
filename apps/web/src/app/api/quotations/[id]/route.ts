@@ -74,9 +74,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandling(async () => {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
-
     const { id } = await params
 
     const revision = await prisma.quotationRevision.findUnique({
@@ -145,13 +142,15 @@ export async function GET(
             }
           }
           return {
-            id:          item.id,
-            productId:   item.productId,
-            sku:         item.product?.sku ?? '',
-            productName: item.product?.name ?? '',
-            mrp:         item.mrp,
-            qty:         item.quantity,
-            offerRate:   item.offerRate,
+            id:            item.id,
+            productId:     item.productId,
+            sku:           item.product?.sku ?? '',
+            articleNumber: item.articleNumber ?? item.product?.sku ?? '',
+            productName:   item.product?.name ?? '',
+            mrp:           item.mrp,
+            qty:           item.quantity,
+            offerRate:     item.offerRate,
+            imageUrl:      item.imageUrl ?? undefined,
           }
         }),
       })),

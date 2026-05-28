@@ -5,6 +5,7 @@ import { X, Printer, Check } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { Room, ActiveProject } from '@/lib/pos-store'
+import { SECTION_PALETTE } from '@/lib/product-image'
 import type { BrandFulfilment, PurchaseLineItem, PurchaseOrder } from '@/lib/mock/purchases-data'
 import { usePurchasesStore } from '@/lib/purchases-store'
 
@@ -172,10 +173,10 @@ const PRINT_CSS = `
   .page-break { page-break-before: always; }
 
   .section-header {
-    background: #F2C50A; font-weight: bold;
-    font-size: 13pt; padding: 6px 8px;
-    margin-bottom: 0; border: 1px solid #555;
-    border-bottom: none;
+    font-weight: bold;
+    font-size: 13pt; padding: 7px 10px;
+    margin-bottom: 0; border: 1px solid #444;
+    border-bottom: none; letter-spacing: 0.03em;
   }
 
   table.detail-table {
@@ -492,17 +493,19 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
                 <table className="summary-table">
                   <thead>
                     <tr>
-                      <th style={{ width: 60 }}>SL,NO.</th>
-                      <th>BATHROOM</th>
-                      <th style={{ width: 160 }}>MRP</th>
+                      <th style={{ width: 50 }}>SL.</th>
+                      <th>BATHROOM / AREA</th>
+                      <th style={{ width: 150 }}>MRP TOTAL</th>
+                      <th style={{ width: 150 }}>SPECIAL OFFER</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filledRooms.map(({ room, mrpTotal }, i) => (
+                    {filledRooms.map(({ room, mrpTotal, offerTotal }, i) => (
                       <tr key={room.id}>
                         <td>{i + 1}</td>
-                        <td>{room.name}</td>
-                        <td>{fmtINR(mrpTotal)}</td>
+                        <td style={{ textAlign: 'left' }}>{room.name}</td>
+                        <td style={{ textAlign: 'right' }}>{fmtINR(mrpTotal)}</td>
+                        <td style={{ textAlign: 'right', color: '#1B4F8A', fontWeight: 700 }}>{fmtINR(offerTotal)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -510,9 +513,6 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
                     <tr className="total-row">
                       <td colSpan={2}>TOTAL</td>
                       <td>{fmtINR(grandMRP)}</td>
-                    </tr>
-                    <tr className="offer-row">
-                      <td colSpan={2}>SPECIAL OFFER RATE</td>
                       <td>{fmtINR(grandOffer)}</td>
                     </tr>
                   </tfoot>
@@ -566,8 +566,9 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
             {/* DETAIL PAGES — one per room                    */}
             {/* ═══════════════════════════════════════════════ */}
 
-            {filledRooms.map(({ room }) => {
+            {filledRooms.map(({ room }, roomIdx) => {
               const mainItems = room.items.filter(i => !i.isAutoAdded)
+              const sectionColor = SECTION_PALETTE[roomIdx % SECTION_PALETTE.length]
 
               const roomMRPTotal = mainItems.reduce((s, i) =>
                 s + (i.product.mrp + i.finish.priceAdj) * i.quantity, 0)
@@ -584,7 +585,12 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
               return (
                 <div key={room.id} className="page-break">
 
-                  <div className="section-header">{room.name}</div>
+                  <div
+                    className="section-header"
+                    style={{ background: sectionColor, color: '#fff' }}
+                  >
+                    {room.name}
+                  </div>
 
                   <table className="detail-table">
                     <colgroup>
@@ -631,12 +637,14 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
                                   src={item.product.imageUrl}
                                   className="prod-img"
                                   alt={item.product.name}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                    const fb = e.currentTarget.nextElementSibling as HTMLElement
+                                    if (fb) fb.style.display = 'block'
+                                  }}
                                 />
-                              ) : (
-                                <div className="prod-img-placeholder">
-                                  {(item.product.articleNumber ?? item.product.sku).slice(0, 5)}
-                                </div>
-                              )}
+                              ) : null}
+                              <div className="prod-img-placeholder" style={{ display: item.product.imageUrl ? 'none' : 'block' }} />
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               ₹ {unitMRP.toLocaleString('en-IN')}

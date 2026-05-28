@@ -5,6 +5,7 @@ import { X, Check, Package } from 'lucide-react'
 import { usePOSStore, useActiveRoom } from '@/lib/pos-store'
 import { getBundledParts, getDefaultFinish } from '@/lib/mock/pos-data'
 import type { Finish } from '@/lib/mock/pos-data'
+import { BRAND_LOGO } from '@/lib/product-image'
 
 function formatINR(n: number): string {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`
@@ -103,31 +104,32 @@ export function ProductModal() {
             {/* Product image — 200×200 centered, object-contain */}
             <div style={{
               width: 200, height: 200, flexShrink: 0,
-              background: product.imageUrl ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.12)',
-              borderRadius: 10,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              overflow: 'hidden',
+              borderRadius: 10, overflow: 'hidden', position: 'relative',
             }}>
               {product.imageUrl ? (
                 <img
                   src={product.imageUrl}
                   alt={product.name}
-                  style={{ width: 200, height: 200, objectFit: 'contain', padding: 12 }}
+                  style={{ width: 200, height: 200, objectFit: 'contain', padding: 12, background: 'rgba(255,255,255,0.92)', display: 'block' }}
                   onError={(e) => {
-                    const parent = e.currentTarget.parentElement
-                    if (parent) {
-                      parent.style.background = 'rgba(255,255,255,0.12)'
-                      e.currentTarget.style.display = 'none'
-                    }
+                    e.currentTarget.style.display = 'none'
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                    if (fallback) fallback.style.display = 'flex'
                   }}
                 />
-              ) : (
-                <span style={{ fontSize: 48, fontWeight: 900, color: 'rgba(255,255,255,0.6)', letterSpacing: '-0.02em' }}>
-                  {product.brand === 'Axor' ? 'AX' :
-                   product.brand === 'Hansgrohe' ? 'HG' :
-                   product.brand.slice(0, 2).toUpperCase()}
-                </span>
-              )}
+              ) : null}
+              <div style={{
+                display: product.imageUrl ? 'none' : 'flex',
+                width: 200, height: 200,
+                background: 'rgba(255,255,255,0.10)',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <img
+                  src={BRAND_LOGO[product.brand] ?? '/brands/brand-placeholder.svg'}
+                  alt={product.brand}
+                  style={{ width: 96, height: 96, objectFit: 'contain', borderRadius: 14, opacity: 0.9 }}
+                />
+              </div>
             </div>
 
             {/* Text content */}
@@ -232,6 +234,7 @@ export function ProductModal() {
                     padding: 16,
                     display: 'block',
                   }}
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
             )}

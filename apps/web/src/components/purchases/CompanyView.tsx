@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ArrowRightLeft } from 'lucide-react'
-import TransferModal from '@/components/purchases/TransferModal'
+import PriorityTransferModal from '@/components/purchases/PriorityTransferModal'
 import MoveStageModal from '@/components/purchases/MoveStageModal'
 import MarkReceivedModal from '@/components/purchases/MarkReceivedModal'
 import {
@@ -151,13 +151,12 @@ function LineRow({ line, activeBrand, allLines, onMoved }: RowProps) {
       )}
 
       {transferOpen && line.customer && (
-        <TransferModal
+        <PriorityTransferModal
           line={line}
-          sourceCustomerId={sourceCustomerId}
           sourceCustomerName={sourceCustomerName}
           allLines={allLines}
           onClose={() => setTransferOpen(false)}
-          onTransferred={(counts) => { setTransferOpen(false); onMoved(counts) }}
+          onTransferred={(counts) => { setTransferOpen(false); onMoved(counts || line.stages) }}
         />
       )}
 

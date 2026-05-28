@@ -167,11 +167,16 @@ export function POSHeader() {
       })
 
       if (!res.ok) {
-        const err = await res.json() as { message?: string }
+        const err = await res.json() as { message?: string; error?: string }
         throw new Error(err.message ?? 'Save failed')
       }
 
-      const data = await res.json() as { id: string; quotationNumber: string; revisionId: string }
+      const data = await res.json() as {
+        id: string
+        quotationNumber: string
+        revisionId: string
+        droppedSkus?: string[]
+      }
 
       const savedList = JSON.parse(
         localStorage.getItem('forge-pos-saved-list') ?? '[]'
@@ -189,13 +194,19 @@ export function POSHeader() {
         JSON.stringify([entry, ...savedList].slice(0, 20))
       )
 
-      toast.success(`Saved as ${data.quotationNumber}`, {
-        description: `${project.clientName} — view in Quotations`,
-        action: {
-          label: 'Open',
-          onClick: () => router.push('/sales/quotations'),
-        },
-      })
+      if (data.droppedSkus && data.droppedSkus.length > 0) {
+        toast.warning(`Saved as ${data.quotationNumber} — ${data.droppedSkus.length} item(s) not found in catalogue`, {
+          description: `Unrecognised SKUs: ${data.droppedSkus.join(', ')}`,
+        })
+      } else {
+        toast.success(`Saved as ${data.quotationNumber}`, {
+          description: `${project.clientName} · added to Quotations & Follow-ups`,
+          action: {
+            label: 'Open',
+            onClick: () => router.push('/sales/quotations'),
+          },
+        })
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
@@ -219,10 +230,12 @@ export function POSHeader() {
             id: string
             productId: string
             sku: string
+            articleNumber?: string
             productName: string
             mrp: number
             qty: number
             offerRate: number
+            imageUrl?: string
           }>
         }>
       }

@@ -3,6 +3,7 @@
 import React from 'react'
 import { toast } from 'sonner'
 import MovePopover from '@/components/purchases/MovePopover'
+import PriorityTransferModal from '@/components/purchases/PriorityTransferModal'
 import {
   STAGE_COLORS,
   STAGE_ORDER,
@@ -99,6 +100,7 @@ export default function LineCard({
   brandScope,
 }: LineCardProps) {
   const [marking, setMarking] = React.useState(false)
+  const [transferOpen, setTransferOpen] = React.useState(false)
 
   const moveStages = getVisibleMoveStages(line)
   const overflowStages = getOverflowStages(line)
@@ -164,6 +166,16 @@ export default function LineCard({
                   {isStalled && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
                       ⚠ Stalled {daysSinceOrder}d
+                    </span>
+                  )}
+                  {line.allocationStatus && (
+                    <span className={[
+                      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-widest',
+                      line.allocationStatus === 'AWAITING_REPLACEMENT' ? 'border-red-200 bg-red-50 text-red-700' :
+                      line.allocationStatus.includes('URGENT') ? 'border-orange-200 bg-orange-50 text-orange-700' :
+                      'border-blue-200 bg-blue-50 text-blue-700'
+                    ].join(' ')}>
+                      {line.allocationStatus.replace('_', ' ')}
                     </span>
                   )}
                 </div>
@@ -238,11 +250,31 @@ export default function LineCard({
             </button>
           )}
 
+          {(line.stages.INBOX > 0 || line.stages.DISPATCHED > 0) && (
+            <button
+              type="button"
+              onClick={() => setTransferOpen(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-100"
+            >
+              Reallocate Inventory
+            </button>
+          )}
+
           <p className="text-xs text-[var(--text-muted)]">
             One move control per active stage, capped at two for readability.
           </p>
         </div>
       </div>
+
+      {transferOpen && (
+        <PriorityTransferModal
+          line={line}
+          sourceCustomerName={line.customer?.name ?? 'Unknown'}
+          allLines={[]} // TODO: we might need to pass allLines if we want the dropdown to work in LineCard
+          onClose={() => setTransferOpen(false)}
+          onTransferred={() => { setTransferOpen(false); onMoved(line.stages) /* force refresh */ }}
+        />
+      )}
     </article>
   )
 }

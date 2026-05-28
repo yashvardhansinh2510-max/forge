@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import type { LineItem } from '@/lib/mock/sales-data'
+import { SECTION_PALETTE } from '@/lib/product-image'
 
 interface PrintData {
   number: string
@@ -74,7 +75,7 @@ const CSS = `
   .info-table td { padding: 5px 10px; font-size: 11pt; }
   .info-label { font-weight: bold; width: 100px; white-space: nowrap; }
   .info-value { font-weight: bold; font-size: 12pt; }
-  .section-header { font-size: 13pt; font-weight: bold; padding: 6px 8px; }
+  .section-header { font-size: 13pt; font-weight: bold; padding: 7px 10px; letter-spacing: 0.03em; }
   .summary-sl { width: 70px; }
   .summary-mrp { width: 150px; }
   .total-label { font-size: 12pt; font-weight: bold; padding: 6px 8px; }
@@ -84,6 +85,7 @@ const CSS = `
   .toll-table td { font-size: 9pt; padding: 3px 8px; }
   .detail-th { background: #F2C50A; font-weight: bold; font-size: 9pt; }
   .detail-img { width: 58px; height: 48px; object-fit: contain; display: block; margin: auto; }
+  .detail-img-placeholder { width: 58px; height: 48px; background: #f0f0f0; border-radius: 3px; display: block; margin: auto; }
   .detail-total-row td { background: #F2C50A; font-weight: bold; font-size: 10pt; }
   @media print {
     .page-break { page-break-before: always; }
@@ -124,8 +126,9 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
   const summaryRows = sections.map((s, i) => `
     <tr>
       <td class="center bold">${i + 1}</td>
-      <td class="center bold">${esc(s.name)}</td>
+      <td class="bold">${esc(s.name)}</td>
       <td class="right bold">${fmt(s.mrpTotal)}</td>
+      <td class="right bold" style="color:#1B4F8A;">${fmt(s.offerTotal)}</td>
     </tr>`).join('')
 
   return `
@@ -154,20 +157,18 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
     </table>
 
     <table>
-      <tr><td colspan="3" class="gold center section-header">${esc(data.brandLabel?.toUpperCase() || 'GROHE')}</td></tr>
+      <tr><td colspan="4" class="gold center section-header">${esc(data.brandLabel?.toUpperCase() || 'GROHE')}</td></tr>
       <tr>
-        <th class="gold center summary-sl">SL,NO.</th>
-        <th class="gold center">BATHROOM</th>
-        <th class="gold center summary-mrp">MRP</th>
+        <th class="gold center summary-sl">SL.</th>
+        <th class="gold center">BATHROOM / AREA</th>
+        <th class="gold center summary-mrp">MRP TOTAL</th>
+        <th class="gold center summary-mrp">SPECIAL OFFER</th>
       </tr>
       ${summaryRows}
       <tr>
         <td colspan="2" class="gold center total-label">TOTAL</td>
         <td class="gold right total-label">${fmt(grandMrp)}</td>
-      </tr>
-      <tr>
-        <td colspan="2" class="gold center" style="font-size:13pt; font-weight:bold; padding:7px 8px;">SPECIAL OFFER RATE</td>
-        <td class="gold right" style="font-size:13pt; font-weight:bold; padding:7px 8px;">₹ ${fmtN(grandOffer)}</td>
+        <td class="gold right total-label">${fmt(grandOffer)}</td>
       </tr>
     </table>
 
@@ -201,8 +202,9 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
   `
 }
 
-function sectionDetailPage(section: SectionData, hasAnyDiscount: boolean): string {
+function sectionDetailPage(section: SectionData, hasAnyDiscount: boolean, sectionIndex: number): string {
   const colCount = hasAnyDiscount ? 11 : 8
+  const headerColor = SECTION_PALETTE[sectionIndex % SECTION_PALETTE.length]
 
   const rows = section.items.map((item, idx) => {
     const offerRate = item.unitPrice * (1 - item.discount / 100)
@@ -210,7 +212,7 @@ function sectionDetailPage(section: SectionData, hasAnyDiscount: boolean): strin
     const offerTotal = offerRate * item.qty
     const imgCell = item.imageUrl
       ? `<img src="${esc(item.imageUrl)}" class="detail-img" alt="${esc(item.productName)}" />`
-      : ''
+      : `<div class="detail-img-placeholder"></div>`
     const articleCell = `
       <td style="text-align:center;">
         ${esc(item.sku) || '—'}<br>
@@ -299,7 +301,7 @@ function sectionDetailPage(section: SectionData, hasAnyDiscount: boolean): strin
   return `
     <div class="page-break">
       <table>
-        <tr><td colspan="${colCount}" class="gold bold section-header">${esc(section.name)}</td></tr>
+        <tr><td colspan="${colCount}" style="background:${headerColor};color:#fff;font-size:13pt;font-weight:bold;padding:7px 10px;letter-spacing:0.03em;border:1px solid #444;">${esc(section.name)}</td></tr>
         ${header}
         ${rows}
         ${totalsRow}
@@ -315,7 +317,7 @@ export function generateQuotationPrintHTML(data: PrintData): string {
   const hasAnyDiscount = data.lineItems.some(li => li.discount > 0)
 
   const cover = coverPage(data, sections, grandMrp, grandOffer, baseUrl)
-  const details = sections.map(s => sectionDetailPage(s, hasAnyDiscount)).join('')
+  const details = sections.map((s, i) => sectionDetailPage(s, hasAnyDiscount, i)).join('')
 
   return `<!DOCTYPE html>
 <html lang="en">

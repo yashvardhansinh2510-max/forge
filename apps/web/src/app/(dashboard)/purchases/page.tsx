@@ -13,6 +13,8 @@ import FilterBar, { applyFilters, emptyFilters, type PurchaseFilters } from '@/c
 import { FollowUpView } from '@/components/purchases/FollowUpView'
 import HeaderCards from '@/components/purchases/HeaderCards'
 import DrillPanel from '@/components/purchases/DrillPanel'
+import { SavedViewsBar } from '@/components/purchases/SavedViewsBar'
+import { BulkActionBar } from '@/components/purchases/BulkActionBar'
 import { exportCompanyView, exportCustomerView, exportDispatchList } from '@/lib/exportUtils'
 import {
   createEmptyBrandCounts,
@@ -76,6 +78,7 @@ export default function PurchasesPage() {
   const [view, setView] = useState<View>('company')
   const [filters, setFilters] = useState<PurchaseFilters>(emptyFilters())
   const [exporting, setExporting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const { data, error, mutate, isLoading } = useSWR(
     `/api/purchase-orders/lines?brand=${encodeURIComponent(activeBrand)}`,
@@ -206,6 +209,11 @@ export default function PurchasesPage() {
               onSelect={setActiveBrand}
             />
 
+            <SavedViewsBar
+              currentFilters={filters}
+              onApply={(f) => { setFilters(f); setSelectedIds([]) }}
+            />
+
             <FilterBar
               lines={lines}
               filters={filters}
@@ -272,6 +280,12 @@ export default function PurchasesPage() {
           </>
         )}
       </div>
+
+      <BulkActionBar
+        selectedIds={selectedIds}
+        onClear={() => setSelectedIds([])}
+        onRefresh={() => void mutate()}
+      />
     </div>
   )
 }

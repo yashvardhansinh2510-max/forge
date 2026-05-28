@@ -2,35 +2,53 @@
 
 import React, { createContext, useContext } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { type AppRole, type Permission, hasPermission, normalizeRole } from './permissions'
 
-export type Role = 'owner' | 'manager' | 'worker'
+// Re-export for backward compat
+export type { AppRole }
+export type Role = AppRole
 
-export const ROLE_LABELS: Record<Role, string> = {
-  owner: 'Owner',
-  manager: 'Manager',
-  worker: 'Worker',
+export { hasPermission, normalizeRole }
+
+export { ROLE_LABELS } from './permissions'
+
+type RoleValue = {
+  role: AppRole
+  /** Quick permission check — use inside components */
+  can: (perm: Permission) => boolean
+  /** Legacy convenience booleans */
+  canEdit: boolean
+  canViewPayments: boolean
 }
 
-type RoleValue = { role: Role; canEdit: boolean; canViewPayments: boolean }
-
 const RoleContext = createContext<RoleValue>({
-  role: 'owner',
+  role: 'OWNER',
+  can: () => true,
   canEdit: true,
   canViewPayments: true,
 })
 
-// Rendered inside ClerkProvider only — reads Clerk user and feeds context
 export function ClerkRoleProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser()
-  const role = ((user?.publicMetadata?.role as string | undefined) ?? 'owner') as Role
-  return (
-    <RoleContext.Provider value={{ role, canEdit: role !== 'worker', canViewPayments: role !== 'worker' }}>
-      {children}
-    </RoleContext.Provider>
-  )
+  const raw = (user?.publicMetadata?.role as string | undefined) ?? 'OWNER'
+  const role = normalizeRole(raw)
+
+  const value: RoleValue = {
+    role,
+    can: (perm) => hasPermission(role, perm),
+    canEdit: hasPermission(role, 'can_move_stage'),
+    canViewPayments: hasPermission(role, 'can_view_payments'),
+  }
+
+  return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>
 }
 
-// Safe to call anywhere — falls back to owner defaults when Clerk is not configured
 export function useRole(): RoleValue {
   return useContext(RoleContext)
+}
+
+/** Convenience hook — returns true if current user has permission */
+export function usePermission(perm: Permission): boolean {
+  const { can } = useContext(RoleContext)
+  return can(perm)
 }

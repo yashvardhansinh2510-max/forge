@@ -48,8 +48,6 @@ interface ProcurementState {
   draftPO:         DraftPO
   sidebarOpen:     boolean
   activeOrderId:   string | null
-  transfers:       PriorityTransfer[]
-  transferHistory: TransferRecord[]
 }
 
 interface ProcurementActions {
@@ -145,29 +143,6 @@ interface ProcurementActions {
     toStage:   POStage,
     qty:       number,
   ) => string | null
-
-  /** Append a priority transfer audit record */
-  logTransfer: (transfer: PriorityTransfer) => void
-
-  /**
-   * Transfer qty units from one customer's allocation to another.
-   * Reduces (or removes) the source allocation and creates/merges the target.
-   * Appends a TransferRecord to transferHistory.
-   */
-  transferAllocation: (
-    poId:             string,
-    lineId:           string,
-    fromCustomerId:   string,
-    fromCustomerName: string,
-    toCustomerId:     string,
-    toCustomerName:   string,
-    productId:        string,
-    productName:      string,
-    productSku:       string,
-    qty:              number,
-    stage:            TransferStage,
-    notes:            string,
-  ) => void
 }
 
 // ─── Store ──────────────────────────────────────────────────────────────────
@@ -179,8 +154,6 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
     draftPO:         EMPTY_DRAFT,
     sidebarOpen:     false,
     activeOrderId:   null,
-    transfers:       [] as PriorityTransfer[],
-    transferHistory: [] as TransferRecord[],
 
     // ── Draft PO ────────────────────────────────────────────────────────────
 
@@ -504,71 +477,6 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
 
       return error
     },
-
-    logTransfer: (transfer) =>
-      set((s) => { s.transfers.push(transfer) }),
-
-    transferAllocation: (
-      poId, lineId,
-      fromCustomerId, fromCustomerName,
-      toCustomerId, toCustomerName,
-      productId, productName, productSku,
-      qty, stage, notes,
-    ) =>
-      set((s) => {
-        const po = s.orders.find((o) => o.id === poId)
-        if (!po) return
-        const line = po.lineItems.find((l) => l.id === lineId)
-        if (!line) return
-
-        // Reduce source allocation
-        const srcAlloc = line.customerAllocations.find((a) => a.customerId === fromCustomerId)
-        if (srcAlloc) {
-          srcAlloc.qty -= qty
-          if (srcAlloc.qty <= 0) {
-            line.customerAllocations = line.customerAllocations.filter(
-              (a) => a.customerId !== fromCustomerId,
-            )
-          }
-        }
-
-        // Merge into target allocation (create if absent)
-        const boxStatus = stage as BoxAllocationStatus
-        const tgtAlloc = line.customerAllocations.find((a) => a.customerId === toCustomerId)
-        if (tgtAlloc) {
-          tgtAlloc.qty      += qty
-          tgtAlloc.boxStatus = boxStatus
-        } else {
-          line.customerAllocations.push({
-            customerId:        toCustomerId,
-            customerName:      toCustomerName,
-            qty,
-            boxStatus,
-            scheduledDelivery: null,
-            customNote:        null,
-          })
-        }
-
-        // Append transfer record
-        s.transferHistory.push({
-          id:               `tr-${Date.now()}`,
-          poId,
-          lineId,
-          productId,
-          productName,
-          productSku,
-          fromCustomerId,
-          fromCustomerName,
-          toCustomerId,
-          toCustomerName,
-          qty,
-          stage,
-          notes,
-          timestamp:        new Date().toISOString(),
-        })
-
-        po.updatedAt = new Date().toISOString()
-      }),
   })),
 )
 
@@ -577,4 +485,3 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
 export const useDraftLines       = () => useProcurementStore((s) => s.draftPO.lines)
 export const useDraftLineCount   = () => useProcurementStore((s) => s.draftPO.lines.length)
 export const useSidebarOpen      = () => useProcurementStore((s) => s.sidebarOpen)
-export const useTransferHistory  = () => useProcurementStore((s) => s.transferHistory)

@@ -23,6 +23,8 @@ model User {
   stageMovements   StageMovement[]   @relation("StageMovements")
   transfers        Transfer[]        @relation("Transfers")
   ownedContacts    Contact[]         @relation("OwnedContacts")
+  assignedLines    POLineItem[]      @relation("POLineItemAssignments")
+  lineItemNotes    POLineItemNote[]
 }
 
 model Contact {
@@ -302,12 +304,19 @@ model POLineItem {
   status          POLineStatus    @default(PENDING)
   createdAt       DateTime        @default(now())
   followUpStatus  String?         @default("AWAITING")
+  priority        String          @default("MEDIUM")
+  assignedToId    String?
+  stageEnteredAt  DateTime?
   po              PurchaseOrder   @relation(fields: [poId], references: [id], onDelete: Cascade)
   product         Product         @relation(fields: [productId], references: [id])
   quotationItem   QuotationItem?  @relation(fields: [quotationItemId], references: [id])
+  assignedTo      User?           @relation("POLineItemAssignments", fields: [assignedToId], references: [id])
   stageMovements  StageMovement[]
   purchaseItems   PurchaseItem[]
-  transfers       Transfer[]
+  transfersOut    Transfer[]      @relation("TransfersOut")
+  transfersIn     Transfer[]      @relation("TransfersIn")
+  notes           POLineItemNote[]
+  allocationStatus String?
 }
 
 model StageMovement {
@@ -326,6 +335,7 @@ model StageMovement {
 model Transfer {
   id               String     @id @default(cuid())
   poLineItemId     String
+  targetPoLineItemId String?
   productId        String
   productName      String     @default("")
   fromCustomerId   String
@@ -334,15 +344,19 @@ model Transfer {
   toCustomerName   String
   qty              Int
   stage            String
+  urgency          String     @default("NORMAL")
+  reason           String?
   notes            String?
   transferredById  String
   transferredAt    DateTime   @default(now())
-  poLineItem       POLineItem @relation(fields: [poLineItemId], references: [id])
+  poLineItem       POLineItem @relation("TransfersOut", fields: [poLineItemId], references: [id])
+  targetPoLineItem POLineItem? @relation("TransfersIn", fields: [targetPoLineItemId], references: [id])
   transferredBy    User       @relation("Transfers", fields: [transferredById], references: [id])
 
   @@index([fromCustomerId])
   @@index([toCustomerId])
   @@index([poLineItemId])
+  @@index([targetPoLineItemId])
 }
 
 model InventoryBox {
@@ -471,8 +485,14 @@ model Activity {
 
 enum UserRole {
   OWNER
+  ADMIN
+  OPS_MANAGER
+  BILLING_STAFF
+  DISPATCH_STAFF
+  SALES_STAFF
   MANAGER
   WORKER
+  READ_ONLY
 }
 
 enum RevisionStatus {
@@ -650,4 +670,33 @@ enum ActivityType {
   QUOTE_CREATED
   QUOTE_SENT
   QUOTE_APPROVED
+}
+
+model POLineItemNote {
+  id          String     @id @default(cuid())
+  lineItemId  String
+  userId      String
+  content     String
+  createdAt   DateTime   @default(now())
+  
+  lineItem    POLineItem @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lineItemId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  userName    String   @default("")
+  action      String
+  entityType  String
+  entityId    String?
+  payload     Json?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
 }

@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { prisma } from '@forge/db'
 import { getDevUserId, withErrorHandling } from '@/lib/api-helpers'
 import { AppError } from '@/lib/errors'
+import { hasPermission } from '@/lib/permissions'
+import { getCurrentRole } from '@/lib/permissions-server'
 import { moveFallbackLine, shouldUseFallback } from '@/lib/purchases-fallback'
 import {
   BRAND_TABS,
@@ -100,6 +102,11 @@ export async function PATCH(
   { params }: { params: Promise<{ lineId: string }> },
 ) {
   return withErrorHandling(async () => {
+    const role = await getCurrentRole().catch(() => 'READ_ONLY' as const)
+    if (!hasPermission(role, 'can_move_stage')) {
+      return NextResponse.json({ error: 'Forbidden', required: 'can_move_stage' }, { status: 403 })
+    }
+
     const { lineId } = await params
     const body = MoveStageSchema.parse(await req.json())
     const { fromStage, toStage, qty, customerId, note } = body

@@ -85,7 +85,7 @@ interface POSActions {
   loadFromRevision: (rooms: Array<{
     id: string
     name: string
-    items: Array<{ id: string; sku: string; productName: string; mrp: number; qty: number; offerRate: number; productId: string }>
+    items: Array<{ id: string; sku: string; articleNumber?: string; productName: string; mrp: number; qty: number; offerRate: number; productId: string; imageUrl?: string }>
   }>) => void
 }
 
@@ -305,6 +305,7 @@ export const usePOSStore = create<POSState & POSActions>()(
               const stubProduct: POSProduct = {
                 id:              item.productId,
                 sku:             item.sku,
+                articleNumber:   item.articleNumber ?? item.sku,
                 name:            item.productName,
                 description:     '',
                 brand:           '',
@@ -321,6 +322,7 @@ export const usePOSStore = create<POSState & POSActions>()(
                 requiresPartIds: [],
                 isConcealed:     false,
                 features:        [],
+                imageUrl:        item.imageUrl,
               }
               const discount = item.mrp > 0
                 ? Math.round((1 - item.offerRate / item.mrp) * 100)

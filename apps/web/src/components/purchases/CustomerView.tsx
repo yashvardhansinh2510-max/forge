@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowRightLeft } from 'lucide-react'
 import useSWR from 'swr'
-import TransferModal from '@/components/purchases/TransferModal'
+import PriorityTransferModal from '@/components/purchases/PriorityTransferModal'
 import MoveStageModal from '@/components/purchases/MoveStageModal'
 import {
   STAGE_LABEL,
@@ -208,13 +208,12 @@ function LineTableRow({
       </tr>
 
       {transferOpen && (
-        <TransferModal
+        <PriorityTransferModal
           line={line}
-          sourceCustomerId={sourceCustomerId}
           sourceCustomerName={sourceCustomerName}
           allLines={allLines}
           onClose={() => setTransferOpen(false)}
-          onTransferred={(counts) => { setTransferOpen(false); onMoved(counts) }}
+          onTransferred={(counts) => { setTransferOpen(false); onMoved(counts || line.stages) }}
         />
       )}
 

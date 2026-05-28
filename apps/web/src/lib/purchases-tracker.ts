@@ -85,6 +85,10 @@ export interface PurchaseTrackerLine {
   followUpStatus?: string | null
   createdAt?: string | null
   landingCost?: number | null
+  priority?: string | null
+  assignedTo?: { id: string; name: string } | null
+  stageEnteredAt?: string | null
+  allocationStatus?: string | null
 }
 
 export interface PurchaseLinesResponse {
