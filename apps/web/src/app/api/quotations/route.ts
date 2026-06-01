@@ -18,6 +18,7 @@ const LineItemSchema = z.object({
 const CreateSchema = z.object({
   customerName: z.string().min(1),
   siteAddress: z.string().optional(),
+  projectId: z.string().optional(),
   projectName: z.string().optional(),
   notes: z.string().optional(),
   lineItems: z.array(LineItemSchema),
@@ -26,6 +27,7 @@ const CreateSchema = z.object({
 const UpdateSchema = z.object({
   customerName: z.string().min(1).optional(),
   siteAddress: z.string().optional(),
+  projectId: z.string().optional(),
   projectName: z.string().optional(),
   notes: z.string().optional(),
   lineItems: z.array(LineItemSchema).optional(),
@@ -63,6 +65,7 @@ export async function GET() {
         status: rev.status,
         customerName: rev.quotation.customerName,
         siteAddress: rev.quotation.siteAddress,
+        projectId: rev.quotation.projectId ?? null,
         grandTotal,
         createdAt: rev.createdAt,
         lineItemCount,
@@ -99,6 +102,7 @@ export async function POST(req: NextRequest) {
           number: quotationNumber,
           customerName: body.customerName,
           siteAddress: body.siteAddress,
+          projectId: body.projectId ?? null,
           createdById: userId,
           currentStatus: 'DRAFT',
         },

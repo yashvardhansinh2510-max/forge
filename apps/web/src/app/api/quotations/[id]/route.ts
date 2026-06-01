@@ -18,6 +18,7 @@ const LineItemSchema = z.object({
 const PatchSchema = z.object({
   customerName: z.string().min(1).optional(),
   siteAddress: z.string().optional(),
+  projectId: z.string().optional(),
   projectName: z.string().optional(),
   notes: z.string().optional(),
   lineItems: z.array(LineItemSchema).optional(),
@@ -71,6 +72,7 @@ export async function GET(
       isLocked: revision.isLocked,
       customerName: revision.quotation.customerName,
       siteAddress: revision.quotation.siteAddress,
+      projectId: revision.quotation.projectId ?? null,
       lineItems,
     })
   })
@@ -99,12 +101,13 @@ export async function PATCH(
 
     await prisma.$transaction(async (tx) => {
       // Update quotation metadata
-      if (body.customerName !== undefined || body.siteAddress !== undefined) {
+      if (body.customerName !== undefined || body.siteAddress !== undefined || body.projectId !== undefined) {
         await tx.quotation.update({
           where: { id: revision.quotationId },
           data: {
             ...(body.customerName !== undefined && { customerName: body.customerName }),
             ...(body.siteAddress !== undefined && { siteAddress: body.siteAddress }),
+            ...(body.projectId !== undefined && { projectId: body.projectId }),
           },
         })
       }
