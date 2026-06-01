@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server'
-import { db } from '@forge/db'
+import { prisma } from '@forge/db'
 import { requirePermission } from '@/lib/server/permissions'
 
 export async function GET() {
   try {
     await requirePermission('Settings', 'View')
     
-    const permissions = await db.permission.findMany({
+    const permissions = await prisma.permission.findMany({
       orderBy: [
         { group: 'asc' },
         { module: 'asc' },
         { action: 'asc' }
       ]
     })
-    
-    const rolePermissions = await db.rolePermission.findMany()
+
+    const rolePermissions = await prisma.rolePermission.findMany()
     
     return NextResponse.json({ permissions, rolePermissions })
   } catch (error: any) {
@@ -33,7 +33,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
     
-    const role = await db.role.findUnique({ where: { id: roleId } })
+    const role = await prisma.role.findUnique({ where: { id: roleId } })
     if (!role) {
       return NextResponse.json({ error: 'Role not found' }, { status: 404 })
     }
@@ -43,13 +43,13 @@ export async function PUT(req: Request) {
     }
     
     // Delete existing
-    await db.rolePermission.deleteMany({
+    await prisma.rolePermission.deleteMany({
       where: { roleId }
     })
     
     // Insert new
     if (permissionIds.length > 0) {
-      await db.rolePermission.createMany({
+      await prisma.rolePermission.createMany({
         data: permissionIds.map((pid: string) => ({
           roleId,
           permissionId: pid
@@ -57,7 +57,7 @@ export async function PUT(req: Request) {
       })
     }
     
-    await db.auditLog.create({
+    await prisma.auditLog.create({
       data: {
         action: 'permission_changed',
         target: role.id,

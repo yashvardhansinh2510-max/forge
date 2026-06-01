@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { db } from '@forge/db'
+import { prisma } from '@forge/db'
 import { requirePermission } from '@/lib/server/permissions'
 
 export async function GET() {
   try {
     await requirePermission('Settings', 'View')
     
-    const roles = await db.role.findMany({
+    const roles = await prisma.role.findMany({
       orderBy: { createdAt: 'asc' }
     })
     
@@ -26,15 +26,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Name required' }, { status: 400 })
     }
     
-    const role = await db.role.create({
+    const role = await prisma.role.create({
       data: {
         name: name.toUpperCase(),
         description,
         isSystem: false
       }
     })
-    
-    await db.auditLog.create({
+
+    await prisma.auditLog.create({
       data: {
         action: 'role_created',
         target: role.id,

@@ -1,4 +1,4 @@
-import { db } from '@forge/db'
+import { prisma } from '@forge/db'
 import { auth } from '@clerk/nextjs/server'
 
 /**
@@ -13,7 +13,7 @@ export async function requirePermission(module: string, action: string) {
   }
 
   // Find user by clerkId
-  const user = await db.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { clerkId },
     include: {
       customRole: {
@@ -54,7 +54,7 @@ export async function requirePermission(module: string, action: string) {
 }
 
 export async function getUserPermissions(clerkId: string) {
-  const user = await db.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { clerkId },
     include: {
       customRole: {
