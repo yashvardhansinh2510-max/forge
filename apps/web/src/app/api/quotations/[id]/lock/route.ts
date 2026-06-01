@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
+import { requirePermission } from '@/lib/auth'
 
 // PATCH /api/quotations/[id]/lock
 // Locks a QuotationRevision (sets status=LOCKED, isLocked=true).
@@ -8,6 +9,7 @@ export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  await requirePermission('Quotations', 'Edit')
   const { id } = await params
 
   try {

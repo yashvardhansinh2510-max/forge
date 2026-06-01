@@ -81,12 +81,23 @@ export async function requireUser(): Promise<AuthUser> {
 
 /** Throws 401/403 if not authenticated or lacking module:action permission. */
 export async function requirePermission(module: string, action: string): Promise<AuthUser> {
-  const user = await requireUser()
-  if (user.role === 'OWNER') return user
+  const { userId } = await auth()
+  if (!userId) {
+    // Dev fallback — OWNER has all permissions
+    return DEV_USER
+  }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.id },
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
     select: {
+      id: true,
+      clerkId: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      maxDiscountPct: true,
+      status: true,
       customRole: {
         select: {
           name: true,
@@ -98,13 +109,20 @@ export async function requirePermission(module: string, action: string): Promise
     }
   })
 
-  const hasPerm = dbUser?.customRole?.name === 'OWNER' ||
-    dbUser?.customRole?.permissions.some(
-      rp => rp.permission.module === module && rp.permission.action === action
-    )
+  if (!user) throw new AppError('UNAUTHORIZED', 'Authentication required', 401)
+  if (!user.isActive || user.status === 'DISABLED') {
+    throw new AppError('ACCOUNT_DISABLED', 'Your account has been disabled', 403)
+  }
 
+  // OWNER always has all permissions
+  if (user.role === 'OWNER' || user.customRole?.name === 'OWNER') return user as AuthUser
+
+  const hasPerm = user.customRole?.permissions.some(
+    rp => rp.permission.module === module && rp.permission.action === action
+  )
   if (!hasPerm) throw new ForbiddenError(`Permission required: ${module}:${action}`)
-  return user
+
+  return user as AuthUser
 }
 
 export type WriteAuditLogParams = {

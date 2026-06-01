@@ -4,7 +4,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@forge/db'
-import { getDevUserId, withErrorHandling } from '@/lib/api-helpers'
+import { withErrorHandling } from '@/lib/api-helpers'
+import { requirePermission } from '@/lib/auth'
 import { NotFoundError, ValidationError } from '@/lib/errors'
 import { logActivity } from '@/lib/activity-log'
 
@@ -62,6 +63,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandling(async () => {
+    const actor = await requirePermission('Purchases', 'Create')
     const { id } = await params
     const body = UpdatePOSchema.parse(await req.json())
 
@@ -87,7 +89,7 @@ export async function PATCH(
 
     await logActivity({
       type: 'NOTE',
-      userId: getDevUserId(),
+      userId: actor.id,
       description: `Updated purchase order ${updated.poNumber}`,
       projectId: updated.projectId,
     })
