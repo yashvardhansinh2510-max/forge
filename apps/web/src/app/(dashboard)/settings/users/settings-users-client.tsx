@@ -1,20 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { type Role, ROLE_LABELS } from '@/lib/use-role'
+import { ROLE_LABELS } from '@/lib/use-role'
+import type { UserRole } from '@forge/db'
 
-type User = {
+type UserRow = {
   id: string
   name: string
   email: string
-  role: Role
+  role: UserRole
+  isActive: boolean
   clerkId: string | null
 }
 
-const ROLE_OPTIONS: Role[] = ['owner', 'manager', 'worker']
+const ROLE_OPTIONS: UserRole[] = ['OWNER', 'MANAGER', 'WORKER']
 
 export function SettingsUsersClient() {
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
 
@@ -24,16 +26,29 @@ export function SettingsUsersClient() {
       .then((data) => { setUsers(data); setLoading(false) })
   }, [])
 
-  async function handleRoleChange(userId: string, newRole: Role) {
+  async function handleRoleChange(userId: string, newRole: UserRole) {
     setUpdating(userId)
-    await fetch(`/api/settings/users/${userId}`, {
+    const res = await fetch(`/api/settings/users/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: newRole }),
     })
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
-    )
+    if (res.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)))
+    }
+    setUpdating(null)
+  }
+
+  async function handleToggleActive(userId: string, isActive: boolean) {
+    setUpdating(userId)
+    const res = await fetch(`/api/settings/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive }),
+    })
+    if (res.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isActive } : u)))
+    }
     setUpdating(null)
   }
 
@@ -56,11 +71,18 @@ export function SettingsUsersClient() {
               <th className="px-4 py-3 text-left font-medium">Name</th>
               <th className="px-4 py-3 text-left font-medium">Email</th>
               <th className="px-4 py-3 text-left font-medium">Role</th>
+              <th className="px-4 py-3 text-left font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
             {users.map((user) => (
-              <tr key={user.id} style={{ borderBottom: '1px solid var(--border)' }}>
+              <tr
+                key={user.id}
+                style={{
+                  borderBottom: '1px solid var(--border)',
+                  opacity: user.isActive ? 1 : 0.5,
+                }}
+              >
                 <td className="px-4 py-3" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-ui)' }}>
                   {user.name}
                 </td>
@@ -71,7 +93,7 @@ export function SettingsUsersClient() {
                   <select
                     value={user.role}
                     disabled={updating === user.id}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value as Role)}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
                     className="rounded border px-2 py-1 text-sm"
                     style={{
                       borderColor: 'var(--border)',
@@ -84,6 +106,21 @@ export function SettingsUsersClient() {
                       <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                     ))}
                   </select>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    disabled={updating === user.id}
+                    onClick={() => handleToggleActive(user.id, !user.isActive)}
+                    className="rounded px-2 py-1 text-xs font-medium"
+                    style={{
+                      background: user.isActive ? 'var(--surface-hover)' : 'var(--surface)',
+                      color: user.isActive ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+                      border: '1px solid var(--border)',
+                      fontFamily: 'var(--font-ui)',
+                    }}
+                  >
+                    {user.isActive ? 'Active' : 'Disabled'}
+                  </button>
                 </td>
               </tr>
             ))}

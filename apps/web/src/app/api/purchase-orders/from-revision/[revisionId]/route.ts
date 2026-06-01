@@ -11,7 +11,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@forge/db'
-import { withErrorHandling, getDevUserId } from '@/lib/api-helpers'
+import { withErrorHandling } from '@/lib/api-helpers'
+import { requirePermission } from '@/lib/auth'
 import { buildPOFromRevision } from '@/lib/quotationToPO'
 import { generatePONumber } from '@/lib/poNumberGenerator'
 
@@ -124,11 +125,12 @@ export async function POST(
   { params }: { params: Promise<{ revisionId: string }> },
 ) {
   return withErrorHandling(async () => {
+    const user = await requirePermission('Purchases', 'Create')
     const { revisionId } = await params
     let rawBody: unknown
     try { rawBody = await req.json() } catch { rawBody = undefined }
     const body = BodySchema.parse(rawBody)
-    const userId = getDevUserId()
+    const userId = user.id
 
     // Path A: real DB revision
     const revision = await prisma.quotationRevision.findUnique({

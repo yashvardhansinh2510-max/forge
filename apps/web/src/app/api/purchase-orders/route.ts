@@ -4,7 +4,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@forge/db'
-import { withErrorHandling, getDevUserId } from '@/lib/api-helpers'
+import { withErrorHandling } from '@/lib/api-helpers'
+import { requirePermission } from '@/lib/auth'
 import { buildPOFromRevision } from '@/lib/quotationToPO'
 import { ValidationError } from '@/lib/errors'
 import { logActivity } from '@/lib/activity-log'
@@ -21,7 +22,8 @@ const CreatePOSchema = z.object({
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
     const body = CreatePOSchema.parse(await req.json())
-    const userId = getDevUserId()
+    const user = await requirePermission('Purchases', 'Create')
+    const userId = user.id
 
     let po
 

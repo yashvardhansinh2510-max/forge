@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@forge/db'
-import { getDevUserId, withErrorHandling } from '@/lib/api-helpers'
+import { withErrorHandling } from '@/lib/api-helpers'
+import { requirePermission } from '@/lib/auth'
 import { AppError } from '@/lib/errors'
-import { moveFallbackLine, shouldUseFallback } from '@/lib/purchases-fallback'
-import { allowDevFallback } from '@/lib/runtime-mode'
+
 import { logActivity } from '@/lib/activity-log'
 import {
   BRAND_TABS,
@@ -18,38 +18,22 @@ import {
 } from '@/lib/purchases-tracker'
 
 const TO_STAGES = [
-  'PENDING_CO',
-  'PENDING_DIST',
-  'GODOWN',
-  'IN_BOX',
+  'COMPANY_BILLING',
+  'INBOX',
   'DISPATCHED',
-  'NOT_DISPLAYED',
+  'COMPLETED',
 ] as const
 
 const LEGAL_TRANSITIONS: Record<PurchaseStage, typeof TO_STAGES[number][]> = {
-  UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
-  PENDING_CO: ['PENDING_DIST', 'GODOWN'],
-  PENDING_DIST: ['GODOWN'],
-  GODOWN: ['IN_BOX'],
-  IN_BOX: ['DISPATCHED'],
-  DISPATCHED: ['NOT_DISPLAYED'],
-  NOT_DISPLAYED: [],
+  ORDER_IN_COMPANY: ['COMPANY_BILLING', 'INBOX', 'DISPATCHED', 'COMPLETED'],
+  COMPANY_BILLING: ['INBOX', 'DISPATCHED', 'COMPLETED'],
+  INBOX: ['DISPATCHED', 'COMPLETED'],
+  DISPATCHED: ['COMPLETED'],
+  COMPLETED: [],
 }
 
-const DB_FIELD_BY_STAGE = {
-  PENDING_CO: 'qtyPendingCo',
-  PENDING_DIST: 'qtyPendingDist',
-  GODOWN: 'qtyAtGodown',
-  IN_BOX: 'qtyInBox',
-  DISPATCHED: 'qtyDispatched',
-  NOT_DISPLAYED: 'qtyNotDisplayed',
-} as const
-
-type PersistedStage = keyof typeof DB_FIELD_BY_STAGE
-type QtyField = typeof DB_FIELD_BY_STAGE[PersistedStage]
-
 const MoveStageSchema = z.object({
-  fromStage: z.enum(['UNALLOCATED', ...TO_STAGES]),
+  fromStage: z.enum(['ORDER_IN_COMPANY', ...TO_STAGES]),
   toStage: z.enum(TO_STAGES),
   qty: z.number().int().min(1),
   customerId: z.string().optional(),
@@ -66,11 +50,7 @@ function getCurrentQtyAtStage(line: {
   qtyDispatched: number
   qtyNotDisplayed: number
 }, stage: PurchaseStage): number {
-  if (stage === 'UNALLOCATED') {
-    return countsFromDbLine(line).UNALLOCATED
-  }
-
-  return line[DB_FIELD_BY_STAGE[stage]]
+  return countsFromDbLine(line)[stage]
 }
 
 function buildStageTotals(lines: Array<{
@@ -85,13 +65,11 @@ function buildStageTotals(lines: Array<{
   return lines.reduce((acc, line) => {
     const next = countsFromDbLine(line)
     return {
-      UNALLOCATED: acc.UNALLOCATED + next.UNALLOCATED,
-      PENDING_CO: acc.PENDING_CO + next.PENDING_CO,
-      PENDING_DIST: acc.PENDING_DIST + next.PENDING_DIST,
-      GODOWN: acc.GODOWN + next.GODOWN,
-      IN_BOX: acc.IN_BOX + next.IN_BOX,
+      ORDER_IN_COMPANY: acc.ORDER_IN_COMPANY + next.ORDER_IN_COMPANY,
+      COMPANY_BILLING: acc.COMPANY_BILLING + next.COMPANY_BILLING,
+      INBOX: acc.INBOX + next.INBOX,
       DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
-      NOT_DISPLAYED: acc.NOT_DISPLAYED + next.NOT_DISPLAYED,
+      COMPLETED: acc.COMPLETED + next.COMPLETED,
     }
   }, createEmptyHeaderCounts())
 }
@@ -127,6 +105,7 @@ export async function PATCH(
   { params }: { params: Promise<{ lineId: string }> },
 ) {
   return withErrorHandling(async () => {
+    const user = await requirePermission('Inventory', 'Transfer')
     const { lineId } = await params
     const body = MoveStageSchema.parse(await req.json())
     const {
@@ -146,8 +125,7 @@ export async function PATCH(
       )
     }
 
-    try {
-      const line = await prisma.pOLineItem.findUnique({
+    const line = await prisma.pOLineItem.findUnique({
         where: { id: lineId },
         select: {
           id: true,
@@ -175,31 +153,54 @@ export async function PATCH(
         )
       }
 
-      const updates: Array<ReturnType<typeof prisma.pOLineItem.update> | ReturnType<typeof prisma.stageMovement.create>> = []
+      const dataToUpdate: Record<string, any> = {}
+      let remainingToDeduct = qty
 
-      if (fromStage !== 'UNALLOCATED') {
-        updates.push(
-          prisma.pOLineItem.update({
-            where: { id: lineId },
-            data: {
-              [DB_FIELD_BY_STAGE[fromStage] as QtyField]: {
-                decrement: qty,
-              },
-            },
-          }),
-        )
+      if (fromStage === 'ORDER_IN_COMPANY') {
+        if (line.qtyPendingCo > 0) {
+          const deductCo = Math.min(remainingToDeduct, line.qtyPendingCo)
+          dataToUpdate.qtyPendingCo = { decrement: deductCo }
+          remainingToDeduct -= deductCo
+        }
+      } else if (fromStage === 'COMPANY_BILLING') {
+        dataToUpdate.qtyPendingDist = { decrement: qty }
+      } else if (fromStage === 'INBOX') {
+        if (line.qtyInBox > 0) {
+          const deductInBox = Math.min(remainingToDeduct, line.qtyInBox)
+          dataToUpdate.qtyInBox = { decrement: deductInBox }
+          remainingToDeduct -= deductInBox
+        }
+        if (remainingToDeduct > 0 && line.qtyAtGodown > 0) {
+          dataToUpdate.qtyAtGodown = { decrement: remainingToDeduct }
+        }
+      } else if (fromStage === 'DISPATCHED') {
+        dataToUpdate.qtyDispatched = { decrement: qty }
       }
 
-      updates.push(
+      if (toStage === 'ORDER_IN_COMPANY') {
+        dataToUpdate.qtyPendingCo = { increment: (dataToUpdate.qtyPendingCo?.increment || 0) + qty, decrement: dataToUpdate.qtyPendingCo?.decrement }
+      } else if (toStage === 'COMPANY_BILLING') {
+        dataToUpdate.qtyPendingDist = { increment: qty, decrement: dataToUpdate.qtyPendingDist?.decrement }
+      } else if (toStage === 'INBOX') {
+        dataToUpdate.qtyInBox = { increment: qty, decrement: dataToUpdate.qtyInBox?.decrement }
+      } else if (toStage === 'DISPATCHED') {
+        dataToUpdate.qtyDispatched = { increment: qty, decrement: dataToUpdate.qtyDispatched?.decrement }
+      } else if (toStage === 'COMPLETED') {
+        dataToUpdate.qtyNotDisplayed = { increment: qty }
+      }
+
+      for (const k of Object.keys(dataToUpdate)) {
+        if (dataToUpdate[k].increment === undefined) delete dataToUpdate[k].increment
+        if (dataToUpdate[k].decrement === undefined) delete dataToUpdate[k].decrement
+        if (Object.keys(dataToUpdate[k]).length === 0) delete dataToUpdate[k]
+      }
+
+      const updates: Array<ReturnType<typeof prisma.pOLineItem.update> | ReturnType<typeof prisma.stageMovement.create>> = [
         prisma.pOLineItem.update({
           where: { id: lineId },
-          data: {
-            [DB_FIELD_BY_STAGE[toStage] as QtyField]: {
-              increment: qty,
-            },
-          },
-        }),
-      )
+          data: dataToUpdate,
+        })
+      ]
 
       updates.push(
         prisma.stageMovement.create({
@@ -208,7 +209,7 @@ export async function PATCH(
             fromStage,
             toStage,
             qty,
-            movedById: getDevUserId(),
+            movedById: user.id,
             note: customerId
               ? `${note ? `${note} | ` : ''}customer:${customerId}`
               : note ?? null,
@@ -220,7 +221,7 @@ export async function PATCH(
 
       await logActivity({
         type: 'NOTE',
-        userId: getDevUserId(),
+        userId: user.id,
         description: `Moved ${qty} unit(s) from ${fromStage} to ${toStage} in purchase pipeline`,
       })
 
@@ -263,18 +264,5 @@ export async function PATCH(
         lineItem,
         stageTotals,
       })
-    } catch (error) {
-      if (allowDevFallback() && shouldUseFallback(error)) {
-        return NextResponse.json(moveFallbackLine({
-          lineId,
-          fromStage,
-          toStage,
-          qty,
-          brand: normalizeBrandTab(body.brand),
-        }))
-      }
-
-      throw error
-    }
   })
 }

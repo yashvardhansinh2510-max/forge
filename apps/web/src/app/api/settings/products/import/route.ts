@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
+import { requirePermission } from '@/lib/auth'
 import {
   parseProductImageCsv,
   type ProductImageImportError,
@@ -53,6 +54,7 @@ async function parseRowsFromRequest(req: NextRequest): Promise<{ rows: ProductIm
 
 export async function POST(req: NextRequest) {
   return withErrorHandling(async () => {
+    await requirePermission('Images', 'Import')
     const { rows, dryRun } = await parseRowsFromRequest(req)
     const errors: ProductImageImportError[] = []
     const duplicates = new Set<string>()

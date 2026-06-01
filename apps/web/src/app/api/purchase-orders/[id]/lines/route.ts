@@ -3,7 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@forge/db'
-import { getDevUserId, withErrorHandling } from '@/lib/api-helpers'
+import { withErrorHandling } from '@/lib/api-helpers'
+import { requirePermission } from '@/lib/auth'
 import { NotFoundError, ValidationError } from '@/lib/errors'
 import { logActivity } from '@/lib/activity-log'
 
@@ -18,6 +19,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandling(async () => {
+    const user = await requirePermission('Purchases', 'Create')
     const { id } = await params
     const body = AddLineSchema.parse(await req.json())
 
@@ -53,7 +55,7 @@ export async function POST(
 
     await logActivity({
       type: 'NOTE',
-      userId: getDevUserId(),
+      userId: user.id,
       description: `Added ${body.qtyOrdered} unit(s) of ${product.sku} to ${po.poNumber}`,
       projectId: po.projectId,
     })
