@@ -7,7 +7,7 @@ export async function GET() {
   return withErrorHandling(async () => {
     await requireUser()
 
-    const [activeProjects, completedProjects, projects] = await Promise.all([
+    const [activeProjects, completedProjects, salesAgg] = await Promise.all([
       prisma.project.count({
         where: {
           status: {
@@ -18,22 +18,19 @@ export async function GET() {
       prisma.project.count({
         where: { status: 'COMPLETED' }
       }),
-      prisma.project.findMany({
+      // Compute pipeline value live from SalesOrders linked to active projects
+      prisma.salesOrder.aggregate({
+        _sum: { offerTotal: true },
         where: {
-          status: {
-            notIn: ['CLOSED', 'COMPLETED']
-          }
-        },
-        select: {
-          quotationValue: true,
-          purchaseValue: true,
-          paymentReceived: true,
-          outstandingAmount: true
+          project: {
+            status: { notIn: ['CLOSED', 'COMPLETED'] }
+          },
+          projectId: { not: null }
         }
       })
     ])
 
-    const pipelineValue = projects.reduce((acc, p) => acc + (p.quotationValue || 0), 0)
+    const pipelineValue = (salesAgg._sum.offerTotal as number | null) ?? 0
 
     return NextResponse.json({
       activeProjects,

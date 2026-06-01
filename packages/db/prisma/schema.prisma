@@ -115,10 +115,30 @@ model Company {
   createdAt DateTime  @default(now())
 }
 
+// ─── Project Status & Health ────────────────────────────────────────────────────
+
+enum ProjectStatus {
+  LEAD
+  QUOTED
+  NEGOTIATION
+  ORDERED
+  IN_PROGRESS
+  DISPATCHED
+  COMPLETED
+  CLOSED
+}
+
+enum ProjectHealth {
+  GREEN
+  YELLOW
+  RED
+}
+
 // ─── Project ───────────────────────────────────────────────────────────────────
 
 model Project {
-  id            String      @id @default(cuid())
+  id            String         @id @default(cuid())
+  projectName   String         @default("Unnamed Project")
   clientName    String
   clientPhone   String?
   clientEmail   String?
@@ -126,13 +146,19 @@ model Project {
   architectName String?
   plumberName   String?
   companyId     String?
-  company       Company?    @relation(fields: [companyId], references: [id])
-  notes          String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  company       Company?       @relation(fields: [companyId], references: [id])
+  notes         String?
+  status        ProjectStatus  @default(LEAD)
+  health        ProjectHealth  @default(GREEN)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   quotations     Quotation[]
   purchaseOrders PurchaseOrder[]
   inventoryBoxes InventoryBox[]
+  salesOrders    SalesOrder[]
+  activities     Activity[]
+  followUps      FollowUp[]
+  stockMovements StockMovement[]
 }
 
 // ─── Quotation (container — never mutated after creation) ──────────────────────
@@ -318,6 +344,8 @@ model StockMovement {
   reference       String
   reason          String?
   performedByName String
+  projectId       String?
+  project         Project?      @relation(fields: [projectId], references: [id])
   createdAt       DateTime      @default(now())
 }
 
@@ -478,6 +506,8 @@ model SalesOrder {
   customerPhone   String?
   status          SalesOrderStatus  @default(CONFIRMED)
   projectName     String?
+  projectId       String?
+  project         Project?          @relation(fields: [projectId], references: [id])
   deliveryAddress String?
   notes           String?
   mrpTotal        Float             @default(0)
@@ -555,6 +585,8 @@ model FollowUp {
   productsNoted    String?
   estimatedBudget  Float?
   projectName      String?
+  projectId        String?
+  project          Project?             @relation(fields: [projectId], references: [id])
   quotationId      String?
   quotationNumber  String?
   quotationValue   Float?
@@ -580,19 +612,28 @@ model FollowUpResponse {
   createdAt   DateTime               @default(now())
 }
 
+// ─── Activity Source ────────────────────────────────────────────────────────────
+
+enum ActivitySource {
+  SYSTEM
+  USER
+}
+
 // ─── Activity Log ──────────────────────────────────────────────────────────────
 
 model Activity {
-  id          String       @id @default(cuid())
+  id          String         @id @default(cuid())
   type        ActivityType
   description String
+  source      ActivitySource @default(SYSTEM)
   userId      String?
   contactId   String?
   companyId   String?
   projectId   String?
+  project     Project?       @relation(fields: [projectId], references: [id])
   quotationId String?
   value       Float?
-  createdAt   DateTime     @default(now())
+  createdAt   DateTime       @default(now())
 }
 
 enum ActivityType {

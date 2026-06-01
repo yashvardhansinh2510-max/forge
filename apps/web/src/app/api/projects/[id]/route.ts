@@ -49,7 +49,33 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    return NextResponse.json(project)
+    // Compute financial fields live (replaced stale denormalized fields)
+    const allPayments = project.salesOrders.flatMap((so: any) => so.payments)
+    const paymentReceived = allPayments.reduce((s: number, p: any) => s + p.amount, 0)
+    const offerTotal = project.salesOrders.reduce((s: number, so: any) => s + so.offerTotal, 0)
+    const outstandingAmount = Math.max(0, offerTotal - paymentReceived)
+
+    // quotationValue: aggregate from linked quotation items
+    const qAgg = await prisma.quotationItem.aggregate({
+      _sum: { totalOffer: true },
+      where: { room: { revision: { quotation: { projectId: project.id } } } }
+    })
+    const quotationValue = (qAgg._sum.totalOffer as number | null) ?? offerTotal
+
+    // purchaseValue: aggregate from linked PO line items
+    const poAgg = await prisma.pOLineItem.aggregate({
+      _sum: { qtyOrdered: true },
+      where: { po: { projectId: project.id } }
+    })
+    const purchaseValue = (poAgg._sum.qtyOrdered as number | null) ?? 0
+
+    return NextResponse.json({
+      ...project,
+      quotationValue,
+      purchaseValue,
+      paymentReceived,
+      outstandingAmount,
+    })
   })
 }
 
