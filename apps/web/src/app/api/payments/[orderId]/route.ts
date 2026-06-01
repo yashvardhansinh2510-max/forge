@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
+import { computeOrderOutstanding } from '@/lib/calculations/outstanding'
 
 export type PaymentRecord = {
   id: string
@@ -61,8 +62,7 @@ export async function GET(
       return NextResponse.json({ error: 'NOT_FOUND', message: 'Order not found' }, { status: 404 })
     }
 
-    const paidTotal = order.payments.reduce((sum, p) => sum + p.amount, 0)
-    const outstandingTotal = Math.max(0, order.offerTotal - paidTotal)
+    const { paidTotal, outstandingTotal } = computeOrderOutstanding(order.offerTotal, order.payments)
 
     const response: PaymentDetailResponse = {
       id: order.id,

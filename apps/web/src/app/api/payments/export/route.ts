@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import ExcelJS from 'exceljs'
 import { requirePermission } from '@/lib/auth'
+import { computeOrderOutstanding } from '@/lib/calculations/outstanding'
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,8 +65,7 @@ export async function GET(request: NextRequest) {
 
       for (const order of orders) {
         const customer = order.customerName || 'Unknown Customer'
-        const paid = order.payments.reduce((sum, p) => sum + p.amount, 0)
-        const outstanding = Math.max(0, order.offerTotal - paid)
+        const { paidTotal: paid, outstandingTotal: outstanding } = computeOrderOutstanding(order.offerTotal, order.payments)
 
         if (!customerMap.has(customer)) {
           customerMap.set(customer, { quotationAmount: 0, paid: 0, outstanding: 0 })

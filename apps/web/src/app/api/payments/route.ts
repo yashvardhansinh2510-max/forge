@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
 import { requirePermission, requireUser } from '@/lib/auth'
 import { logActivity } from '@/lib/activity-log'
+import { computeOrderOutstanding } from '@/lib/calculations/outstanding'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -116,8 +117,7 @@ export async function GET() {
     const globalAging: AgingBuckets = { '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 }
 
     for (const order of orders) {
-      const paidTotal = order.payments.reduce((sum, p) => sum + p.amount, 0)
-      const outstandingTotal = Math.max(0, order.offerTotal - paidTotal)
+      const { paidTotal, outstandingTotal } = computeOrderOutstanding(order.offerTotal, order.payments)
       const lastPayment = order.payments[0] ?? null
       
       totalOutstanding += outstandingTotal
@@ -295,8 +295,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'NOT_FOUND', message: 'Order not found' }, { status: 404 })
     }
 
-    const beforePaid = order.payments.reduce((sum, p) => sum + p.amount, 0)
-    const beforeOutstanding = Math.max(0, order.offerTotal - beforePaid)
+    const { paidTotal: beforePaid, outstandingTotal: beforeOutstanding } = computeOrderOutstanding(order.offerTotal, order.payments)
 
     const payment = await prisma.customerPayment.create({
       data: {
@@ -317,7 +316,7 @@ export async function POST(request: NextRequest) {
     })
     
     const afterPaid = beforePaid + data.amount
-    const afterOutstanding = Math.max(0, order.offerTotal - afterPaid)
+    const afterOutstanding = Math.max(0, order.offerTotal - afterPaid) // afterPaid already includes new payment
 
     // Audit Logging with BEFORE and AFTER snapshots
     await prisma.auditLog.create({

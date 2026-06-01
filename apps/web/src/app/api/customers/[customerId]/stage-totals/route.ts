@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
+import { computeStageTotalsResult } from '@/lib/purchases-tracker'
 
 export async function GET(
   _req: NextRequest,
@@ -29,25 +30,15 @@ export async function GET(
     const sum = (field: keyof (typeof items)[0]) =>
       items.reduce((acc, i) => acc + (i[field] as number), 0)
 
-    const ordered = sum('qtyOrdered')
-    const pendingCo = sum('qtyPendingCo')
-    const pendingDist = sum('qtyPendingDist')
-    const godown = sum('qtyAtGodown')
-    const inBox = sum('qtyInBox')
-    const dispatched = sum('qtyDispatched')
-    const notDisplayed = sum('qtyNotDisplayed')
-    const staged = pendingCo + pendingDist + godown + inBox + dispatched + notDisplayed
-    const unallocated = Math.max(0, ordered - staged)
-
-    return NextResponse.json({
-      unallocated,
-      pendingCo,
-      pendingDist,
-      godown,
-      inBox,
-      dispatched,
-      notDisplayed,
-    })
+    return NextResponse.json(computeStageTotalsResult({
+      ordered: sum('qtyOrdered'),
+      pendingCo: sum('qtyPendingCo'),
+      pendingDist: sum('qtyPendingDist'),
+      godown: sum('qtyAtGodown'),
+      inBox: sum('qtyInBox'),
+      dispatched: sum('qtyDispatched'),
+      notDisplayed: sum('qtyNotDisplayed'),
+    }))
   } catch (err) {
     console.error('[customer-stage-totals]', err)
     return NextResponse.json(

@@ -9,13 +9,10 @@ import { logActivity } from '@/lib/activity-log'
 import {
   BRAND_TABS,
   countsFromDbLine,
-  createEmptyHeaderCounts,
-  getBrandsForTab,
   normalizeBrandTab,
-  type BrandTab,
-  type HeaderCounts,
   type PurchaseStage,
 } from '@/lib/purchases-tracker'
+import { getStageTotalsForScope } from '@/lib/server/purchase-stage-totals'
 
 const STAGES = [
   'ORDER_IN_COMPANY',
@@ -33,52 +30,6 @@ const TransferSchema = z.object({
   brand: z.enum(BRAND_TABS).optional(),
 })
 
-function buildStageTotals(lines: Array<{
-  qtyOrdered: number
-  qtyPendingCo: number
-  qtyPendingDist: number
-  qtyAtGodown: number
-  qtyInBox: number
-  qtyDispatched: number
-  qtyNotDisplayed: number
-}>): HeaderCounts {
-  return lines.reduce((acc, line) => {
-    const next = countsFromDbLine(line)
-    return {
-      ORDER_IN_COMPANY: acc.ORDER_IN_COMPANY + next.ORDER_IN_COMPANY,
-      COMPANY_BILLING: acc.COMPANY_BILLING + next.COMPANY_BILLING,
-      INBOX: acc.INBOX + next.INBOX,
-      DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
-      COMPLETED: acc.COMPLETED + next.COMPLETED,
-    }
-  }, createEmptyHeaderCounts())
-}
-
-async function getStageTotalsForScope(scope: BrandTab): Promise<HeaderCounts> {
-  const brands = getBrandsForTab(scope)
-  const lines = await prisma.pOLineItem.findMany({
-    where: brands
-      ? {
-          product: {
-            brand: {
-              in: brands as never[],
-            },
-          },
-        }
-      : undefined,
-    select: {
-      qtyOrdered: true,
-      qtyPendingCo: true,
-      qtyPendingDist: true,
-      qtyAtGodown: true,
-      qtyInBox: true,
-      qtyDispatched: true,
-      qtyNotDisplayed: true,
-    },
-  })
-
-  return buildStageTotals(lines)
-}
 
 export async function POST(
   req: NextRequest,

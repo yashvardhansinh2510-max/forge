@@ -231,3 +231,51 @@ export function getVisibleMoveStages(line: PurchaseTrackerLine): PurchaseStage[]
 export function getOverflowStages(line: PurchaseTrackerLine): PurchaseStage[] {
   return getActiveStages(line).slice(2)
 }
+
+export function buildStageTotals(lines: Array<{
+  qtyOrdered: number
+  qtyPendingCo: number
+  qtyPendingDist: number
+  qtyAtGodown: number
+  qtyInBox: number
+  qtyDispatched: number
+  qtyNotDisplayed: number
+}>): HeaderCounts {
+  return lines.reduce((acc, line) => {
+    const next = countsFromDbLine(line)
+    return {
+      UNALLOCATED: acc.UNALLOCATED + next.UNALLOCATED,
+      PENDING_CO: acc.PENDING_CO + next.PENDING_CO,
+      PENDING_DIST: acc.PENDING_DIST + next.PENDING_DIST,
+      GODOWN: acc.GODOWN + next.GODOWN,
+      IN_BOX: acc.IN_BOX + next.IN_BOX,
+      DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
+      NOT_DISPLAYED: acc.NOT_DISPLAYED + next.NOT_DISPLAYED,
+    }
+  }, createEmptyHeaderCounts())
+}
+
+export interface StageSums {
+  ordered: number
+  pendingCo: number
+  pendingDist: number
+  godown: number
+  inBox: number
+  dispatched: number
+  notDisplayed: number
+}
+
+export function computeStageTotalsResult(sums: StageSums) {
+  const staged =
+    sums.pendingCo + sums.pendingDist + sums.godown +
+    sums.inBox + sums.dispatched + sums.notDisplayed
+  return {
+    unallocated: Math.max(0, sums.ordered - staged),
+    pendingCo: sums.pendingCo,
+    pendingDist: sums.pendingDist,
+    godown: sums.godown,
+    inBox: sums.inBox,
+    dispatched: sums.dispatched,
+    notDisplayed: sums.notDisplayed,
+  }
+}
