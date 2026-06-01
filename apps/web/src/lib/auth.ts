@@ -38,7 +38,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
   let user = await prisma.user.findUnique({
     where: { clerkId: userId },
-    select: { id: true, clerkId: true, name: true, email: true, role: true, isActive: true, maxDiscountPct: true },
+    select: { id: true, clerkId: true, name: true, email: true, role: true, isActive: true, maxDiscountPct: true, status: true },
   })
 
   // Auto-provision DB row if webhook hasn't fired yet
