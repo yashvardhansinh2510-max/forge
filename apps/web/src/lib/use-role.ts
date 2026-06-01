@@ -2,7 +2,16 @@
 
 export type Role = 'owner' | 'manager' | 'worker'
 
-export const ROLE_LABELS: Record<Role, string> = {
+export const ROLE_LABELS: Record<string, string> = {
+  OWNER: 'Owner',
+  MANAGER: 'Manager',
+  WORKER: 'Worker',
+  SALES: 'Sales',
+  PROCUREMENT: 'Procurement',
+  ACCOUNTS: 'Accounts',
+  WAREHOUSE: 'Warehouse',
+  VIEWER: 'Viewer',
+  // lowercase aliases for hook consumers
   owner: 'Owner',
   manager: 'Manager',
   worker: 'Worker',
