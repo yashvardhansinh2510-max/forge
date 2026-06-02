@@ -5,16 +5,12 @@ export async function getStageTotalsForScope(scope: BrandTab): Promise<HeaderCou
   const brands = getBrandsForTab(scope)
   const lines = await prisma.pOLineItem.findMany({
     where: brands
-      ? {
-          product: {
-            brand: {
-              in: brands as never[],
-            },
-          },
-        }
+      ? { product: { brand: { in: brands as never[] } } }
       : undefined,
     select: {
       qtyOrdered: true,
+      qtyTransferredIn: true,
+      qtyTransferredOut: true,
       qtyPendingCo: true,
       qtyPendingDist: true,
       qtyAtGodown: true,
