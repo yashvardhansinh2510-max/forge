@@ -34,6 +34,8 @@ const LEGAL_TRANSITIONS: Record<MoveFromStage, MoveToStage[]> = {
 
 type LineFields = {
   qtyOrdered: number
+  qtyTransferredIn: number
+  qtyTransferredOut: number
   qtyPendingCo: number
   qtyPendingDist: number
   qtyAtGodown: number
@@ -42,7 +44,7 @@ type LineFields = {
   qtyNotDisplayed: number
 }
 
-function stageToDbField(stage: MoveToStage | Exclude<MoveFromStage, 'UNALLOCATED'>): keyof Omit<LineFields, 'qtyOrdered'> {
+function stageToDbField(stage: MoveToStage | Exclude<MoveFromStage, 'UNALLOCATED'>): keyof Omit<LineFields, 'qtyOrdered' | 'qtyTransferredIn' | 'qtyTransferredOut'> {
   switch (stage) {
     case 'PENDING_CO':   return 'qtyPendingCo'
     case 'PENDING_DIST': return 'qtyPendingDist'
@@ -57,7 +59,8 @@ function getCurrentQtyAtStage(line: LineFields, stage: MoveFromStage): number {
   if (stage === 'UNALLOCATED') {
     const staged = line.qtyPendingCo + line.qtyPendingDist + line.qtyAtGodown +
       line.qtyInBox + line.qtyDispatched + line.qtyNotDisplayed
-    return Math.max(0, line.qtyOrdered - staged)
+    const ceiling = Math.max(0, line.qtyOrdered + line.qtyTransferredIn - line.qtyTransferredOut)
+    return Math.max(0, ceiling - staged)
   }
   return line[stageToDbField(stage)]
 }
@@ -95,6 +98,8 @@ export async function PATCH(
       select: {
         id: true,
         qtyOrdered: true,
+        qtyTransferredIn: true,
+        qtyTransferredOut: true,
         qtyPendingCo: true,
         qtyPendingDist: true,
         qtyAtGodown: true,
