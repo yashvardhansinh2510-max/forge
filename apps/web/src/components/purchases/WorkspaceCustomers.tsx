@@ -57,7 +57,7 @@ async function exportToXlsx(customerName: string, lines: PurchaseTrackerLine[]) 
       name: l.product.name,
       brand: l.product.brand,
       po: l.poNumber,
-      ordered: l.qtyOrdered,
+      ordered: effectiveCeiling(l),
       dispatched: l.stages.DISPATCHED,
       pending: totalPending([l]),
     })
@@ -76,7 +76,7 @@ interface Props {
   lines: PurchaseTrackerLine[]
   activeBrand: BrandTab
   onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
-  onSelectLine: (lineId: string) => void
+  onSelectLine: (lineId: string, tab?: 'move' | 'transfer' | 'history') => void
 }
 
 export default function WorkspaceCustomers({ lines, activeBrand, onMoved, onSelectLine }: Props) {
@@ -150,7 +150,6 @@ export default function WorkspaceCustomers({ lines, activeBrand, onMoved, onSele
             <div className="p-6 text-center text-sm text-[var(--text-muted)]">No customers match.</div>
           ) : (
             customerList.map((c) => {
-              const total = totalOrdered(c.lines)
               const dispatched = totalDispatched(c.lines)
               const ready = totalReadyToDispatch(c.lines)
               const effective = totalEffective(c.lines)
@@ -188,7 +187,7 @@ export default function WorkspaceCustomers({ lines, activeBrand, onMoved, onSele
                       </div>
                       <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-muted)]">
                         <span style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
-                          {dispatched}/{total} dispatched
+                          {dispatched}/{effective} dispatched
                         </span>
                         {ready > 0 && (
                           <span className="rounded-full bg-[#f0fdf4] px-1.5 py-0.5 text-[10px] font-semibold text-[#15803d]">

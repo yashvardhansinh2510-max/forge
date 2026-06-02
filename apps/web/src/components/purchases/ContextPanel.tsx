@@ -7,6 +7,7 @@ import {
   STAGE_COLORS,
   STAGE_LABEL,
   STAGE_ORDER,
+  effectiveCeiling,
   type BrandTab,
   type HeaderCounts,
   type PurchaseStage,
@@ -48,12 +49,13 @@ interface Props {
   line: PurchaseTrackerLine
   allLines: PurchaseTrackerLine[]
   activeBrand: BrandTab
+  defaultTab?: 'move' | 'transfer' | 'history'
   onClose: () => void
   onMoved: (newCounts: HeaderCounts, lineId?: string, fromStage?: PurchaseStage, toStage?: PurchaseStage, qty?: number) => void
 }
 
 function StageBar({ line }: { line: PurchaseTrackerLine }) {
-  const total = line.qtyOrdered
+  const total = effectiveCeiling(line)
   return (
     <div className="space-y-2">
       {STAGE_ORDER.filter((s) => line.stages[s] > 0).map((s) => {
