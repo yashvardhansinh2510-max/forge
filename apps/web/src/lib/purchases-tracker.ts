@@ -75,6 +75,7 @@ export interface PurchaseTrackerLine {
   poNumber: string
   vendorName: string | null
   projectId: string | null
+  createdAt?: string
   customer: {
     id: string
     name: string
@@ -94,9 +95,33 @@ export interface PurchaseTrackerLine {
     tier: string
   }
   qtyOrdered: number
+  qtyTransferredIn: number
+  qtyTransferredOut: number
   qtyReceived: number
   stages: HeaderCounts
   followUpStatus?: string | null
+}
+
+export type UrgencyLevel = 'critical' | 'warning' | 'attention' | 'normal'
+
+export const URGENCY_COLORS: Record<UrgencyLevel, string> = {
+  critical: '#EF4444',
+  warning: '#F59E0B',
+  attention: '#3B82F6',
+  normal: 'transparent',
+}
+
+export function getLineUrgency(line: PurchaseTrackerLine): UrgencyLevel {
+  if (!line.createdAt) return 'normal'
+  const ageMs = Date.now() - new Date(line.createdAt).getTime()
+  const ageDays = ageMs / (1000 * 60 * 60 * 24)
+  const earliest = STAGE_ORDER.find((s) => line.stages[s] > 0)
+  if (!earliest || earliest === 'DISPATCHED' || earliest === 'NOT_DISPLAYED') return 'normal'
+  if ((earliest === 'GODOWN' || earliest === 'IN_BOX') && ageDays > 21) return 'critical'
+  if ((earliest === 'GODOWN' || earliest === 'IN_BOX') && ageDays > 14) return 'warning'
+  if ((earliest === 'PENDING_CO' || earliest === 'PENDING_DIST') && ageDays > 14) return 'warning'
+  if ((earliest === 'PENDING_CO' || earliest === 'PENDING_DIST') && ageDays > 7) return 'attention'
+  return 'normal'
 }
 
 export interface PurchaseLinesResponse {
@@ -108,6 +133,7 @@ export interface PurchaseLinesResponse {
 export interface CustomerOption {
   id: string
   name: string
+  lineId?: string
 }
 
 export function createEmptyHeaderCounts(): HeaderCounts {
@@ -160,8 +186,18 @@ export function matchesBrandTab(brand: string, tab: BrandTab): boolean {
   return brands === null ? true : brands.includes(brand)
 }
 
+export function effectiveCeiling(line: {
+  qtyOrdered: number
+  qtyTransferredIn?: number
+  qtyTransferredOut?: number
+}): number {
+  return line.qtyOrdered + (line.qtyTransferredIn ?? 0) - (line.qtyTransferredOut ?? 0)
+}
+
 export function countsFromDbLine(line: {
   qtyOrdered: number
+  qtyTransferredIn?: number
+  qtyTransferredOut?: number
   qtyPendingCo: number
   qtyPendingDist: number
   qtyAtGodown: number
@@ -178,7 +214,7 @@ export function countsFromDbLine(line: {
     line.qtyNotDisplayed
 
   return {
-    UNALLOCATED: Math.max(0, line.qtyOrdered - staged),
+    UNALLOCATED: Math.max(0, effectiveCeiling(line) - staged),
     PENDING_CO: line.qtyPendingCo,
     PENDING_DIST: line.qtyPendingDist,
     GODOWN: line.qtyAtGodown,
@@ -234,6 +270,8 @@ export function getOverflowStages(line: PurchaseTrackerLine): PurchaseStage[] {
 
 export function buildStageTotals(lines: Array<{
   qtyOrdered: number
+  qtyTransferredIn?: number
+  qtyTransferredOut?: number
   qtyPendingCo: number
   qtyPendingDist: number
   qtyAtGodown: number
@@ -257,6 +295,8 @@ export function buildStageTotals(lines: Array<{
 
 export interface StageSums {
   ordered: number
+  transferredIn?: number
+  transferredOut?: number
   pendingCo: number
   pendingDist: number
   godown: number
@@ -266,11 +306,12 @@ export interface StageSums {
 }
 
 export function computeStageTotalsResult(sums: StageSums) {
+  const ceiling = sums.ordered + (sums.transferredIn ?? 0) - (sums.transferredOut ?? 0)
   const staged =
     sums.pendingCo + sums.pendingDist + sums.godown +
     sums.inBox + sums.dispatched + sums.notDisplayed
   return {
-    unallocated: Math.max(0, sums.ordered - staged),
+    unallocated: Math.max(0, ceiling - staged),
     pendingCo: sums.pendingCo,
     pendingDist: sums.pendingDist,
     godown: sums.godown,
