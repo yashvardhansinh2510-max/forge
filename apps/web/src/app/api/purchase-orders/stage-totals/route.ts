@@ -22,6 +22,8 @@ export async function GET(req: NextRequest) {
     const totals = await prisma.pOLineItem.aggregate({
       _sum: {
         qtyOrdered: true,
+        qtyTransferredIn: true,
+        qtyTransferredOut: true,
         qtyPendingCo: true,
         qtyPendingDist: true,
         qtyAtGodown: true,
@@ -34,6 +36,8 @@ export async function GET(req: NextRequest) {
 
     const result = computeStageTotalsResult({
       ordered: totals._sum.qtyOrdered ?? 0,
+      transferredIn: totals._sum.qtyTransferredIn ?? 0,
+      transferredOut: totals._sum.qtyTransferredOut ?? 0,
       pendingCo: totals._sum.qtyPendingCo ?? 0,
       pendingDist: totals._sum.qtyPendingDist ?? 0,
       godown: totals._sum.qtyAtGodown ?? 0,
