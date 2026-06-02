@@ -36,6 +36,8 @@ function mapLine(line: {
   poId: string
   createdAt: Date
   qtyOrdered: number
+  qtyTransferredIn: number
+  qtyTransferredOut: number
   qtyReceived: number
   qtyPendingCo: number
   qtyPendingDist: number
@@ -99,6 +101,8 @@ function mapLine(line: {
       tier: line.product.tier,
     },
     qtyOrdered: line.qtyOrdered,
+    qtyTransferredIn: line.qtyTransferredIn,
+    qtyTransferredOut: line.qtyTransferredOut,
     qtyReceived: line.qtyReceived,
     stages: countsFromDbLine(line),
     followUpStatus: line.followUpStatus,
@@ -112,7 +116,7 @@ export async function GET(req: NextRequest) {
     const dbLines = await prisma.pOLineItem.findMany({
       select: {
         id: true, poId: true, createdAt: true,
-        qtyOrdered: true, qtyReceived: true,
+        qtyOrdered: true, qtyTransferredIn: true, qtyTransferredOut: true, qtyReceived: true,
         qtyPendingCo: true, qtyPendingDist: true, qtyAtGodown: true,
         qtyInBox: true, qtyDispatched: true, qtyNotDisplayed: true,
         followUpStatus: true,

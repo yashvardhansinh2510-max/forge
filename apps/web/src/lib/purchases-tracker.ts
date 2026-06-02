@@ -191,7 +191,7 @@ export function effectiveCeiling(line: {
   qtyTransferredIn?: number
   qtyTransferredOut?: number
 }): number {
-  return line.qtyOrdered + (line.qtyTransferredIn ?? 0) - (line.qtyTransferredOut ?? 0)
+  return Math.max(0, line.qtyOrdered + (line.qtyTransferredIn ?? 0) - (line.qtyTransferredOut ?? 0))
 }
 
 export function countsFromDbLine(line: {

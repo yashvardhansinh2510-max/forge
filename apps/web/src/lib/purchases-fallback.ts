@@ -74,6 +74,8 @@ function mapMockLine(order: MockPurchaseOrder, line: MockPOLineItem): PurchaseTr
       tier: 'premium',
     },
     qtyOrdered: line.qtyOrdered,
+    qtyTransferredIn: 0,
+    qtyTransferredOut: 0,
     qtyReceived: line.qtyReceived,
     stages: countsFromDbLine({
       qtyOrdered: line.qtyOrdered,
