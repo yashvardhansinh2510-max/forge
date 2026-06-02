@@ -110,14 +110,14 @@ export async function POST(
       prisma.pOLineItem.update({
         where: { id: lineId },
         data: {
-          qtyOrdered: { decrement: qty },
+          qtyTransferredOut: { increment: qty },
           [field]: { decrement: qty },
         },
       }),
       prisma.pOLineItem.update({
         where: { id: targetLineId },
         data: {
-          qtyOrdered: { increment: qty },
+          qtyTransferredIn: { increment: qty },
           [field]: { increment: qty },
         },
       }),
