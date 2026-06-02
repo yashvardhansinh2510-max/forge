@@ -114,6 +114,7 @@ export default function WorkspacePipeline({
                   allLines={allLines}
                   onMoved={onMoved}
                   onSelect={() => onSelectLine(line.id)}
+                  onTransfer={() => onSelectLine(line.id, 'transfer')}
                 />
               ))}
             </div>
