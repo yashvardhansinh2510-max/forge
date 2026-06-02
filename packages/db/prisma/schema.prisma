@@ -435,13 +435,17 @@ model POLineItem {
   quotationItem   QuotationItem? @relation(fields: [quotationItemId], references: [id])
   qtyOrdered        Int
   qtyReceived       Int            @default(0)
-  // Stage-by-stage quantity tracking (invariant: sum <= qtyOrdered)
+  // Stage-by-stage quantity tracking
+  // Invariant: sum(stage fields) <= qtyOrdered + qtyTransferredIn - qtyTransferredOut
   qtyPendingCo      Int            @default(0)
   qtyPendingDist    Int            @default(0)
   qtyAtGodown       Int            @default(0)
   qtyInBox          Int            @default(0)
   qtyDispatched     Int            @default(0)
   qtyNotDisplayed   Int            @default(0)
+  // Transfer adjustment fields — qtyOrdered is NEVER mutated by transfers
+  qtyTransferredIn  Int            @default(0)
+  qtyTransferredOut Int            @default(0)
   landingCost       Float?
   clientOfferRate   Float?
   status            POLineStatus   @default(PENDING)
