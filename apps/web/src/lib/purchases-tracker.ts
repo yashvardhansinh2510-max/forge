@@ -8,6 +8,92 @@ export const STAGE_ORDER = [
   'NOT_DISPLAYED',
 ] as const
 
+// ─── Operator-facing display stage model ──────────────────────────────────────
+// GODOWN and IN_BOX are unified as IN_BOX_COMBINED — staff never sees the distinction.
+
+export const DISPLAY_STAGE_ORDER = [
+  'UNALLOCATED',
+  'PENDING_CO',
+  'PENDING_DIST',
+  'IN_BOX_COMBINED',
+  'DISPATCHED',
+  'NOT_DISPLAYED',
+] as const
+
+export type DisplayStage = typeof DISPLAY_STAGE_ORDER[number]
+
+export const DISPLAY_STAGE_LABEL: Record<DisplayStage, string> = {
+  UNALLOCATED: 'Unassigned',
+  PENDING_CO: 'Order in Company',
+  PENDING_DIST: 'Company Billing',
+  IN_BOX_COMBINED: 'In Box',
+  DISPATCHED: 'Dispatched',
+  NOT_DISPLAYED: 'Archive',
+}
+
+export const DISPLAY_STAGE_SHORT: Record<DisplayStage, string> = {
+  UNALLOCATED: 'UNASSIGNED',
+  PENDING_CO: 'WITH CO.',
+  PENDING_DIST: 'BILLING',
+  IN_BOX_COMBINED: 'IN BOX',
+  DISPATCHED: 'DISPATCHED',
+  NOT_DISPLAYED: 'ARCHIVE',
+}
+
+// Maps any raw stage string (including transfer pseudo-stages) to a friendly name.
+// Used in the Activity Log tab of the context panel.
+export const STAGE_FRIENDLY_NAME: Record<string, string> = {
+  UNALLOCATED: 'Unassigned',
+  PENDING_CO: 'Order in Company',
+  PENDING_DIST: 'Company Billing',
+  GODOWN: 'In Box',
+  IN_BOX: 'In Box',
+  DISPATCHED: 'Dispatched',
+  NOT_DISPLAYED: 'Archive',
+  TRANSFERRED_IN: 'Received from transfer',
+  TRANSFERRED_OUT: 'Given to customer',
+}
+
+export function getDisplayStageCount(counts: HeaderCounts, stage: DisplayStage): number {
+  if (stage === 'IN_BOX_COMBINED') return counts.GODOWN + counts.IN_BOX
+  return counts[stage as PurchaseStage]
+}
+
+export function lineMatchesDisplayStage(line: PurchaseTrackerLine, stage: DisplayStage): boolean {
+  if (stage === 'IN_BOX_COMBINED') return line.stages.GODOWN > 0 || line.stages.IN_BOX > 0
+  return line.stages[stage as PurchaseStage] > 0
+}
+
+export function getInBoxQty(line: PurchaseTrackerLine): number {
+  return line.stages.GODOWN + line.stages.IN_BOX
+}
+
+export type DispatchReadiness = 'waiting' | 'in_box' | 'dispatched' | 'archived'
+
+export function getDispatchReadiness(line: PurchaseTrackerLine): DispatchReadiness {
+  if (getInBoxQty(line) > 0) return 'in_box'
+  if (line.stages.DISPATCHED > 0 || line.stages.NOT_DISPLAYED > 0) {
+    return getInBoxQty(line) === 0 && line.stages.PENDING_CO === 0 && line.stages.PENDING_DIST === 0
+      ? (line.stages.NOT_DISPLAYED > 0 ? 'archived' : 'dispatched')
+      : 'waiting'
+  }
+  return 'waiting'
+}
+
+export const DISPATCH_READINESS_LABEL: Record<DispatchReadiness, string> = {
+  waiting: 'Waiting from Supplier',
+  in_box: 'In Box — Ready',
+  dispatched: 'Dispatched',
+  archived: 'Archived',
+}
+
+export const DISPATCH_READINESS_COLOR: Record<DispatchReadiness, string> = {
+  waiting: '#9CA3AF',
+  in_box: '#10B981',
+  dispatched: '#6EE7B7',
+  archived: '#D1D5DB',
+}
+
 export type PurchaseStage = typeof STAGE_ORDER[number]
 
 export interface HeaderCounts {
