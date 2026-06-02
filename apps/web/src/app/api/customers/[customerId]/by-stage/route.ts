@@ -111,7 +111,7 @@ export async function GET(
 
     const summary = allLines.reduce(
       (acc, l) => {
-        const ceiling = l.qtyOrdered + l.qtyTransferredIn - l.qtyTransferredOut
+        const ceiling = Math.max(0, l.qtyOrdered + l.qtyTransferredIn - l.qtyTransferredOut)
         acc.totalOrdered    += ceiling
         acc.originalOrdered += l.qtyOrdered
         acc.pendingFromCo   += l.qtyPendingCo
