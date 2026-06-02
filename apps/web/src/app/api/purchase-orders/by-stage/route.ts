@@ -4,7 +4,7 @@
 // Used by stat card drill-down panels.
 //
 // Query params:
-//   stage      (required) PENDING_CO | PENDING_DIST | AT_GODOWN | IN_BOX | DISPATCHED | NOT_DISPLAYED | ALL
+//   stage      (required) PENDING_CO | PENDING_DIST | GODOWN | IN_BOX | DISPATCHED | NOT_DISPLAYED | ALL
 //   brand      (optional) tab key — GROHE | HANSGROHE | VITRA | GEBERIT | ALL (default)
 //              HANSGROHE matches HANSGROHE + AXOR (via BRAND_GROUPS)
 //   customerId (optional) filter to a single customer's allocations
@@ -12,12 +12,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { BRAND_GROUPS } from '@/lib/mock/procurement-data'
+import { BRAND_GROUPS } from '@/lib/purchases-tracker'
 import { prisma } from '@forge/db'
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-const STAGES = ['ALL', 'PENDING_CO', 'PENDING_DIST', 'AT_GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED'] as const
+const STAGES = ['ALL', 'PENDING_CO', 'PENDING_DIST', 'GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED'] as const
 type StageParam = typeof STAGES[number]
 
 const QuerySchema = z.object({
@@ -31,7 +31,7 @@ const QuerySchema = z.object({
 const STAGE_FIELD_MAP: Partial<Record<StageParam, string>> = {
   PENDING_CO:    'qtyPendingCo',
   PENDING_DIST:  'qtyPendingDist',
-  AT_GODOWN:     'qtyAtGodown',
+  GODOWN:        'qtyAtGodown',
   IN_BOX:        'qtyInBox',
   DISPATCHED:    'qtyDispatched',
   NOT_DISPLAYED: 'qtyNotDisplayed',
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     const brandValues: string[] | undefined =
       !brand || brand === 'ALL'
         ? undefined
-        : (BRAND_GROUPS[brand] ?? [brand])
+        : ((BRAND_GROUPS as Record<string, string[]>)[brand] ?? [brand])
 
     // Build stage qty filter
     const stageFilter = stage === 'ALL'

@@ -6,30 +6,58 @@ import { requirePermission } from '@/lib/auth'
 import { AppError } from '@/lib/errors'
 
 import { logActivity } from '@/lib/activity-log'
+import { writeAuditLog } from '@/lib/auth'
 import {
   BRAND_TABS,
-  countsFromDbLine,
   normalizeBrandTab,
-  type PurchaseStage,
+  createEmptyHeaderCounts,
 } from '@/lib/purchases-tracker'
 import { getStageTotalsForScope } from '@/lib/server/purchase-stage-totals'
 
-const STAGES = [
-  'ORDER_IN_COMPANY',
-  'COMPANY_BILLING',
-  'INBOX',
+// Canonical stage vocabulary — must match purchases-tracker.ts
+const TRANSFERABLE_STAGES = [
+  'PENDING_CO',
+  'PENDING_DIST',
+  'GODOWN',
+  'IN_BOX',
   'DISPATCHED',
-  'COMPLETED',
+  'NOT_DISPLAYED',
 ] as const
 
+type TransferStage = typeof TRANSFERABLE_STAGES[number]
+
+type LineFields = {
+  qtyOrdered: number
+  qtyPendingCo: number
+  qtyPendingDist: number
+  qtyAtGodown: number
+  qtyInBox: number
+  qtyDispatched: number
+  qtyNotDisplayed: number
+}
+
+function stageToDbField(stage: TransferStage): keyof Omit<LineFields, 'qtyOrdered'> {
+  switch (stage) {
+    case 'PENDING_CO':    return 'qtyPendingCo'
+    case 'PENDING_DIST':  return 'qtyPendingDist'
+    case 'GODOWN':        return 'qtyAtGodown'
+    case 'IN_BOX':        return 'qtyInBox'
+    case 'DISPATCHED':    return 'qtyDispatched'
+    case 'NOT_DISPLAYED': return 'qtyNotDisplayed'
+  }
+}
+
+function getQtyAtStage(line: LineFields, stage: TransferStage): number {
+  return line[stageToDbField(stage)]
+}
+
 const TransferSchema = z.object({
-  stage: z.enum(STAGES),
+  stage: z.enum(TRANSFERABLE_STAGES),
   qty: z.number().int().min(1),
   targetLineId: z.string(),
   reason: z.string().max(500),
   brand: z.enum(BRAND_TABS).optional(),
 })
-
 
 export async function POST(
   req: NextRequest,
@@ -45,115 +73,102 @@ export async function POST(
       throw new AppError('INVALID_TARGET', 'Cannot transfer to the same line', 422)
     }
 
-      const sourceLine = await prisma.pOLineItem.findUnique({
+    const sourceLine = await prisma.pOLineItem.findUnique({
+      where: { id: lineId },
+      include: { po: { include: { project: true } } },
+    })
+    const targetLine = await prisma.pOLineItem.findUnique({
+      where: { id: targetLineId },
+      include: { po: { include: { project: true } } },
+    })
+
+    if (!sourceLine || !targetLine) {
+      throw new AppError('NOT_FOUND', `POLineItem not found`, 404)
+    }
+
+    if (sourceLine.productId !== targetLine.productId) {
+      throw new AppError('MISMATCH', `Product mismatch in transfer`, 422)
+    }
+
+    const availableQty = getQtyAtStage(sourceLine, stage)
+    if (qty > availableQty) {
+      throw new AppError(
+        'INSUFFICIENT_QTY',
+        `Only ${availableQty} unit(s) are available at ${stage}.`,
+        422,
+        { available: availableQty, requested: qty },
+      )
+    }
+
+    const sourceCustomerName = sourceLine.po.project?.clientName ?? sourceLine.po.customerName ?? 'Unknown'
+    const targetCustomerName = targetLine.po.project?.clientName ?? targetLine.po.customerName ?? 'Unknown'
+    const auditNote = `TRANSFER: ${qty} units from ${sourceCustomerName} to ${targetCustomerName}. Reason: ${reason}`
+
+    const field = stageToDbField(stage)
+
+    await prisma.$transaction([
+      prisma.pOLineItem.update({
         where: { id: lineId },
-        include: { po: { include: { project: true } } },
-      })
-      const targetLine = await prisma.pOLineItem.findUnique({
+        data: {
+          qtyOrdered: { decrement: qty },
+          [field]: { decrement: qty },
+        },
+      }),
+      prisma.pOLineItem.update({
         where: { id: targetLineId },
-        include: { po: { include: { project: true } } },
-      })
+        data: {
+          qtyOrdered: { increment: qty },
+          [field]: { increment: qty },
+        },
+      }),
+      prisma.stageMovement.create({
+        data: {
+          poLineItemId: lineId,
+          fromStage: stage,
+          toStage: 'TRANSFERRED_OUT',
+          qty,
+          movedById: user.id,
+          note: auditNote,
+        },
+      }),
+      prisma.stageMovement.create({
+        data: {
+          poLineItemId: targetLineId,
+          fromStage: 'TRANSFERRED_IN',
+          toStage: stage,
+          qty,
+          movedById: user.id,
+          note: auditNote,
+        },
+      }),
+    ])
 
-      if (!sourceLine || !targetLine) {
-        throw new AppError('NOT_FOUND', `POLineItem not found`, 404)
-      }
+    // Fire-and-forget side effects
+    await logActivity({
+      type: 'NOTE',
+      userId: user.id,
+      description: auditNote,
+    })
 
-      if (sourceLine.productId !== targetLine.productId) {
-        throw new AppError('MISMATCH', `Product mismatch in transfer`, 422)
-      }
+    await writeAuditLog({
+      actorId: user.id,
+      action: 'PURCHASE_TRANSFER',
+      category: 'PURCHASES',
+      entityType: 'POLineItem',
+      entityId: lineId,
+      beforeSnapshot: { lineId, stage, qty },
+      afterSnapshot: { targetLineId, stage, qty },
+      metadata: { reason, sourceCustomer: sourceCustomerName, targetCustomer: targetCustomerName },
+    })
 
-      const availableQty = countsFromDbLine(sourceLine)[stage]
-      if (qty > availableQty) {
-        throw new AppError(
-          'INSUFFICIENT_QTY',
-          `Only ${availableQty} unit(s) are available at ${stage}.`,
-          422,
-          { available: availableQty, requested: qty },
-        )
-      }
+    // Post-transaction read — failure must not mask a successful transfer
+    let stageTotals = createEmptyHeaderCounts()
+    try {
+      stageTotals = await getStageTotalsForScope(normalizeBrandTab(body.brand))
+    } catch (e) {
+      console.error('[transfer] getStageTotalsForScope failed — returning empty counts', e)
+    }
 
-      const sourceCustomerName = sourceLine.po.project?.clientName ?? sourceLine.po.customerName ?? 'Unknown'
-      const targetCustomerName = targetLine.po.project?.clientName ?? targetLine.po.customerName ?? 'Unknown'
-      const auditNote = `TRANSFER: ${qty} units from ${sourceCustomerName} to ${targetCustomerName}. Reason: ${reason}`
-
-      const sourceDataToUpdate: Record<string, any> = { qtyOrdered: { decrement: qty } }
-      const targetDataToUpdate: Record<string, any> = { qtyOrdered: { increment: qty } }
-      
-      let remainingToDeduct = qty
-      
-      if (stage === 'ORDER_IN_COMPANY') {
-        if (sourceLine.qtyPendingCo > 0) {
-          const deductCo = Math.min(remainingToDeduct, sourceLine.qtyPendingCo)
-          sourceDataToUpdate.qtyPendingCo = { decrement: deductCo }
-          targetDataToUpdate.qtyPendingCo = { increment: deductCo }
-          remainingToDeduct -= deductCo
-        }
-      } else if (stage === 'COMPANY_BILLING') {
-        sourceDataToUpdate.qtyPendingDist = { decrement: qty }
-        targetDataToUpdate.qtyPendingDist = { increment: qty }
-      } else if (stage === 'INBOX') {
-        if (sourceLine.qtyInBox > 0) {
-          const deductInBox = Math.min(remainingToDeduct, sourceLine.qtyInBox)
-          sourceDataToUpdate.qtyInBox = { decrement: deductInBox }
-          targetDataToUpdate.qtyInBox = { increment: deductInBox }
-          remainingToDeduct -= deductInBox
-        }
-        if (remainingToDeduct > 0 && sourceLine.qtyAtGodown > 0) {
-          sourceDataToUpdate.qtyAtGodown = { decrement: remainingToDeduct }
-          targetDataToUpdate.qtyAtGodown = { increment: remainingToDeduct }
-        }
-      } else if (stage === 'DISPATCHED') {
-        sourceDataToUpdate.qtyDispatched = { decrement: qty }
-        targetDataToUpdate.qtyDispatched = { increment: qty }
-      } else if (stage === 'COMPLETED') {
-        sourceDataToUpdate.qtyNotDisplayed = { decrement: qty }
-        targetDataToUpdate.qtyNotDisplayed = { increment: qty }
-      }
-
-      const updates: any[] = [
-        prisma.pOLineItem.update({
-          where: { id: lineId },
-          data: sourceDataToUpdate,
-        }),
-        prisma.pOLineItem.update({
-          where: { id: targetLineId },
-          data: targetDataToUpdate,
-        }),
-        prisma.stageMovement.create({
-          data: {
-            poLineItemId: lineId,
-            fromStage: stage,
-            toStage: 'TRANSFERRED_OUT',
-            qty,
-            movedById: user.id,
-            note: auditNote,
-          },
-        }),
-        prisma.stageMovement.create({
-          data: {
-            poLineItemId: targetLineId,
-            fromStage: 'TRANSFERRED_IN',
-            toStage: stage,
-            qty,
-            movedById: user.id,
-            note: auditNote,
-          },
-        }),
-      ]
-
-      await prisma.$transaction(updates)
-
-      await logActivity({
-        type: 'NOTE',
-        userId: user.id,
-        description: auditNote,
-      })
-
-      const stageTotals = await getStageTotalsForScope(normalizeBrandTab(body.brand))
-
-      return NextResponse.json({
-        success: true,
-        stageTotals,
-      })
+    return NextResponse.json({ success: true, stageTotals })
   })
 }

@@ -4,18 +4,18 @@
 // filtered by stage and optionally by brand tab.
 //
 // Query params:
-//   stage  (required) PENDING_CO | PENDING_DIST | AT_GODOWN | IN_BOX | DISPATCHED | NOT_DISPLAYED | ALL
+//   stage  (required) PENDING_CO | PENDING_DIST | GODOWN | IN_BOX | DISPATCHED | NOT_DISPLAYED | ALL
 //   brand  (optional) tab key — GROHE | HANSGROHE | VITRA | GEBERIT | ALL (default)
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { BRAND_GROUPS } from '@/lib/mock/procurement-data'
+import { BRAND_GROUPS } from '@/lib/purchases-tracker'
 import { prisma } from '@forge/db'
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-const STAGES = ['ALL', 'PENDING_CO', 'PENDING_DIST', 'AT_GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED'] as const
+const STAGES = ['ALL', 'PENDING_CO', 'PENDING_DIST', 'GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED'] as const
 
 const QuerySchema = z.object({
   stage: z.enum(STAGES),
@@ -27,7 +27,7 @@ const QuerySchema = z.object({
 const STAGE_FIELD_MAP: Partial<Record<typeof STAGES[number], string>> = {
   PENDING_CO:    'qtyPendingCo',
   PENDING_DIST:  'qtyPendingDist',
-  AT_GODOWN:     'qtyAtGodown',
+  GODOWN:        'qtyAtGodown',
   IN_BOX:        'qtyInBox',
   DISPATCHED:    'qtyDispatched',
   NOT_DISPLAYED: 'qtyNotDisplayed',
@@ -50,7 +50,7 @@ export async function GET(
     const brandValues: string[] | undefined =
       !brand || brand === 'ALL'
         ? undefined
-        : (BRAND_GROUPS[brand] ?? [brand])
+        : ((BRAND_GROUPS as Record<string, string[]>)[brand] ?? [brand])
 
     const stageFilter = stage === 'ALL'
       ? undefined

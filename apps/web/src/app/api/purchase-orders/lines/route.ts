@@ -34,6 +34,7 @@ function getImageMap(): Map<string, string> {
 function mapLine(line: {
   id: string
   poId: string
+  createdAt: Date
   qtyOrdered: number
   qtyReceived: number
   qtyPendingCo: number
@@ -69,14 +70,17 @@ function mapLine(line: {
     } | null
   }
 }): PurchaseTrackerLine {
+  // For BULK_COMPANY POs, use a normalized customerName as the stable ID so
+  // the same customer across multiple POs buckets together in the UI.
   const customer = line.po.project
     ? { id: line.po.project.id, name: line.po.project.clientName, siteAddress: line.po.project.siteAddress }
     : line.po.customerName
-    ? { id: line.poId, name: line.po.customerName, siteAddress: line.po.customerSiteAddress }
+    ? { id: line.po.customerName.trim().toLowerCase(), name: line.po.customerName, siteAddress: line.po.customerSiteAddress }
     : null
   return {
     id: line.id,
     poId: line.poId,
+    createdAt: line.createdAt.toISOString(),
     poNumber: line.po.poNumber,
     vendorName: line.po.vendorName,
     projectId: line.po.project?.id ?? null,
@@ -106,7 +110,12 @@ export async function GET(req: NextRequest) {
     const activeBrand = normalizeBrandTab(req.nextUrl.searchParams.get('brand'))
 
     const dbLines = await prisma.pOLineItem.findMany({
-      include: {
+      select: {
+        id: true, poId: true, createdAt: true,
+        qtyOrdered: true, qtyReceived: true,
+        qtyPendingCo: true, qtyPendingDist: true, qtyAtGodown: true,
+        qtyInBox: true, qtyDispatched: true, qtyNotDisplayed: true,
+        followUpStatus: true,
         product: {
           select: {
             id: true, sku: true, name: true, brand: true,
@@ -139,7 +148,9 @@ export async function GET(req: NextRequest) {
       ? allLines
       : allLines.filter((line) => matchesBrandTab(line.product.brand, activeBrand))
 
-    const headerCounts = computeHeaderCounts(allLines)
+    // headerCounts computed from filteredLines so sidebar stage counts
+    // match exactly what the pipeline renders for the active brand.
+    const headerCounts = computeHeaderCounts(filteredLines)
     return NextResponse.json({
       lines: filteredLines,
       headerCounts,

@@ -1,67 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
-import {
-  getFallbackCustomersForProduct,
-  shouldUseFallback,
-} from '@/lib/purchases-fallback'
 import type { CustomerOption } from '@/lib/purchases-tracker'
-import { allowDevFallback } from '@/lib/runtime-mode'
 
-function sortCustomers(customers: CustomerOption[]): CustomerOption[] {
-  return [...customers].sort((left, right) => left.name.localeCompare(right.name))
-}
-
+// Returns every POLineItem for this product (excluding the calling line) with
+// the customer name and lineId so TransferPopover can pick a destination.
+// Supports both PROJECT_LINKED (project.clientName) and BULK_COMPANY (po.customerName).
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandling(async () => {
-    const { id } = await params
+    const { id: productId } = await params
+    const excludeLineId = req.nextUrl.searchParams.get('excludeLineId') ?? ''
 
-    try {
-      const poCustomers = await prisma.pOLineItem.findMany({
-        where: {
-          productId: id,
-          po: {
-            projectId: {
-              not: null,
+    const lines = await prisma.pOLineItem.findMany({
+      where: { productId },
+      select: {
+        id: true,
+        po: {
+          select: {
+            id: true,
+            poNumber: true,
+            customerName: true,
+            project: {
+              select: { id: true, clientName: true },
             },
           },
         },
-        select: {
-          po: {
-            select: {
-              project: {
-                select: {
-                  id: true,
-                  clientName: true,
-                },
-              },
-            },
-          },
-        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const result: CustomerOption[] = []
+
+    for (const line of lines) {
+      if (line.id === excludeLineId) continue
+
+      const customerName = line.po.project?.clientName ?? line.po.customerName
+      if (!customerName) continue
+
+      // Use project ID for PROJECT_LINKED, PO ID for BULK_COMPANY (stable per PO)
+      const customerId = line.po.project?.id ?? line.po.id
+
+      result.push({
+        id: customerId,
+        name: customerName,
+        lineId: line.id,
       })
-
-      const customers = new Map<string, CustomerOption>()
-
-      for (const entry of poCustomers) {
-        const project = entry.po.project
-        if (project) {
-          customers.set(project.id, {
-            id: project.id,
-            name: project.clientName,
-          })
-        }
-      }
-
-      return NextResponse.json(sortCustomers(Array.from(customers.values())))
-    } catch (error) {
-      if (allowDevFallback() && shouldUseFallback(error)) {
-        return NextResponse.json(getFallbackCustomersForProduct(id))
-      }
-
-      throw error
     }
+
+    result.sort((a, b) => a.name.localeCompare(b.name))
+    return NextResponse.json(result)
   })
 }

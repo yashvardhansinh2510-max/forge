@@ -1,10 +1,12 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { clerkMiddleware } from '@clerk/nextjs/server'
 
-export function middleware(_req: NextRequest) {
-  return NextResponse.next()
-}
+// clerkMiddleware() must run for auth() / currentUser() to work in API routes.
+// Public routes are accessible without a session; protected routes redirect to sign-in.
+export default clerkMiddleware()
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    // Skip Next.js internals and static files
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 }

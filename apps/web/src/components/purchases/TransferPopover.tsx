@@ -14,7 +14,7 @@ interface TransferPopoverProps {
   productId: string
   currentStage: PurchaseStage
   availableQty: number
-  onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
+  onMoved: (newCounts: HeaderCounts, lineId?: string, fromStage?: PurchaseStage, toStage?: PurchaseStage, qty?: number) => void
   brandScope?: BrandTab
 }
 
@@ -44,13 +44,16 @@ export default function TransferPopover({
     setReason('')
     setErr('')
 
-    void fetch(`/api/products/${encodeURIComponent(productId)}/customers-who-ordered`)
+    void fetch(
+      `/api/products/${encodeURIComponent(productId)}/customers-who-ordered?excludeLineId=${encodeURIComponent(lineItemId)}`,
+    )
       .then(async (response) => {
         if (!response.ok) return []
         return response.json() as Promise<CustomerOption[]>
       })
       .then((result) => {
-        const valid = Array.isArray(result) ? result.filter(c => c.lineId && c.lineId !== lineItemId) : []
+        // Route now always returns lineId; filter is a safety guard only
+        const valid = Array.isArray(result) ? result.filter(c => c.lineId) : []
         setCustomers(valid)
       })
       .catch(() => setCustomers([]))
@@ -106,9 +109,9 @@ export default function TransferPopover({
         return
       }
 
-      // We use onMoved to optimistically reflect the deducted quantity on the source side.
-      // (The target side requires a refetch to show up perfectly, or we just rely on SWR revalidation)
-      onMoved(data.stageTotals, lineItemId, currentStage, 'COMPLETED', qty) // Using COMPLETED as a dummy to deduct from currentStage
+      // No per-line optimistic patch — source loses qty and a different line
+      // gains it. Update header counts and let SWR revalidation render truth.
+      onMoved(data.stageTotals)
       setOpen(false)
     } catch {
       setErr('Network error')
