@@ -97,19 +97,23 @@ export async function GET(
         },
       },
       select: {
-        qtyOrdered:     true,
-        qtyPendingCo:   true,
-        qtyPendingDist: true,
-        qtyAtGodown:    true,
-        qtyInBox:       true,
-        qtyDispatched:  true,
-        qtyNotDisplayed: true,
+        qtyOrdered:       true,
+        qtyTransferredIn:  true,
+        qtyTransferredOut: true,
+        qtyPendingCo:     true,
+        qtyPendingDist:   true,
+        qtyAtGodown:      true,
+        qtyInBox:         true,
+        qtyDispatched:    true,
+        qtyNotDisplayed:  true,
       },
     })
 
     const summary = allLines.reduce(
       (acc, l) => {
-        acc.totalOrdered    += l.qtyOrdered
+        const ceiling = l.qtyOrdered + l.qtyTransferredIn - l.qtyTransferredOut
+        acc.totalOrdered    += ceiling
+        acc.originalOrdered += l.qtyOrdered
         acc.pendingFromCo   += l.qtyPendingCo
         acc.pendingFromDist += l.qtyPendingDist
         acc.atGodown        += l.qtyAtGodown
@@ -118,7 +122,11 @@ export async function GET(
         acc.notDisplayed    += l.qtyNotDisplayed
         return acc
       },
-      { totalOrdered: 0, pendingFromCo: 0, pendingFromDist: 0, atGodown: 0, inBox: 0, dispatched: 0, notDisplayed: 0 },
+      {
+        totalOrdered: 0, originalOrdered: 0,
+        pendingFromCo: 0, pendingFromDist: 0,
+        atGodown: 0, inBox: 0, dispatched: 0, notDisplayed: 0,
+      },
     )
 
     return NextResponse.json({ lines: result, summary })
