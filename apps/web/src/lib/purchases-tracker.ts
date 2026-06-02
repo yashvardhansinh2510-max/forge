@@ -73,7 +73,7 @@ export type DispatchReadiness = 'waiting' | 'in_box' | 'dispatched' | 'archived'
 export function getDispatchReadiness(line: PurchaseTrackerLine): DispatchReadiness {
   if (getInBoxQty(line) > 0) return 'in_box'
   if (line.stages.DISPATCHED > 0 || line.stages.NOT_DISPLAYED > 0) {
-    return getInBoxQty(line) === 0 && line.stages.PENDING_CO === 0 && line.stages.PENDING_DIST === 0
+    return line.stages.PENDING_CO === 0 && line.stages.PENDING_DIST === 0
       ? (line.stages.NOT_DISPLAYED > 0 ? 'archived' : 'dispatched')
       : 'waiting'
   }
