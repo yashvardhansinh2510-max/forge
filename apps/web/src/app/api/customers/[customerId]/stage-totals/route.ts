@@ -18,6 +18,8 @@ export async function GET(
       },
       select: {
         qtyOrdered: true,
+        qtyTransferredIn: true,
+        qtyTransferredOut: true,
         qtyPendingCo: true,
         qtyPendingDist: true,
         qtyAtGodown: true,
@@ -32,6 +34,8 @@ export async function GET(
 
     return NextResponse.json(computeStageTotalsResult({
       ordered: sum('qtyOrdered'),
+      transferredIn: sum('qtyTransferredIn'),
+      transferredOut: sum('qtyTransferredOut'),
       pendingCo: sum('qtyPendingCo'),
       pendingDist: sum('qtyPendingDist'),
       godown: sum('qtyAtGodown'),
