@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { BRAND_GROUPS } from '@/lib/purchases-tracker'
+import { BRAND_GROUPS, effectiveCeiling } from '@/lib/purchases-tracker'
 import { prisma } from '@forge/db'
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ export async function GET(
 
     const summary = allLines.reduce(
       (acc, l) => {
-        const ceiling = Math.max(0, l.qtyOrdered + l.qtyTransferredIn - l.qtyTransferredOut)
+        const ceiling = effectiveCeiling(l)
         acc.totalOrdered    += ceiling
         acc.originalOrdered += l.qtyOrdered
         acc.pendingFromCo   += l.qtyPendingCo

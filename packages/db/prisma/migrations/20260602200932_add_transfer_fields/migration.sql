@@ -22,5 +22,9 @@ SET "qtyTransferredIn" = COALESCE(
 
 -- Restore original qtyOrdered — undo the corruption from past transfers
 -- Original = corrupted_current + transferred_out - transferred_in
+-- WARNING: This UPDATE is NOT idempotent. It must never be re-run manually on
+-- a database that has already been migrated. Prisma's migration ledger prevents
+-- automatic re-execution. If the _prisma_migrations table is reset while data
+-- persists, running this again will double-corrupt qtyOrdered.
 UPDATE "POLineItem"
 SET "qtyOrdered" = "qtyOrdered" + "qtyTransferredOut" - "qtyTransferredIn";
