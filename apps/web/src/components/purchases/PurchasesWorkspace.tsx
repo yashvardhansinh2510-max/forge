@@ -25,7 +25,7 @@ import {
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
 import ContextPanel from '@/components/purchases/ContextPanel'
-import WorkspacePipeline from '@/components/purchases/WorkspacePipeline'
+import WorkspaceTrackStock from '@/components/purchases/WorkspaceTrackStock'
 import WorkspaceCustomers from '@/components/purchases/WorkspaceCustomers'
 import WorkspaceDispatch from '@/components/purchases/WorkspaceDispatch'
 
@@ -315,7 +315,7 @@ export default function PurchasesWorkspace() {
         {/* ── Main workspace ─────────────────────────── */}
         <main className="min-w-0 flex-1 overflow-y-auto">
           {workspace === 'pipeline' && (
-            <WorkspacePipeline
+            <WorkspaceTrackStock
               lines={stageFilteredLines}
               activeBrand={activeBrand}
               stageFilter={stageFilter}

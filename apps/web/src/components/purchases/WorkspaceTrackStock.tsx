@@ -39,7 +39,7 @@ function LoadingSkeleton() {
   )
 }
 
-export default function WorkspacePipeline({
+export default function WorkspaceTrackStock({
   lines,
   allLines,
   activeBrand,
