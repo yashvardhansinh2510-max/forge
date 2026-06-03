@@ -2,16 +2,18 @@
 
 import {
   STAGE_COLORS,
-  STAGE_SHORT_LABEL,
-  STAGE_ORDER,
+  DISPLAY_STAGE_ORDER,
+  DISPLAY_STAGE_SHORT,
+  getDisplayStageCount,
   type HeaderCounts,
+  type DisplayStage,
   type PurchaseStage,
 } from '@/lib/purchases-tracker'
 
 interface HeaderCardsProps {
   headerCounts: HeaderCounts
-  activePanel: PurchaseStage | null
-  onToggle: (stage: PurchaseStage) => void
+  activePanel: DisplayStage | null
+  onToggle: (stage: DisplayStage) => void
 }
 
 export default function HeaderCards({
@@ -21,9 +23,11 @@ export default function HeaderCards({
 }: HeaderCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-      {STAGE_ORDER.map((stage) => {
+      {DISPLAY_STAGE_ORDER.map((stage) => {
         const active = activePanel === stage
-        const accent = STAGE_COLORS[stage]
+        // Map display stage to a raw stage for color lookup (use PENDING_CO for PENDING_CO, etc.)
+        const stageForColor = stage === 'IN_BOX_COMBINED' ? 'IN_BOX' : (stage as PurchaseStage)
+        const accent = STAGE_COLORS[stageForColor]
 
         return (
           <button
@@ -54,10 +58,10 @@ export default function HeaderCards({
               }}
             />
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-              {STAGE_SHORT_LABEL[stage]}
+              {DISPLAY_STAGE_SHORT[stage]}
             </p>
             <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-[var(--text-primary)]">
-              {headerCounts[stage]}
+              {getDisplayStageCount(headerCounts, stage)}
             </p>
             <p className="mt-2 text-xs text-[var(--text-secondary)]">
               Click to {active ? 'close' : 'drill into'} this stage
