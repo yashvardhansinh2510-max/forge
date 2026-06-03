@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import {
   STAGE_COLORS,
+  STAGE_FRIENDLY_NAME,
   STAGE_LABEL,
   STAGE_ORDER,
   effectiveCeiling,
@@ -161,7 +162,7 @@ function MoveSection({
                 : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[#93c5fd]',
             ].join(' ')}
           >
-            {STAGE_LABEL[s]} ({line.stages[s]})
+            {STAGE_FRIENDLY_NAME[s] ?? STAGE_LABEL[s]} ({line.stages[s]})
           </button>
         ))}
       </div>
@@ -182,7 +183,7 @@ function MoveSection({
                     : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[#93c5fd]',
                 ].join(' ')}
               >
-                → {STAGE_LABEL[t]}
+                → {STAGE_FRIENDLY_NAME[t] ?? STAGE_LABEL[t]}
               </button>
             ))}
           </div>
@@ -221,7 +222,7 @@ function MoveSection({
             disabled={saving || !toStage}
             className="w-full rounded-xl bg-[#2563eb] py-2.5 text-sm font-bold text-white transition hover:bg-[#1d4ed8] disabled:opacity-40"
           >
-            {saving ? 'Moving…' : `Move ${qty} → ${toStage ? STAGE_LABEL[toStage] : '…'}`}
+            {saving ? 'Moving…' : `Move ${qty} → ${toStage ? (STAGE_FRIENDLY_NAME[toStage] ?? STAGE_LABEL[toStage]) : '…'}`}
           </button>
         </div>
       )}
@@ -321,7 +322,7 @@ function TransferSection({
                 : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[var(--border-strong)]',
             ].join(' ')}
           >
-            {STAGE_LABEL[s]} ({line.stages[s]})
+            {STAGE_FRIENDLY_NAME[s] ?? STAGE_LABEL[s]} ({line.stages[s]})
           </button>
         ))}
       </div>
@@ -399,6 +400,8 @@ function HistorySection({ lineId }: { lineId: string }) {
       {movements.map((m) => {
         const isTransfer = m.toStage === 'TRANSFERRED_OUT' || m.fromStage === 'TRANSFERRED_IN'
         const isLegacy = !isTransfer && (!CANONICAL.has(m.fromStage) || !CANONICAL.has(m.toStage))
+        const friendlyFrom = STAGE_FRIENDLY_NAME[m.fromStage as PurchaseStage] ?? m.fromStage
+        const friendlyTo   = STAGE_FRIENDLY_NAME[m.toStage as PurchaseStage]   ?? m.toStage
         return (
           <div key={m.id} className={[
             'rounded-xl border p-3',
@@ -409,10 +412,12 @@ function HistorySection({ lineId }: { lineId: string }) {
             <div className="flex items-start justify-between gap-2">
               <p className="text-xs font-semibold text-[var(--text-primary)]">
                 {isTransfer
-                  ? `Transfer ${m.fromStage === 'TRANSFERRED_IN' ? 'in' : 'out'} · ${m.qty} unit${m.qty > 1 ? 's' : ''}`
+                  ? m.fromStage === 'TRANSFERRED_IN'
+                    ? `Received from transfer · ${m.qty} unit${m.qty > 1 ? 's' : ''}`
+                    : `Given to customer · ${m.qty} unit${m.qty > 1 ? 's' : ''}`
                   : isLegacy
                   ? `[Legacy] ${m.fromStage} → ${m.toStage} · ${m.qty}`
-                  : `${m.fromStage} → ${m.toStage} · ${m.qty} unit${m.qty > 1 ? 's' : ''}`
+                  : `${friendlyFrom} → ${friendlyTo} · ${m.qty} unit${m.qty > 1 ? 's' : ''}`
                 }
               </p>
               <span className="shrink-0 text-[10px] text-[var(--text-muted)]">
@@ -428,13 +433,13 @@ function HistorySection({ lineId }: { lineId: string }) {
   )
 }
 
-export default function ContextPanel({ line, allLines, activeBrand, onClose, onMoved }: Props) {
-  const [tab, setTab] = useState<'move' | 'transfer' | 'history'>('move')
+export default function ContextPanel({ line, allLines, activeBrand, defaultTab = 'move', onClose, onMoved }: Props) {
+  const [tab, setTab] = useState<'move' | 'transfer' | 'history'>(defaultTab)
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setTab('move')
-  }, [line.id])
+    setTab(defaultTab)
+  }, [line.id, defaultTab])
 
   return (
     <>
@@ -519,7 +524,7 @@ export default function ContextPanel({ line, allLines, activeBrand, onClose, onM
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
                 ].join(' ')}
               >
-                {t === 'move' ? 'Move' : t === 'transfer' ? 'Transfer ↱' : 'History'}
+                {t === 'move' ? 'Move Stock' : t === 'transfer' ? 'Give to Customer' : 'Activity Log'}
               </button>
             ))}
           </div>
