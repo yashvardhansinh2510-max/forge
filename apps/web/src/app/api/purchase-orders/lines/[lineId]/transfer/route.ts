@@ -13,6 +13,7 @@ import {
   createEmptyHeaderCounts,
 } from '@/lib/purchases-tracker'
 import { getStageTotalsForScope } from '@/lib/server/purchase-stage-totals'
+import { generatePONumber } from '@/lib/poNumberGenerator'
 
 // Canonical stage vocabulary — must match purchases-tracker.ts
 const TRANSFERABLE_STAGES = [
@@ -51,13 +52,89 @@ function getQtyAtStage(line: LineFields, stage: TransferStage): number {
   return line[stageToDbField(stage)]
 }
 
-const TransferSchema = z.object({
-  stage: z.enum(TRANSFERABLE_STAGES),
-  qty: z.number().int().min(1),
-  targetLineId: z.string(),
-  reason: z.string().max(500),
-  brand: z.enum(BRAND_TABS).optional(),
-})
+const TransferSchema = z.discriminatedUnion('mode', [
+  // Legacy: source and target line IDs both known
+  z.object({
+    mode: z.literal('line'),
+    stage: z.enum(TRANSFERABLE_STAGES),
+    qty: z.number().int().min(1),
+    targetLineId: z.string(),
+    reason: z.string().min(1).max(500),
+    brand: z.enum(BRAND_TABS).optional(),
+  }),
+  // New: existing project, auto-find or create line for this product
+  z.object({
+    mode: z.literal('project'),
+    stage: z.enum(TRANSFERABLE_STAGES),
+    qty: z.number().int().min(1),
+    targetProjectId: z.string(),
+    reason: z.string().min(1).max(500),
+    brand: z.enum(BRAND_TABS).optional(),
+  }),
+  // New: create a new customer on the fly
+  z.object({
+    mode: z.literal('new'),
+    stage: z.enum(TRANSFERABLE_STAGES),
+    qty: z.number().int().min(1),
+    newCustomerName: z.string().min(1).max(200),
+    reason: z.string().min(1).max(500),
+    brand: z.enum(BRAND_TABS).optional(),
+  }),
+])
+
+async function resolveTargetLineId(
+  sourceLine: { id: string; productId: string; poId: string },
+  body: z.infer<typeof TransferSchema>,
+  userId: string,
+): Promise<string> {
+  if (body.mode === 'line') return body.targetLineId
+
+  let projectId: string
+
+  if (body.mode === 'new') {
+    const project = await prisma.project.create({
+      data: {
+        clientName: body.newCustomerName,
+        projectName: body.newCustomerName,
+      },
+    })
+    projectId = project.id
+  } else {
+    projectId = body.targetProjectId
+  }
+
+  // Find existing line for this project + product
+  const existing = await prisma.pOLineItem.findFirst({
+    where: {
+      productId: sourceLine.productId,
+      po: { projectId },
+    },
+    select: { id: true },
+  })
+
+  if (existing) return existing.id
+
+  // Create a new PO + line for this project
+  const poNumber = await generatePONumber()
+  const newPo = await prisma.purchaseOrder.create({
+    data: {
+      poNumber,
+      mode: 'PROJECT_LINKED',
+      projectId,
+      createdById: userId,
+    },
+  })
+
+  const newLine = await prisma.pOLineItem.create({
+    data: {
+      poId: newPo.id,
+      productId: sourceLine.productId,
+      qtyOrdered: 0,
+    },
+  })
+
+  return newLine.id
+}
 
 export async function POST(
   req: NextRequest,
@@ -67,23 +144,30 @@ export async function POST(
     const user = await requirePermission('Inventory', 'Transfer')
     const { lineId } = await params
     const body = TransferSchema.parse(await req.json())
-    const { stage, qty, targetLineId, reason } = body
-
-    if (lineId === targetLineId) {
-      throw new AppError('INVALID_TARGET', 'Cannot transfer to the same line', 422)
-    }
+    const { stage, qty, reason } = body
 
     const sourceLine = await prisma.pOLineItem.findUnique({
       where: { id: lineId },
       include: { po: { include: { project: true } } },
     })
+
+    if (!sourceLine) {
+      throw new AppError('NOT_FOUND', `POLineItem not found`, 404)
+    }
+
+    const targetLineId = await resolveTargetLineId(sourceLine, body, user.id)
+
+    if (lineId === targetLineId) {
+      throw new AppError('INVALID_TARGET', 'Cannot transfer to the same line', 422)
+    }
+
     const targetLine = await prisma.pOLineItem.findUnique({
       where: { id: targetLineId },
       include: { po: { include: { project: true } } },
     })
 
-    if (!sourceLine || !targetLine) {
-      throw new AppError('NOT_FOUND', `POLineItem not found`, 404)
+    if (!targetLine) {
+      throw new AppError('NOT_FOUND', `Target POLineItem not found`, 404)
     }
 
     if (sourceLine.productId !== targetLine.productId) {

@@ -14,6 +14,7 @@ import {
   type PurchaseStage,
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
+import UniversalTransfer from '@/components/purchases/UniversalTransfer'
 
 // ─── Legal forward transitions ─────────────────────────────────────────────────
 const LEGAL: Record<PurchaseStage, PurchaseStage[]> = {
@@ -25,8 +26,6 @@ const LEGAL: Record<PurchaseStage, PurchaseStage[]> = {
   DISPATCHED: ['NOT_DISPLAYED'],
   NOT_DISPLAYED: [],
 }
-
-const REASON_PRESETS = ['Urgent site requirement', 'Customer on hold', 'Stock redistribution']
 
 // ─── Movement history type ──────────────────────────────────────────────────────
 interface Movement {
@@ -230,157 +229,6 @@ function MoveSection({
   )
 }
 
-function TransferSection({
-  line,
-  allLines,
-  activeBrand,
-  onMoved,
-}: {
-  line: PurchaseTrackerLine
-  allLines: PurchaseTrackerLine[]
-  activeBrand: BrandTab
-  onMoved: Props['onMoved']
-}) {
-  const TRANSFERABLE: PurchaseStage[] = ['PENDING_CO', 'PENDING_DIST', 'GODOWN', 'IN_BOX', 'DISPATCHED']
-  const sameProduct = allLines.filter((l) => l.product.id === line.product.id && l.id !== line.id && l.customer)
-  const activeStages = TRANSFERABLE.filter((s) => line.stages[s] > 0)
-
-  const [fromStage, setFromStage] = useState<PurchaseStage | null>(activeStages[0] ?? null)
-  const [qty, setQty] = useState(1)
-  const [targetLineId, setTargetLineId] = useState('')
-  const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState('')
-  const [done, setDone] = useState('')
-
-  if (sameProduct.length === 0) {
-    return (
-      <p className="text-xs text-[var(--text-muted)]">
-        No other customers have this product allocated. Transfers require at least two customer allocations for the same SKU.
-      </p>
-    )
-  }
-
-  if (activeStages.length === 0) {
-    return <p className="text-xs text-[var(--text-muted)]">No transferable stock on this line.</p>
-  }
-
-  const available = fromStage ? line.stages[fromStage] : 0
-
-  async function doTransfer() {
-    if (!fromStage || !targetLineId || !reason.trim()) return
-    setSaving(true)
-    setErr('')
-    setDone('')
-    try {
-      const res = await fetch(
-        `/api/purchase-orders/lines/${encodeURIComponent(line.id)}/transfer`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stage: fromStage, qty, targetLineId, reason, brand: activeBrand }),
-        },
-      )
-      const data = await res.json() as { stageTotals?: HeaderCounts; message?: string; error?: string }
-      if (!res.ok || !data.stageTotals) {
-        setErr(data.message ?? data.error ?? 'Transfer failed')
-        return
-      }
-      // Update global header counts with fresh totals from response.
-      // Per-line optimistic patch is intentionally omitted for transfers —
-      // the source loses qty and a different line gains it, so we just let
-      // SWR revalidation (triggered by mutate inside onMoved) render truth.
-      onMoved(data.stageTotals)
-      setDone(`Transferred ${qty} unit${qty > 1 ? 's' : ''} successfully.`)
-      setQty(1)
-      setTargetLineId('')
-      setReason('')
-    } catch {
-      setErr('Network error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      {done && (
-        <p className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] p-2 text-xs text-[#15803d]">✓ {done}</p>
-      )}
-
-      {/* From stage */}
-      <div className="flex flex-wrap gap-1.5">
-        {activeStages.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => { setFromStage(s); setQty(1) }}
-            className={[
-              'rounded-lg border px-2.5 py-1 text-xs font-semibold transition',
-              fromStage === s
-                ? 'border-[#0f172a] bg-[#0f172a] text-white'
-                : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[var(--border-strong)]',
-            ].join(' ')}
-          >
-            {STAGE_FRIENDLY_NAME[s] ?? STAGE_LABEL[s]} ({line.stages[s]})
-          </button>
-        ))}
-      </div>
-
-      {/* Dest customer */}
-      <select
-        value={targetLineId}
-        onChange={(e) => setTargetLineId(e.target.value)}
-        className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#60a5fa]"
-      >
-        <option value="">— Destination customer —</option>
-        {sameProduct.map((l) => (
-          <option key={l.id} value={l.id}>{l.customer!.name}</option>
-        ))}
-      </select>
-
-      {/* Qty */}
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] font-bold transition hover:border-[#60a5fa]">-</button>
-        <input
-          type="number" value={qty} min={1} max={available}
-          onChange={(e) => { const v = Number(e.target.value); setQty(Math.min(available, Math.max(1, Number.isFinite(v) ? v : 1))) }}
-          className="w-14 rounded-xl border border-[var(--border)] py-1.5 text-center text-sm font-bold outline-none focus:border-[#60a5fa]"
-        />
-        <button type="button" onClick={() => setQty((q) => Math.min(available, q + 1))} className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] font-bold transition hover:border-[#60a5fa]">+</button>
-        <span className="text-xs text-[var(--text-muted)]">of {available}</span>
-      </div>
-
-      {/* Reason */}
-      <div>
-        <input
-          type="text"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason for transfer"
-          className="w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[#60a5fa]"
-        />
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {REASON_PRESETS.map((p) => (
-            <button key={p} type="button" onClick={() => setReason(p)} className="rounded-md bg-[var(--n-100)] px-2 py-0.5 text-[11px] text-[var(--text-secondary)] transition hover:bg-[var(--n-200)]">{p}</button>
-          ))}
-        </div>
-      </div>
-
-      {err && <p className="rounded-xl bg-[#fef2f2] p-2 text-xs text-[#dc2626]">{err}</p>}
-
-      <button
-        type="button"
-        onClick={() => void doTransfer()}
-        disabled={saving || !fromStage || !targetLineId || !reason.trim()}
-        className="w-full rounded-xl bg-[#0f172a] py-2.5 text-sm font-bold text-white transition hover:bg-black disabled:opacity-40"
-      >
-        {saving ? 'Transferring…' : `Transfer ${qty} unit${qty > 1 ? 's' : ''} ↱`}
-      </button>
-    </div>
-  )
-}
-
 function HistorySection({ lineId }: { lineId: string }) {
   const { data: movements, isLoading } = useSWR(
     `/api/purchase-orders/lines/${lineId}/history`,
@@ -433,7 +281,7 @@ function HistorySection({ lineId }: { lineId: string }) {
   )
 }
 
-export default function ContextPanel({ line, allLines, activeBrand, defaultTab = 'move', onClose, onMoved }: Props) {
+export default function ContextPanel({ line, allLines: _allLines, activeBrand, defaultTab = 'move', onClose, onMoved }: Props) {
   const [tab, setTab] = useState<'move' | 'transfer' | 'history'>(defaultTab)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -535,7 +383,11 @@ export default function ContextPanel({ line, allLines, activeBrand, defaultTab =
               <MoveSection line={line} activeBrand={activeBrand} onMoved={onMoved} />
             )}
             {tab === 'transfer' && (
-              <TransferSection line={line} allLines={allLines} activeBrand={activeBrand} onMoved={onMoved} />
+              <UniversalTransfer
+                line={line}
+                activeBrand={activeBrand}
+                onMoved={onMoved}
+              />
             )}
             {tab === 'history' && (
               <HistorySection lineId={line.id} />
