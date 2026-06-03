@@ -33,8 +33,8 @@ export default function WorkspaceDispatch({ lines, onMoved, onSelectLine }: Prop
   const [dispatched, setDispatched] = useState<string[]>([]) // customer ids recently dispatched
   const [err, setErr] = useState('')
 
-  // Only show lines that have items IN_BOX
-  const readyLines = lines.filter((l) => l.stages.IN_BOX > 0)
+  // Show lines that have items in GODOWN or IN_BOX (merged "In Box" concept)
+  const readyLines = lines.filter((l) => l.stages.GODOWN > 0 || l.stages.IN_BOX > 0)
 
   const groups = readyLines.reduce<Record<string, CustomerGroup>>((acc, line) => {
     const custId = line.customer?.id ?? '__unlinked__'
@@ -50,10 +50,10 @@ export default function WorkspaceDispatch({ lines, onMoved, onSelectLine }: Prop
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
         <div className="text-4xl">▷</div>
-        <p className="text-lg font-semibold text-[var(--text-primary)]">No items ready for dispatch</p>
+        <p className="text-lg font-semibold text-[var(--text-primary)]">Nothing to dispatch right now</p>
         <p className="max-w-sm text-sm text-[var(--text-muted)]">
-          Items appear here when they reach the <strong>In Box</strong> stage.
-          Move items from At Godown → In Box in the Pipeline workspace to pack them for dispatch.
+          Items appear here once they reach <strong>In Box</strong>.
+          Go to <strong>Track Stock</strong>, find the product, then use Move Stock to mark it In Box.
         </p>
       </div>
     )
@@ -65,25 +65,43 @@ export default function WorkspaceDispatch({ lines, onMoved, onSelectLine }: Prop
     setErr('')
 
     try {
-      const results = await Promise.all(
-        confirm.lines.map((line) =>
-          fetch(`/api/purchase-orders/lines/${encodeURIComponent(line.id)}/move-stage`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fromStage: 'IN_BOX',
-              toStage: 'DISPATCHED',
-              qty: line.stages.IN_BOX,
-              note: [confirm.challan ? `Challan: ${confirm.challan}` : '', confirm.note].filter(Boolean).join(' | ') || undefined,
-            }),
-          }).then((r) => r.json() as Promise<{ stageTotals?: HeaderCounts; error?: string }>),
-        ),
-      )
+      const calls: Promise<{ stageTotals?: HeaderCounts; error?: string }>[] = []
 
-      for (const [i, result] of results.entries()) {
-        if (result.stageTotals) {
-          const line = confirm.lines[i]!
-          onMoved(result.stageTotals, line.id, 'IN_BOX', 'DISPATCHED', line.stages.IN_BOX)
+      for (const line of confirm.lines) {
+        const note = [confirm.challan ? `Challan: ${confirm.challan}` : '', confirm.note]
+          .filter(Boolean)
+          .join(' | ') || undefined
+
+        if (line.stages.GODOWN > 0) {
+          calls.push(
+            fetch(`/api/purchase-orders/lines/${encodeURIComponent(line.id)}/move-stage`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fromStage: 'GODOWN', toStage: 'DISPATCHED', qty: line.stages.GODOWN, note }),
+            }).then((r) => r.json() as Promise<{ stageTotals?: HeaderCounts; error?: string }>),
+          )
+        }
+
+        if (line.stages.IN_BOX > 0) {
+          calls.push(
+            fetch(`/api/purchase-orders/lines/${encodeURIComponent(line.id)}/move-stage`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fromStage: 'IN_BOX', toStage: 'DISPATCHED', qty: line.stages.IN_BOX, note }),
+            }).then((r) => r.json() as Promise<{ stageTotals?: HeaderCounts; error?: string }>),
+          )
+        }
+      }
+
+      const results = await Promise.all(calls)
+      const lastSuccess = [...results].reverse().find((r) => r.stageTotals)
+
+      if (lastSuccess?.stageTotals) {
+        for (const line of confirm.lines) {
+          const totalQty = line.stages.GODOWN + line.stages.IN_BOX
+          if (totalQty > 0) {
+            onMoved(lastSuccess.stageTotals, line.id, 'IN_BOX', 'DISPATCHED', totalQty)
+          }
         }
       }
 
@@ -107,7 +125,7 @@ export default function WorkspaceDispatch({ lines, onMoved, onSelectLine }: Prop
 
       <div className="space-y-4">
         {customerGroups.map((group) => {
-          const totalUnits = group.lines.reduce((s, l) => s + l.stages.IN_BOX, 0)
+          const totalUnits = group.lines.reduce((s, l) => s + l.stages.GODOWN + l.stages.IN_BOX, 0)
           const isRecentlyDispatched = dispatched.includes(group.id)
 
           if (isRecentlyDispatched) {
@@ -172,7 +190,7 @@ export default function WorkspaceDispatch({ lines, onMoved, onSelectLine }: Prop
                           className="text-base font-semibold text-[#2563eb]"
                           style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
                         >
-                          {line.stages.IN_BOX}
+                          {line.stages.GODOWN + line.stages.IN_BOX}
                         </span>
                       </td>
                       <td className="py-3 pl-2 pr-5 text-right">
@@ -201,7 +219,7 @@ export default function WorkspaceDispatch({ lines, onMoved, onSelectLine }: Prop
               Confirm Dispatch
             </h3>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              Dispatching {confirm.lines.reduce((s, l) => s + l.stages.IN_BOX, 0)} units to{' '}
+              Dispatching {confirm.lines.reduce((s, l) => s + l.stages.GODOWN + l.stages.IN_BOX, 0)} units to{' '}
               <strong className="text-[var(--text-primary)]">
                 {groups[confirm.customerId]?.name ?? 'customer'}
               </strong>.
