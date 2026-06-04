@@ -161,12 +161,14 @@ export function moveFallbackLine({
   toStage,
   qty,
   brand,
+  location,
 }: {
   lineId: string
   fromStage: PurchaseStage
   toStage: Exclude<PurchaseStage, 'UNALLOCATED'>
   qty: number
   brand: BrandTab
+  location?: string
 }): { lineItem: PurchaseTrackerLine; stageTotals: HeaderCounts } {
   const target = getMutableLine(lineId)
 
@@ -194,6 +196,14 @@ export function moveFallbackLine({
 
   const toField = DB_FIELD_BY_STAGE[toStage]
   target.line[toField] += qty
+
+  // Update location if moving to GODOWN or IN_BOX with location provided
+  if ((toStage === 'GODOWN' || toStage === 'IN_BOX') && location) {
+    target.line.currentLocation = location
+  }
+
+  // Update activity timestamp on every move
+  target.line.lastActivityAt = new Date().toISOString()
 
   return {
     lineItem: mapMockLine(target.order, target.line),
