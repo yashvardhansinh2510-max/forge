@@ -46,6 +46,7 @@ function mapLine(line: {
   qtyDispatched: number
   qtyNotDisplayed: number
   followUpStatus: string | null
+  stageMovements: Array<{ note: string | null }>
   product: {
     id: string
     sku: string
@@ -86,6 +87,7 @@ function mapLine(line: {
     poNumber: line.po.poNumber,
     vendorName: line.po.vendorName,
     projectId: line.po.project?.id ?? null,
+    locationNote: line.stageMovements[0]?.note ?? null,
     customer,
     product: {
       id: line.product.id,
@@ -120,6 +122,12 @@ export async function GET(req: NextRequest) {
         qtyPendingCo: true, qtyPendingDist: true, qtyAtGodown: true,
         qtyInBox: true, qtyDispatched: true, qtyNotDisplayed: true,
         followUpStatus: true,
+        stageMovements: {
+          where: { toStage: { in: ['GODOWN', 'IN_BOX'] }, note: { not: null } },
+          orderBy: { movedAt: 'desc' as const },
+          take: 1,
+          select: { note: true },
+        },
         product: {
           select: {
             id: true, sku: true, name: true, brand: true,

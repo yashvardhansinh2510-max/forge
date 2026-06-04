@@ -1,15 +1,97 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import useSWR from 'swr'
 import {
   effectiveCeiling,
-  getInBoxQty,
+  getCustomerMetrics,
+  getLineDispatchStatuses,
+  DISPATCH_STATUS_BG,
+  DISPATCH_STATUS_COLOR,
+  DISPATCH_STATUS_LABEL,
   type BrandTab,
+  type DispatchStatus,
   type HeaderCounts,
   type PurchaseStage,
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
+
+function ProductThumb({ line, size = 10 }: { line: PurchaseTrackerLine; size?: number }) {
+  const dim = size === 10 ? 'h-10 w-10' : 'h-8 w-8'
+  if (line.product.imageUrl) {
+    return (
+      <div className={`relative ${dim} shrink-0`}>
+        <Image
+          src={line.product.imageUrl}
+          alt={line.product.name}
+          fill
+          className="rounded-lg border border-[var(--border)] object-contain p-0.5"
+          unoptimized
+        />
+      </div>
+    )
+  }
+  return (
+    <div className={`flex ${dim} shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--n-50)] text-[10px] font-bold text-[var(--text-muted)]`}>
+      {line.product.brand.slice(0, 2)}
+    </div>
+  )
+}
+
+async function exportCustomerStock(customers: CustomerBucket[]) {
+  const ExcelJS = (await import('exceljs')).default
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Customer Stock')
+
+  ws.columns = [
+    { header: 'Customer',   key: 'customer',    width: 28 },
+    { header: 'Site',       key: 'site',        width: 26 },
+    { header: 'Product',    key: 'product',     width: 42 },
+    { header: 'SKU',        key: 'sku',         width: 24 },
+    { header: 'Brand',      key: 'brand',       width: 12 },
+    { header: 'Ordered',    key: 'ordered',     width: 10 },
+    { header: 'Pend. CO',   key: 'pendingCo',   width: 10 },
+    { header: 'Pend. Dist', key: 'pendingDist', width: 11 },
+    { header: 'At Godown',  key: 'godown',      width: 11 },
+    { header: 'In Box',     key: 'inBox',       width: 9  },
+    { header: 'Dispatched', key: 'dispatched',  width: 12 },
+    { header: 'Location',   key: 'location',    width: 22 },
+  ]
+
+  for (const cust of customers) {
+    for (const line of cust.lines) {
+      ws.addRow({
+        customer:   cust.name,
+        site:       cust.siteAddress ?? '',
+        product:    line.product.name,
+        sku:        line.product.sku,
+        brand:      line.product.brand,
+        ordered:    line.qtyOrdered,
+        pendingCo:  line.stages.PENDING_CO,
+        pendingDist:line.stages.PENDING_DIST,
+        godown:     line.stages.GODOWN,
+        inBox:      line.stages.IN_BOX,
+        dispatched: line.stages.DISPATCHED,
+        location:   line.locationNote ?? '',
+      })
+    }
+  }
+
+  const headerRow = ws.getRow(1)
+  headerRow.font = { bold: true }
+  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } }
+
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `customer-stock-${new Date().toISOString().slice(0, 10)}.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface CustomerBucket {
   id: string
@@ -18,120 +100,268 @@ interface CustomerBucket {
   lines: PurchaseTrackerLine[]
 }
 
-interface TransferEntry {
-  id: string
-  fromStage: string
-  toStage: string
-  qty: number
-  note: string | null
-  movedAt: string
-  movedBy: { name: string }
-}
-
 interface Props {
   lines: PurchaseTrackerLine[]
   activeBrand: BrandTab
   onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
   onSelectLine: (lineId: string, tab?: 'move' | 'transfer' | 'history') => void
+  onMoveMaterial?: (productId: string, sourceLineId: string) => void
 }
 
-const historyFetcher = async (url: string): Promise<TransferEntry[]> => {
-  const res = await fetch(url)
-  if (!res.ok) return []
-  const data = await res.json() as { movements: TransferEntry[] }
-  return data.movements
+// ─── Status pill ───────────────────────────────────────────────────────────────
+
+function StatusPill({ status, qty }: { status: DispatchStatus; qty: number }) {
+  return (
+    <span
+      className="rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+      style={{ background: DISPATCH_STATUS_BG[status], color: DISPATCH_STATUS_COLOR[status] }}
+    >
+      {status === 'ready' && '● '}{DISPATCH_STATUS_LABEL[status]} ×{qty}
+    </span>
+  )
 }
+
+// ─── Mark Packed quick action ──────────────────────────────────────────────────
+
+function MarkPackedInline({
+  line,
+  onMoved,
+  onDone,
+}: {
+  line: PurchaseTrackerLine
+  onMoved: Props['onMoved']
+  onDone: () => void
+}) {
+  const [location, setLocation] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const qty = line.stages.GODOWN
+
+  async function doPack() {
+    setSaving(true)
+    setErr('')
+    try {
+      const note = location.trim() ? `Location: ${location.trim()}` : undefined
+      const res = await fetch(`/api/purchase-orders/lines/${encodeURIComponent(line.id)}/move-stage`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromStage: 'GODOWN', toStage: 'IN_BOX', qty, note }),
+      })
+      const data = await res.json() as { stageTotals?: HeaderCounts; message?: string }
+      if (!res.ok || !data.stageTotals) { setErr(data.message ?? 'Pack failed'); return }
+      onMoved(data.stageTotals, line.id, 'GODOWN', 'IN_BOX', qty)
+      onDone()
+    } catch {
+      setErr('Network error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="border-t border-[#bfdbfe] bg-white px-4 py-3 space-y-2">
+      <p className="text-xs font-semibold text-[var(--text-primary)]">
+        Pack {qty} unit{qty !== 1 ? 's' : ''} · {line.product.name}
+      </p>
+      <input
+        type="text"
+        value={location}
+        onChange={(e) => setLocation(e.target.value)}
+        placeholder="Box number / shelf location (e.g. Box 12, Rack B3)"
+        autoFocus
+        className="w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[#60a5fa]"
+      />
+      {err && <p className="text-xs text-[#dc2626]">{err}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => void doPack()}
+          disabled={saving}
+          className="flex-1 rounded-xl bg-[#2563eb] py-2 text-sm font-bold text-white disabled:opacity-40"
+        >
+          {saving ? 'Packing…' : 'Confirm Pack'}
+        </button>
+        <button type="button" onClick={onDone} className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)]">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Customer detail ───────────────────────────────────────────────────────────
 
 function CustomerDetail({
   customer,
   onSelectLine,
+  onMoved,
+  onMoveMaterial,
 }: {
   customer: CustomerBucket
-  activeBrand: BrandTab
-  onSelectLine: (lineId: string, tab?: 'move' | 'transfer' | 'history') => void
-  onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
+  onSelectLine: Props['onSelectLine']
+  onMoved: Props['onMoved']
+  onMoveMaterial?: Props['onMoveMaterial']
 }) {
+  const [packingLineId, setPackingLineId] = useState<string | null>(null)
+  const [dispatchingLine, setDispatchingLine] = useState<{ lineId: string; challan: string } | null>(null)
+  const [dispatching, setDispatching] = useState(false)
+  const [dispatchErr, setDispatchErr] = useState('')
   const [showDelivered, setShowDelivered] = useState(false)
   const { lines } = customer
 
-  const readyLines = lines.filter((l) => l.stages.GODOWN > 0 || l.stages.IN_BOX > 0)
-  const pendingLines = lines.filter((l) => l.stages.PENDING_CO > 0 || l.stages.PENDING_DIST > 0)
-  const deliveredLines = lines.filter((l) => l.stages.DISPATCHED > 0 || l.stages.NOT_DISPLAYED > 0)
+  const readyLines = lines.filter((l) => l.stages.IN_BOX > 0)
+  const godownLines = lines.filter((l) => l.stages.GODOWN > 0 && l.stages.IN_BOX === 0)
+  const pendingLines = lines.filter((l) => (l.stages.PENDING_CO > 0 || l.stages.PENDING_DIST > 0) && l.stages.GODOWN === 0 && l.stages.IN_BOX === 0)
+  const deliveredLines = lines.filter((l) => (l.stages.DISPATCHED > 0 || l.stages.NOT_DISPLAYED > 0) && l.stages.PENDING_CO === 0 && l.stages.PENDING_DIST === 0 && l.stages.GODOWN === 0 && l.stages.IN_BOX === 0)
 
-  const { data: allMovements } = useSWR<TransferEntry[]>(
-    lines.length > 0 ? `/api/purchase-orders/lines/${lines[0]!.id}/history` : null,
-    historyFetcher,
-  )
-  const transferMovements = (allMovements ?? []).filter(
-    (m) => m.toStage === 'TRANSFERRED_OUT' || m.fromStage === 'TRANSFERRED_IN',
-  )
+  const metrics = getCustomerMetrics(lines)
 
-  const totalOrdered = lines.reduce((s, l) => s + l.qtyOrdered, 0)
-  const totalInBox = readyLines.reduce((s, l) => s + l.stages.GODOWN + l.stages.IN_BOX, 0)
-  const totalDispatched = lines.reduce((s, l) => s + l.stages.DISPATCHED + l.stages.NOT_DISPLAYED, 0)
-  const totalPending = pendingLines.reduce((s, l) => s + l.stages.PENDING_CO + l.stages.PENDING_DIST, 0)
+  async function executeLineDispatch(line: PurchaseTrackerLine, challan: string) {
+    setDispatching(true)
+    setDispatchErr('')
+    try {
+      const calls: Promise<{ stageTotals?: HeaderCounts; error?: string }>[] = []
+      const note = challan ? `Challan: ${challan}` : undefined
+      if (line.stages.IN_BOX > 0) {
+        calls.push(
+          fetch(`/api/purchase-orders/lines/${encodeURIComponent(line.id)}/move-stage`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fromStage: 'IN_BOX', toStage: 'DISPATCHED', qty: line.stages.IN_BOX, note }),
+          }).then((r) => r.json() as Promise<{ stageTotals?: HeaderCounts; error?: string }>),
+        )
+      }
+      const results = await Promise.all(calls)
+      const last = [...results].reverse().find((r) => r.stageTotals)
+      if (last?.stageTotals) {
+        onMoved(last.stageTotals, line.id, 'IN_BOX', 'DISPATCHED', line.stages.IN_BOX)
+      }
+      setDispatchingLine(null)
+    } catch {
+      setDispatchErr('Network error — dispatch not saved')
+    } finally {
+      setDispatching(false)
+    }
+  }
 
   return (
     <div className="space-y-5 p-6">
+
       {/* Header */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Customer</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[var(--text-primary)]">{customer.name}</h2>
-        {customer.siteAddress && (
-          <p className="mt-1 text-sm text-[var(--text-muted)]">{customer.siteAddress}</p>
-        )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {[
-            { label: 'Ordered', value: totalOrdered, color: '#6B7280' },
-            { label: 'In Box', value: totalInBox, color: '#10B981' },
-            { label: 'Pending', value: totalPending, color: '#F59E0B' },
-            { label: 'Dispatched', value: totalDispatched, color: '#3B82F6' },
-          ].map((chip) => (
-            <div key={chip.label} className="rounded-xl border border-[var(--border)] bg-white px-3 py-1.5">
-              <span className="text-xs text-[var(--text-muted)]">{chip.label} </span>
-              <span
-                className="text-sm font-semibold"
-                style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums', color: chip.color }}
-              >
-                {chip.value}
-              </span>
-            </div>
-          ))}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Customer</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[var(--text-primary)]">{customer.name}</h2>
+          {customer.siteAddress && (
+            <p className="mt-1 text-sm text-[var(--text-muted)]">{customer.siteAddress}</p>
+          )}
         </div>
+        {onMoveMaterial && (
+          <button
+            type="button"
+            onClick={() => onMoveMaterial(lines[0]?.product.id ?? '', lines[0]?.id ?? '')}
+            className="shrink-0 rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
+          >
+            Move Material →
+          </button>
+        )}
       </div>
 
-      {/* Section 1: Ready to Dispatch */}
+      {/* Metric chips */}
+      <div className="grid grid-cols-5 gap-2">
+        {([
+          { label: 'Ordered', value: metrics.ordered, color: '#6B7280' },
+          { label: 'Received', value: metrics.received, color: '#8B5CF6' },
+          { label: 'Packed', value: metrics.packed, color: '#3B82F6' },
+          { label: 'Dispatched', value: metrics.dispatched, color: '#10B981' },
+          { label: 'Pending', value: metrics.pending, color: '#F59E0B' },
+        ] as const).map((chip) => (
+          <div key={chip.label} className="rounded-xl border border-[var(--border)] bg-white p-2.5 text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{chip.label}</p>
+            <p
+              className="mt-0.5 text-xl font-bold"
+              style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums', color: chip.color }}
+            >
+              {chip.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Ready to dispatch ─────────────────────────────────────── */}
       {readyLines.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4]">
           <div className="border-b border-[#bbf7d0] px-4 py-3">
             <p className="text-sm font-semibold text-[#15803d]">
-              ● {totalInBox} unit{totalInBox !== 1 ? 's' : ''} ready to dispatch
+              ● {metrics.ready} unit{metrics.ready !== 1 ? 's' : ''} ready to dispatch
             </p>
           </div>
           <div className="divide-y divide-[#bbf7d0]">
             {readyLines.map((line) => {
-              const qty = line.stages.GODOWN + line.stages.IN_BOX
+              const isDispatching = dispatchingLine?.lineId === line.id
               return (
-                <div key={line.id} className="flex items-center justify-between px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[var(--text-primary)]">{line.product.name}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{line.product.brand} · {line.product.sku}</p>
+                <div key={line.id}>
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <ProductThumb line={line} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">{line.product.name}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{line.product.brand} · {line.product.sku}</p>
+                      {line.locationNote && (
+                        <p className="mt-0.5 text-[11px] text-[#475569]">📦 {line.locationNote.replace(/^Location:\s*/i, '')}</p>
+                      )}
+                    </div>
+                    <div className="ml-3 flex shrink-0 items-center gap-3">
+                      <span
+                        className="text-base font-bold text-[#15803d]"
+                        style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        ×{line.stages.IN_BOX}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDispatchingLine(isDispatching ? null : { lineId: line.id, challan: '' })
+                          setDispatchErr('')
+                        }}
+                        className={[
+                          'rounded-lg px-3 py-1.5 text-xs font-bold text-white transition',
+                          isDispatching ? 'bg-[#166534]' : 'bg-[#15803d] hover:bg-[#166534]',
+                        ].join(' ')}
+                      >
+                        {isDispatching ? 'Cancel ×' : 'Dispatch ▷'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="ml-3 flex items-center gap-3 shrink-0">
-                    <span
-                      className="text-base font-bold text-[#15803d]"
-                      style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      ×{qty}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onSelectLine(line.id, 'move')}
-                      className="rounded-lg bg-[#15803d] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#166534]"
-                    >
-                      Dispatch ▷
-                    </button>
-                  </div>
+                  {isDispatching && (
+                    <div className="border-t border-[#bbf7d0] bg-white px-4 py-3 space-y-2.5">
+                      <input
+                        type="text"
+                        value={dispatchingLine.challan}
+                        onChange={(e) => setDispatchingLine((d) => d ? { ...d, challan: e.target.value } : d)}
+                        placeholder="Challan / delivery note (e.g. BCH-DC-2026-089)"
+                        autoFocus
+                        className="w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[#86efac]"
+                      />
+                      {dispatchErr && <p className="text-xs text-[#dc2626]">{dispatchErr}</p>}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void executeLineDispatch(line, dispatchingLine.challan)}
+                          disabled={dispatching}
+                          className="flex-1 rounded-xl bg-[#15803d] py-2 text-sm font-bold text-white disabled:opacity-40"
+                        >
+                          {dispatching ? 'Dispatching…' : 'Confirm Dispatch'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setDispatchingLine(null); setDispatchErr('') }}
+                          className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -139,39 +369,96 @@ function CustomerDetail({
         </div>
       )}
 
-      {/* Section 2: Coming Soon */}
-      {pendingLines.length > 0 && (
+      {/* ── Awaiting packing (at godown) ─────────────────────────── */}
+      {godownLines.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-[#bfdbfe] bg-[#eff6ff]">
           <div className="border-b border-[#bfdbfe] px-4 py-3">
             <p className="text-sm font-semibold text-[#1d4ed8]">
-              {totalPending} unit{totalPending !== 1 ? 's' : ''} coming soon
+              ■ {godownLines.reduce((s, l) => s + l.stages.GODOWN, 0)} unit{godownLines.reduce((s, l) => s + l.stages.GODOWN, 0) !== 1 ? 's' : ''} at godown — awaiting packing
             </p>
           </div>
           <div className="divide-y divide-[#bfdbfe]">
+            {godownLines.map((line) => {
+              const isPacking = packingLineId === line.id
+              return (
+                <div key={line.id}>
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <ProductThumb line={line} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">{line.product.name}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{line.product.brand} · {line.product.sku}</p>
+                    </div>
+                    <div className="ml-3 flex shrink-0 items-center gap-3">
+                      <span
+                        className="font-bold text-[#1d4ed8]"
+                        style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        ×{line.stages.GODOWN}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPackingLineId(isPacking ? null : line.id)}
+                        className={[
+                          'rounded-lg px-3 py-1.5 text-xs font-bold transition',
+                          isPacking
+                            ? 'bg-[#1d4ed8] text-white'
+                            : 'border border-[#bfdbfe] bg-white text-[#1d4ed8] hover:bg-[#dbeafe]',
+                        ].join(' ')}
+                      >
+                        {isPacking ? 'Cancel ×' : 'Mark Packed'}
+                      </button>
+                    </div>
+                  </div>
+                  {isPacking && (
+                    <MarkPackedInline
+                      line={line}
+                      onMoved={onMoved}
+                      onDone={() => setPackingLineId(null)}
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Incoming / pending ────────────────────────────────────── */}
+      {pendingLines.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-[#fed7aa] bg-[#fff7ed]">
+          <div className="border-b border-[#fed7aa] px-4 py-3">
+            <p className="text-sm font-semibold text-[#c2410c]">
+              {pendingLines.reduce((s, l) => s + l.stages.PENDING_CO + l.stages.PENDING_DIST, 0)} units incoming
+            </p>
+          </div>
+          <div className="divide-y divide-[#fed7aa]">
             {pendingLines.map((line) => {
-              const fromCo = line.stages.PENDING_CO
-              const fromDist = line.stages.PENDING_DIST
+              const statuses = getLineDispatchStatuses(line).filter((s) => s.status !== 'done' && s.status !== 'ready' && s.status !== 'awaiting_packing')
               const ageDays = line.createdAt
                 ? Math.floor((Date.now() - new Date(line.createdAt).getTime()) / 86_400_000)
                 : null
               return (
-                <div key={line.id} className="flex items-center justify-between px-4 py-3">
-                  <div className="min-w-0">
+                <div key={line.id} className="flex items-center gap-3 px-4 py-3">
+                  <ProductThumb line={line} />
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-[var(--text-primary)]">{line.product.name}</p>
-                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-[var(--text-muted)]">
-                      {fromCo > 0 && <span>Order in Company ×{fromCo}</span>}
-                      {fromDist > 0 && <span>Company Billing ×{fromDist}</span>}
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {statuses.map(({ status, qty }) => (
+                        <StatusPill key={status} status={status} qty={qty} />
+                      ))}
                       {ageDays !== null && ageDays > 14 && (
-                        <span className="font-semibold text-[#d97706]">{ageDays}d — follow up</span>
+                        <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-semibold text-[#d97706]">
+                          ⚠ {ageDays}d — follow up
+                        </span>
                       )}
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => onSelectLine(line.id)}
-                    className="ml-3 shrink-0 text-xs text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
+                    onClick={() => onSelectLine(line.id, 'history')}
+                    className="shrink-0 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                   >
-                    Details
+                    Log
                   </button>
                 </div>
               )
@@ -180,29 +467,7 @@ function CustomerDetail({
         </div>
       )}
 
-      {/* Section 3: Transfers */}
-      {transferMovements.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-[#fde68a] bg-[#fffbeb]">
-          <div className="border-b border-[#fde68a] px-4 py-3">
-            <p className="text-sm font-semibold text-[#92400e]">Transfers</p>
-          </div>
-          <div className="divide-y divide-[#fde68a]">
-            {transferMovements.slice(0, 5).map((m) => (
-              <div key={m.id} className="px-4 py-3">
-                <p className="text-xs text-[var(--text-primary)]">
-                  {m.fromStage === 'TRANSFERRED_IN' ? '↱ Received' : '↰ Given'} · {m.qty} unit{m.qty > 1 ? 's' : ''}
-                </p>
-                {m.note && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{m.note}</p>}
-                <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
-                  {new Date(m.movedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {m.movedBy.name}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Section 4: Delivered (collapsed) */}
+      {/* ── Delivered (collapsed) ─────────────────────────────────── */}
       {deliveredLines.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
           <button
@@ -218,9 +483,10 @@ function CustomerDetail({
           {showDelivered && (
             <div className="divide-y divide-[var(--border)] border-t border-[var(--border)]">
               {deliveredLines.map((line) => (
-                <div key={line.id} className="flex items-center justify-between px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--text-secondary)]">{line.product.name}</p>
+                <div key={line.id} className="flex items-center gap-3 px-4 py-3">
+                  <ProductThumb line={line} size={8} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[var(--text-secondary)]">{line.product.name}</p>
                     <p className="text-xs text-[var(--text-muted)]">
                       ✓ {line.stages.DISPATCHED + line.stages.NOT_DISPLAYED} dispatched
                     </p>
@@ -228,9 +494,9 @@ function CustomerDetail({
                   <button
                     type="button"
                     onClick={() => onSelectLine(line.id, 'history')}
-                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    className="shrink-0 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                   >
-                    Log
+                    History
                   </button>
                 </div>
               ))}
@@ -239,7 +505,7 @@ function CustomerDetail({
         </div>
       )}
 
-      {readyLines.length === 0 && pendingLines.length === 0 && deliveredLines.length === 0 && (
+      {readyLines.length === 0 && godownLines.length === 0 && pendingLines.length === 0 && deliveredLines.length === 0 && (
         <div className="rounded-2xl border border-dashed border-[var(--border-strong)] bg-white p-10 text-center text-sm text-[var(--text-muted)]">
           No purchase activity for this customer.
         </div>
@@ -248,9 +514,95 @@ function CustomerDetail({
   )
 }
 
-export default function WorkspaceCustomers({ lines, activeBrand, onMoved, onSelectLine }: Props) {
+// ─── Customer list card ─────────────────────────────────────────────────────────
+
+function CustomerCard({
+  customer,
+  active,
+  onClick,
+}: {
+  customer: CustomerBucket
+  active: boolean
+  onClick: () => void
+}) {
+  const metrics = getCustomerMetrics(customer.lines)
+  const dispatched = customer.lines.reduce((s, l) => s + l.stages.DISPATCHED + l.stages.NOT_DISPLAYED, 0)
+  const effective = customer.lines.reduce((s, l) => s + effectiveCeiling(l), 0)
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={['w-full p-4 text-left transition border-b border-[var(--border)]', active ? 'bg-[#f8fbff]' : 'hover:bg-[var(--n-50)]'].join(' ')}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--n-100)] text-sm font-semibold text-[var(--text-secondary)]">
+          {customer.name.slice(0, 1)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{customer.name}</p>
+            {metrics.hasAttention && (
+              <span className="shrink-0 text-[11px] text-[#d97706]">⚠</span>
+            )}
+          </div>
+          {customer.siteAddress && (
+            <p className="mt-0.5 truncate text-xs text-[var(--text-muted)]">{customer.siteAddress}</p>
+          )}
+
+          {/* 5-metric row */}
+          <div className="mt-2 grid grid-cols-5 gap-1 text-center">
+            {([
+              { label: 'ORD', value: metrics.ordered },
+              { label: 'RCVD', value: metrics.received },
+              { label: 'PACK', value: metrics.packed },
+              { label: 'SENT', value: dispatched },
+              { label: 'PEND', value: metrics.pending },
+            ] as const).map((m) => (
+              <div key={m.label}>
+                <p className="text-[9px] font-semibold text-[var(--text-muted)]">{m.label}</p>
+                <p
+                  className="text-xs font-bold text-[var(--text-primary)]"
+                  style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {m.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Ready pill + progress */}
+          <div className="mt-2 flex items-center gap-2">
+            {metrics.ready > 0 && (
+              <span className="rounded-full bg-[#f0fdf4] px-2 py-0.5 text-[10px] font-semibold text-[#15803d]">
+                ● {metrics.ready} ready
+              </span>
+            )}
+            <div className="flex-1 h-1 overflow-hidden rounded-full bg-[var(--n-100)]">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: effective > 0 ? `${Math.round((dispatched / effective) * 100)}%` : '0%',
+                  background: dispatched === effective && effective > 0 ? '#10B981' : '#3B82F6',
+                }}
+              />
+            </div>
+            <span className="text-[10px] text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
+              {dispatched}/{effective}
+            </span>
+          </div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+// ─── Main workspace component ───────────────────────────────────────────────────
+
+export default function WorkspaceCustomers({ lines, activeBrand: _activeBrand, onMoved, onSelectLine, onMoveMaterial }: Props) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const customers = lines.reduce<Record<string, CustomerBucket>>((acc, line) => {
     if (!line.customer) return acc
@@ -271,15 +623,19 @@ export default function WorkspaceCustomers({ lines, activeBrand, onMoved, onSele
       return !q || c.name.toLowerCase().includes(q) || (c.siteAddress?.toLowerCase().includes(q) ?? false)
     })
     .sort((a, b) => {
-      const aReady = a.lines.reduce((s, l) => s + getInBoxQty(l), 0)
-      const bReady = b.lines.reduce((s, l) => s + getInBoxQty(l), 0)
+      // Ready customers first, then by attention, then alphabetical
+      const aReady = a.lines.reduce((s, l) => s + l.stages.IN_BOX, 0)
+      const bReady = b.lines.reduce((s, l) => s + l.stages.IN_BOX, 0)
       if (aReady !== bReady) return bReady - aReady
+      const aAttn = getCustomerMetrics(a.lines).hasAttention ? 1 : 0
+      const bAttn = getCustomerMetrics(b.lines).hasAttention ? 1 : 0
+      if (aAttn !== bAttn) return bAttn - aAttn
       return a.name.localeCompare(b.name)
     })
 
   useEffect(() => {
-    if (!customerList.some((c) => c.id === selectedId)) {
-      setSelectedId(customerList[0]?.id ?? null)
+    if (selectedId && !customerList.some((c) => c.id === selectedId)) {
+      setSelectedId(null)
     }
   }, [customerList, selectedId])
 
@@ -294,62 +650,37 @@ export default function WorkspaceCustomers({ lines, activeBrand, onMoved, onSele
   }
 
   return (
-    <div className="grid h-full grid-cols-[280px_minmax(0,1fr)]">
+    <div className="grid h-full grid-cols-[300px_minmax(0,1fr)]">
       {/* Customer list */}
       <aside className="overflow-y-auto border-r border-[var(--border)] bg-white">
-        <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-white p-3">
+        <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-white p-3 space-y-2">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search customer…"
             className="w-full rounded-xl border border-[var(--border)] bg-[var(--n-50)] px-3 py-2 text-sm outline-none transition focus:border-[#93c5fd]"
           />
+          <button
+            type="button"
+            onClick={() => {
+              setExporting(true)
+              void exportCustomerStock(customerList).finally(() => setExporting(false))
+            }}
+            disabled={exporting}
+            className="w-full rounded-xl border border-[var(--border)] bg-white py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] disabled:opacity-40"
+          >
+            {exporting ? 'Exporting…' : '↓ Export all customers .xlsx'}
+          </button>
         </div>
-        <div className="divide-y divide-[var(--border)]">
-          {customerList.map((c) => {
-            const inBox = c.lines.reduce((s, l) => s + getInBoxQty(l), 0)
-            const dispatched = c.lines.reduce((s, l) => s + l.stages.DISPATCHED + l.stages.NOT_DISPLAYED, 0)
-            const effective = c.lines.reduce((s, l) => s + effectiveCeiling(l), 0)
-            const pct = effective > 0 ? Math.round((dispatched / effective) * 100) : 0
-            const active = c.id === selectedId
-
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setSelectedId(c.id)}
-                className={['w-full p-4 text-left transition', active ? 'bg-[#f8fbff]' : 'hover:bg-[var(--n-50)]'].join(' ')}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--n-100)] text-sm font-semibold text-[var(--text-secondary)]">
-                    {c.name.slice(0, 1)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{c.name}</p>
-                    {c.siteAddress && (
-                      <p className="mt-0.5 truncate text-xs text-[var(--text-muted)]">{c.siteAddress}</p>
-                    )}
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--n-100)]">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, background: pct === 100 ? '#10B981' : pct > 60 ? '#3B82F6' : '#F59E0B' }}
-                      />
-                    </div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                      <span style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
-                        {dispatched}/{effective} dispatched
-                      </span>
-                      {inBox > 0 && (
-                        <span className="rounded-full bg-[#f0fdf4] px-1.5 py-0.5 text-[10px] font-semibold text-[#15803d]">
-                          {inBox} in box
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+        <div>
+          {customerList.map((c) => (
+            <CustomerCard
+              key={c.id}
+              customer={c}
+              active={c.id === selectedId}
+              onClick={() => setSelectedId(c.id)}
+            />
+          ))}
         </div>
       </aside>
 
@@ -358,13 +689,14 @@ export default function WorkspaceCustomers({ lines, activeBrand, onMoved, onSele
         {selected ? (
           <CustomerDetail
             customer={selected}
-            activeBrand={activeBrand}
             onSelectLine={onSelectLine}
             onMoved={onMoved}
+            onMoveMaterial={onMoveMaterial}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-[var(--text-muted)]">
-            Select a customer from the list.
+          <div className="flex h-full flex-col items-center justify-center gap-2 p-10 text-center">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Select a customer</p>
+            <p className="text-xs text-[var(--text-muted)]">Choose a customer to see their full order status, dispatch readiness, and incoming stock.</p>
           </div>
         )}
       </section>

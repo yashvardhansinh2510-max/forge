@@ -23,33 +23,33 @@ export const DISPLAY_STAGE_ORDER = [
 export type DisplayStage = typeof DISPLAY_STAGE_ORDER[number]
 
 export const DISPLAY_STAGE_LABEL: Record<DisplayStage, string> = {
-  UNALLOCATED: 'Unassigned',
-  PENDING_CO: 'Order in Company',
-  PENDING_DIST: 'Company Billing',
+  UNALLOCATED: 'No Customer Yet',
+  PENDING_CO: 'Order Placed',
+  PENDING_DIST: 'With Distributor',
   IN_BOX_COMBINED: 'In Box',
   DISPATCHED: 'Dispatched',
-  NOT_DISPLAYED: 'Archive',
+  NOT_DISPLAYED: 'Closed',
 }
 
 export const DISPLAY_STAGE_SHORT: Record<DisplayStage, string> = {
-  UNALLOCATED: 'UNASSIGNED',
-  PENDING_CO: 'WITH CO.',
-  PENDING_DIST: 'BILLING',
+  UNALLOCATED: 'NO CUSTOMER',
+  PENDING_CO: 'ORDERED',
+  PENDING_DIST: 'WITH DIST.',
   IN_BOX_COMBINED: 'IN BOX',
   DISPATCHED: 'DISPATCHED',
-  NOT_DISPLAYED: 'ARCHIVE',
+  NOT_DISPLAYED: 'CLOSED',
 }
 
 // Maps any raw stage string (including transfer pseudo-stages) to a friendly name.
-// Used in the Activity Log tab of the context panel.
+// Used in the Activity Log tab and Move Stock form.
 export const STAGE_FRIENDLY_NAME: Record<string, string> = {
-  UNALLOCATED: 'Unassigned',
-  PENDING_CO: 'Order in Company',
-  PENDING_DIST: 'Company Billing',
-  GODOWN: 'In Box',
-  IN_BOX: 'In Box',
+  UNALLOCATED: 'No Customer Yet',
+  PENDING_CO: 'Order Placed',
+  PENDING_DIST: 'With Distributor',
+  GODOWN: 'At Godown',
+  IN_BOX: 'Packed / Ready',
   DISPATCHED: 'Dispatched',
-  NOT_DISPLAYED: 'Archive',
+  NOT_DISPLAYED: 'Closed',
   TRANSFERRED_IN: 'Received from transfer',
   TRANSFERRED_OUT: 'Given to customer',
 }
@@ -68,8 +68,93 @@ export function getInBoxQty(line: PurchaseTrackerLine): number {
   return line.stages.GODOWN + line.stages.IN_BOX
 }
 
-export type DispatchReadiness = 'waiting' | 'in_box' | 'dispatched' | 'archived'
+// ─── New warehouse-first dispatch status model ─────────────────────────────────
+// Replaces the old DispatchReadiness model with a 4-state operational status.
+// A line can have qty at multiple stages simultaneously; we surface all of them.
 
+export type DispatchStatus =
+  | 'ready'                 // IN_BOX > 0 — packed, can ship now
+  | 'awaiting_packing'      // GODOWN > 0, IN_BOX === 0 — here, needs boxing
+  | 'awaiting_distributor'  // PENDING_DIST > 0 — with distributor
+  | 'awaiting_company'      // PENDING_CO > 0 — manufacturer processing
+  | 'done'                  // DISPATCHED / NOT_DISPLAYED only
+
+export const DISPATCH_STATUS_LABEL: Record<DispatchStatus, string> = {
+  ready: 'Ready',
+  awaiting_packing: 'Awaiting Packing',
+  awaiting_distributor: 'With Distributor',
+  awaiting_company: 'Awaiting Company',
+  done: 'Dispatched',
+}
+
+export const DISPATCH_STATUS_COLOR: Record<DispatchStatus, string> = {
+  ready: '#10B981',
+  awaiting_packing: '#3B82F6',
+  awaiting_distributor: '#F59E0B',
+  awaiting_company: '#9CA3AF',
+  done: '#6EE7B7',
+}
+
+export const DISPATCH_STATUS_BG: Record<DispatchStatus, string> = {
+  ready: '#f0fdf4',
+  awaiting_packing: '#eff6ff',
+  awaiting_distributor: '#fffbeb',
+  awaiting_company: '#f9fafb',
+  done: '#f0fdf4',
+}
+
+/** All active statuses for a line, ordered by priority (most actionable first). */
+export function getLineDispatchStatuses(line: PurchaseTrackerLine): { status: DispatchStatus; qty: number }[] {
+  const result: { status: DispatchStatus; qty: number }[] = []
+  if (line.stages.IN_BOX > 0) result.push({ status: 'ready', qty: line.stages.IN_BOX })
+  if (line.stages.GODOWN > 0) result.push({ status: 'awaiting_packing', qty: line.stages.GODOWN })
+  if (line.stages.PENDING_DIST > 0) result.push({ status: 'awaiting_distributor', qty: line.stages.PENDING_DIST })
+  if (line.stages.PENDING_CO > 0) result.push({ status: 'awaiting_company', qty: line.stages.PENDING_CO })
+  if (result.length === 0) result.push({ status: 'done', qty: line.stages.DISPATCHED + line.stages.NOT_DISPLAYED })
+  return result
+}
+
+/** The headline status — what the worker sees at a glance. */
+export function getLinePrimaryStatus(line: PurchaseTrackerLine): DispatchStatus {
+  return getLineDispatchStatuses(line)[0]?.status ?? 'done'
+}
+
+/** True if this line has anything shippable right now (IN_BOX > 0). */
+export function lineIsReady(line: PurchaseTrackerLine): boolean {
+  return line.stages.IN_BOX > 0
+}
+
+// ─── Customer-level aggregated metrics ─────────────────────────────────────────
+
+export interface CustomerMetrics {
+  ordered: number      // effectiveCeiling across all lines
+  received: number     // GODOWN + IN_BOX + DISPATCHED + NOT_DISPLAYED
+  packed: number       // IN_BOX only
+  dispatched: number   // DISPATCHED + NOT_DISPLAYED
+  pending: number      // PENDING_CO + PENDING_DIST
+  ready: number        // IN_BOX
+  hasAttention: boolean
+}
+
+export function getCustomerMetrics(lines: PurchaseTrackerLine[]): CustomerMetrics {
+  let ordered = 0, received = 0, packed = 0, dispatched = 0, pending = 0
+  let hasAttention = false
+  for (const l of lines) {
+    ordered += effectiveCeiling(l)
+    received += l.stages.GODOWN + l.stages.IN_BOX + l.stages.DISPATCHED + l.stages.NOT_DISPLAYED
+    packed += l.stages.IN_BOX
+    dispatched += l.stages.DISPATCHED + l.stages.NOT_DISPLAYED
+    pending += l.stages.PENDING_CO + l.stages.PENDING_DIST
+    const u = getLineUrgency(l)
+    if (u === 'critical' || u === 'warning') hasAttention = true
+  }
+  return { ordered, received, packed, dispatched, pending, ready: packed, hasAttention }
+}
+
+// ─── Keep old DispatchReadiness for any callers not yet migrated ───────────────
+/** @deprecated Use getLinePrimaryStatus instead. */
+export type DispatchReadiness = 'waiting' | 'in_box' | 'dispatched' | 'archived'
+/** @deprecated */
 export function getDispatchReadiness(line: PurchaseTrackerLine): DispatchReadiness {
   if (getInBoxQty(line) > 0) return 'in_box'
   if (line.stages.DISPATCHED > 0 || line.stages.NOT_DISPLAYED > 0) {
@@ -79,14 +164,14 @@ export function getDispatchReadiness(line: PurchaseTrackerLine): DispatchReadine
   }
   return 'waiting'
 }
-
+/** @deprecated */
 export const DISPATCH_READINESS_LABEL: Record<DispatchReadiness, string> = {
   waiting: 'Waiting from Supplier',
   in_box: 'In Box — Ready',
   dispatched: 'Dispatched',
   archived: 'Archived',
 }
-
+/** @deprecated */
 export const DISPATCH_READINESS_COLOR: Record<DispatchReadiness, string> = {
   waiting: '#9CA3AF',
   in_box: '#10B981',
@@ -107,13 +192,13 @@ export interface HeaderCounts {
 }
 
 export const STAGE_LABEL: Record<PurchaseStage, string> = {
-  UNALLOCATED: 'Unallocated',
-  PENDING_CO: 'Pend. Company',
-  PENDING_DIST: 'Pend. Distributor',
+  UNALLOCATED: 'No Customer',
+  PENDING_CO: 'Order Placed',
+  PENDING_DIST: 'With Distributor',
   GODOWN: 'At Godown',
-  IN_BOX: 'In Box',
+  IN_BOX: 'Packed',
   DISPATCHED: 'Dispatched',
-  NOT_DISPLAYED: 'Not Displayed',
+  NOT_DISPLAYED: 'Closed',
 }
 
 export const STAGE_SHORT_LABEL: Record<PurchaseStage, string> = {
@@ -162,6 +247,7 @@ export interface PurchaseTrackerLine {
   vendorName: string | null
   projectId: string | null
   createdAt?: string
+  locationNote?: string | null
   customer: {
     id: string
     name: string
