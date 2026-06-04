@@ -232,8 +232,10 @@ model QuotationItem {
   productId       String
   product         Product         @relation(fields: [productId], references: [id])
   quantity        Int             @default(1)
-  selectedFinish  String?
-  selectedColor   String?
+  selectedFinish     String?   // finish code, e.g. "670"
+  selectedFinishName String?   // human-readable, e.g. "Matt Black"
+  selectedFinishSku  String?   // orderable SKU for this finish, e.g. "71551670"
+  selectedColor      String?   // hex swatch, e.g. "#1C1C1E"
   mrp             Float           // snapshot at time of adding
   discountPct     Float           @default(0.0)
   offerRate       Float           // mrp * (1 - discountPct/100)
@@ -265,6 +267,7 @@ model Product {
   imageUrl        String?
   tier            String          @default("premium")  // luxury | premium | mid
   isActive        Boolean         @default(true)
+  isCustom        Boolean         @default(false)
   stockAvailable  Int             @default(0)
   variants        Json?           // { finishes: [{name, code, color, priceAdj}] }
   // Self-referential concealed part dependency
@@ -466,6 +469,7 @@ model StageMovement {
   movedById    String
   movedBy      User       @relation("StageMovements", fields: [movedById], references: [id])
   note         String?
+  location     String?
   movedAt      DateTime   @default(now())
 }
 
