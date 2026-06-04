@@ -46,7 +46,7 @@ function mapLine(line: {
   qtyDispatched: number
   qtyNotDisplayed: number
   followUpStatus: string | null
-  stageMovements: Array<{ note: string | null; movedAt?: Date }>
+  stageMovements: Array<{ location: string | null; movedAt: Date }>
   product: {
     id: string
     sku: string
@@ -81,26 +81,10 @@ function mapLine(line: {
     ? { id: line.po.customerName.trim().toLowerCase(), name: line.po.customerName, siteAddress: line.po.customerSiteAddress }
     : null
 
-  // Determine currentLocation and lastActivityAt based on stage priorities
-  let currentLocation: string | null = null
-  let lastActivityAt: string | null = null
-
-  if (line.qtyAtGodown > 0) {
-    currentLocation = 'Rack B-3'
-    lastActivityAt = new Date(Date.now() - 2 * 3_600_000).toISOString()
-  } else if (line.qtyInBox > 0) {
-    currentLocation = 'Box 12'
-    lastActivityAt = new Date(Date.now() - 5 * 3_600_000).toISOString()
-  } else if (line.qtyPendingDist > 0) {
-    currentLocation = null
-    lastActivityAt = new Date(Date.now() - 14 * 86_400_000).toISOString()
-  } else if (line.qtyPendingCo > 0) {
-    currentLocation = null
-    lastActivityAt = new Date(Date.now() - 3 * 86_400_000).toISOString()
-  } else {
-    currentLocation = null
-    lastActivityAt = new Date(Date.now() - 1 * 86_400_000).toISOString()
-  }
+  // Derive currentLocation and lastActivityAt from actual StageMovement records
+  const movements = line.stageMovements
+  const lastActivityAt = movements[0]?.movedAt?.toISOString() ?? null
+  const currentLocation = movements.find((m) => m.location !== null)?.location ?? null
 
   return {
     id: line.id,
@@ -109,7 +93,6 @@ function mapLine(line: {
     poNumber: line.po.poNumber,
     vendorName: line.po.vendorName,
     projectId: line.po.project?.id ?? null,
-    locationNote: line.stageMovements[0]?.note ?? null,
     customer,
     product: {
       id: line.product.id,
@@ -147,10 +130,9 @@ export async function GET(req: NextRequest) {
         qtyInBox: true, qtyDispatched: true, qtyNotDisplayed: true,
         followUpStatus: true,
         stageMovements: {
-          where: { toStage: { in: ['GODOWN', 'IN_BOX'] }, note: { not: null } },
           orderBy: { movedAt: 'desc' as const },
-          take: 1,
-          select: { note: true },
+          take: 5,
+          select: { location: true, movedAt: true },
         },
         product: {
           select: {
