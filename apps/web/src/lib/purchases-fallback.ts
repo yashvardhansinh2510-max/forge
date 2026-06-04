@@ -86,6 +86,8 @@ function mapMockLine(order: MockPurchaseOrder, line: MockPOLineItem): PurchaseTr
       qtyDispatched: line.qtyDispatched,
       qtyNotDisplayed: line.qtyNotDisplayed,
     }),
+    currentLocation: line.currentLocation,
+    lastActivityAt: line.lastActivityAt,
   }
 }
 

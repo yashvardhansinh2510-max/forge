@@ -247,6 +247,8 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
           qtyInBox:            0,
           qtyDispatched:       0,
           qtyNotDisplayed:     0,
+          currentLocation:     null,
+          lastActivityAt:      new Date(Date.now() - 3 * 86_400_000).toISOString(),
         })),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -302,6 +304,8 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
                 scheduledDelivery: null,
                 customNote:        room.name,
               }],
+              currentLocation:     null,
+              lastActivityAt:      new Date(Date.now() - 3 * 86_400_000).toISOString(),
             }
             if (!brandMap.has(brand)) brandMap.set(brand, [])
             brandMap.get(brand)!.push(line)

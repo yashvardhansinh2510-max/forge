@@ -112,6 +112,8 @@ export interface MockPOLineItem {
   status:               POLineStatus
   /** Customer-side distribution of this line item's units */
   customerAllocations:  CustomerAllocation[]
+  currentLocation:      string | null    // physical warehouse location, e.g. "Box 12"
+  lastActivityAt:       string | null    // ISO string of last stage movement
 }
 
 // ─── Dispatch audit record (per-unit, immutable once set) ─────────────────────
@@ -337,6 +339,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
           { customerId: 'proj-001', customerName: 'Rajesh Smith',  qty: 1, boxStatus: 'AT_GODOWN',  scheduledDelivery: '2026-04-15', customNote: null },
           { customerId: 'proj-003', customerName: 'Vikram Oberoi', qty: 1, boxStatus: 'ORDERED',    scheduledDelivery: null,          customNote: null },
         ],
+        currentLocation: 'Rack B-3',
+        lastActivityAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
       },
       {
         id: 'line-002', productId: 'grh-euphoria',
@@ -350,6 +354,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
         customerAllocations: [
           { customerId: 'proj-001', customerName: 'Rajesh Smith', qty: 1, boxStatus: 'GIVEN_OTHER', scheduledDelivery: null, customNote: 'Given to Mehta Architects for project sample display at their Bandra office.' },
         ],
+        currentLocation: null,
+        lastActivityAt: new Date(Date.now() - 1 * 86_400_000).toISOString(),
       },
     ],
     createdAt: '2026-03-10T10:00:00Z',
@@ -384,6 +390,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
           { customerId: 'proj-002', customerName: 'Suresh Mehta', qty: 2, boxStatus: 'ORDERED',  scheduledDelivery: '2026-05-01', customNote: null },
           { customerId: 'proj-004', customerName: 'Priya Shah',   qty: 1, boxStatus: 'NEEDS_PO', scheduledDelivery: null,          customNote: null },
         ],
+        currentLocation: null,
+        lastActivityAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
       },
     ],
     createdAt: '2026-03-18T09:00:00Z',
@@ -419,6 +427,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
           { customerId: 'proj-004', customerName: 'Priya Shah',      qty: 1, boxStatus: 'AT_GODOWN', scheduledDelivery: null,          customNote: null },
           { customerId: 'proj-007', customerName: 'Arjun Kapoor',    qty: 1, boxStatus: 'DELIVERED', scheduledDelivery: null,          customNote: null },
         ],
+        currentLocation: 'Rack B-3',
+        lastActivityAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
       },
     ],
     createdAt: '2026-02-20T08:00:00Z',
@@ -453,6 +463,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
           { customerId: 'proj-005', customerName: 'Lodha Group',   qty: 2, boxStatus: 'IN_BOX',  scheduledDelivery: '2026-04-10', customNote: null },
           { customerId: 'proj-003', customerName: 'Vikram Oberoi', qty: 2, boxStatus: 'ORDERED', scheduledDelivery: null,          customNote: null },
         ],
+        currentLocation: 'Box 12',
+        lastActivityAt: new Date(Date.now() - 5 * 3_600_000).toISOString(),
       },
       {
         id: 'line-006', productId: 'axr-citterio',
@@ -466,6 +478,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
         customerAllocations: [
           { customerId: 'proj-005', customerName: 'Lodha Group', qty: 2, boxStatus: 'ORDERED', scheduledDelivery: null, customNote: null },
         ],
+        currentLocation: null,
+        lastActivityAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
       },
     ],
     createdAt: '2026-03-01T11:00:00Z',
@@ -500,6 +514,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
           { customerId: 'proj-005', customerName: 'Lodha Group',   qty: 2, boxStatus: 'ORDERED',  scheduledDelivery: '2026-04-28', customNote: null },
           { customerId: 'proj-003', customerName: 'Vikram Oberoi', qty: 1, boxStatus: 'NEEDS_PO', scheduledDelivery: null,          customNote: null },
         ],
+        currentLocation: null,
+        lastActivityAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
       },
     ],
     createdAt: '2026-03-05T14:00:00Z',
@@ -534,6 +550,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
           { customerId: 'proj-006', customerName: 'Prestige Realty', qty: 5, boxStatus: 'ORDERED',  scheduledDelivery: '2026-05-10', customNote: null },
           { customerId: 'proj-004', customerName: 'Priya Shah',      qty: 1, boxStatus: 'NEEDS_PO', scheduledDelivery: null,          customNote: null },
         ],
+        currentLocation: null,
+        lastActivityAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
       },
     ],
     createdAt: '2026-03-15T10:30:00Z',
@@ -567,6 +585,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
         customerAllocations: [
           { customerId: 'proj-006', customerName: 'Prestige Realty', qty: 6, boxStatus: 'ORDERED', scheduledDelivery: null, customNote: null },
         ],
+        currentLocation: null,
+        lastActivityAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
       },
       {
         id: 'line-010', productId: 'vtr-sento',
@@ -581,6 +601,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
           { customerId: 'proj-006', customerName: 'Prestige Realty', qty: 4, boxStatus: 'ORDERED',  scheduledDelivery: null, customNote: null },
           { customerId: 'proj-004', customerName: 'Priya Shah',      qty: 2, boxStatus: 'NEEDS_PO', scheduledDelivery: null, customNote: null },
         ],
+        currentLocation: null,
+        lastActivityAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
       },
     ],
     createdAt: '2026-03-20T16:00:00Z',
@@ -614,6 +636,8 @@ export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = [
         customerAllocations: [
           { customerId: 'proj-002', customerName: 'Suresh Mehta', qty: 1, boxStatus: 'DELIVERED', scheduledDelivery: null, customNote: null },
         ],
+        currentLocation: null,
+        lastActivityAt: new Date(Date.now() - 1 * 86_400_000).toISOString(),
       },
     ],
     createdAt: '2026-02-15T08:00:00Z',
