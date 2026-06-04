@@ -272,6 +272,8 @@ export interface PurchaseTrackerLine {
   qtyReceived: number
   stages: HeaderCounts
   followUpStatus?: string | null
+  currentLocation: string | null      // derived from latest StageMovement.location
+  lastActivityAt: string | null       // ISO string of latest StageMovement.movedAt
 }
 
 export type UrgencyLevel = 'critical' | 'warning' | 'attention' | 'normal'
@@ -491,4 +493,23 @@ export function computeStageTotalsResult(sums: StageSums) {
     dispatched: sums.dispatched,
     notDisplayed: sums.notDisplayed,
   }
+}
+
+export function formatRelativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60_000)
+  if (diffMins < 2) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHrs = Math.floor(diffMins / 60)
+  if (diffHrs < 24) return `${diffHrs}h ago`
+  const diffDays = Math.floor(diffHrs / 24)
+  return `${diffDays}d ago`
+}
+
+export function lastActivityColor(lastActivityAt: string | null): string {
+  if (!lastActivityAt) return 'var(--text-muted)'
+  const days = (Date.now() - new Date(lastActivityAt).getTime()) / 86_400_000
+  if (days > 14) return '#ef4444'
+  if (days > 7)  return '#f59e0b'
+  return 'var(--text-muted)'
 }
