@@ -3,18 +3,19 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import {
-  DISPATCH_STATUS_BG,
-  DISPATCH_STATUS_COLOR,
-  DISPATCH_STATUS_LABEL,
-  STAGE_COLORS,
+  formatRelativeTime,
   getLineDispatchStatuses,
   getLinePrimaryStatus,
+  lastActivityColor,
   type BrandTab,
-  type DispatchStatus,
   type HeaderCounts,
   type PurchaseStage,
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
+import { exportToCSV } from '@/lib/purchases-export'
+import StageTracker from '@/components/purchases/StageTracker'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
   lines: PurchaseTrackerLine[]
@@ -26,139 +27,108 @@ interface Props {
   onMoveMaterial?: (productId: string, sourceLineId: string) => void
 }
 
-const STATUS_FILTER_OPTIONS: { value: DispatchStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All stock' },
-  { value: 'ready', label: 'Ready' },
-  { value: 'awaiting_packing', label: 'Awaiting Packing' },
+type StatusFilter = 'all' | 'ready' | 'awaiting_packing' | 'awaiting_distributor' | 'awaiting_company'
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'all',                  label: 'All stock' },
+  { value: 'ready',                label: '● Ready' },
+  { value: 'awaiting_packing',     label: 'Awaiting Packing' },
   { value: 'awaiting_distributor', label: 'With Distributor' },
-  { value: 'awaiting_company', label: 'Awaiting Company' },
+  { value: 'awaiting_company',     label: 'Awaiting Company' },
 ]
 
-// ─── Stage tracker ──────────────────────────────────────────────────────────────
+// ─── Grid columns ─────────────────────────────────────────────────────────────
+const GRID = 'grid grid-cols-[72px_minmax(0,1fr)_160px_220px_56px_140px_136px]'
 
-const TRACKER_STAGES: { stage: PurchaseStage; short: string }[] = [
-  { stage: 'PENDING_CO',   short: 'Ordered'  },
-  { stage: 'PENDING_DIST', short: 'W/ Dist'  },
-  { stage: 'GODOWN',       short: 'Godown'   },
-  { stage: 'IN_BOX',       short: 'Packed'   },
-  { stage: 'DISPATCHED',   short: 'Done'     },
-]
+// ─── Product thumbnail ────────────────────────────────────────────────────────
 
-function StageTracker({ stages }: { stages: PurchaseTrackerLine['stages'] }) {
-  return (
-    <div className="flex items-end gap-1">
-      {TRACKER_STAGES.map(({ stage, short }, i) => {
-        const qty = stages[stage]
-        const active = qty > 0
-        const color = STAGE_COLORS[stage]
-        return (
-          <div key={stage} className="flex items-center gap-1">
-            {i > 0 && <div className="mb-3 h-px w-2 bg-[var(--border)]" />}
-            <div className="flex flex-col items-center gap-0.5">
-              <span
-                className="rounded px-1.5 py-0.5 text-[10px] font-bold min-w-[28px] text-center leading-tight"
-                style={{
-                  background: active ? `${color}18` : 'var(--n-100)',
-                  color: active ? color : 'var(--text-muted)',
-                  border: active ? `1px solid ${color}30` : '1px solid transparent',
-                }}
-              >
-                {active ? qty : '—'}
-              </span>
-              <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap leading-none">{short}</span>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ─── Product thumbnail ─────────────────────────────────────────────────────────
-
-function ProductThumb({ line }: { line: PurchaseTrackerLine }) {
+function ProductThumb({ line, size = 64 }: { line: PurchaseTrackerLine; size?: number }) {
   if (line.product.imageUrl) {
     return (
-      <div className="relative h-11 w-11 shrink-0">
+      <div style={{ width: size, height: size, position: 'relative', flexShrink: 0 }}>
         <Image
           src={line.product.imageUrl}
           alt={line.product.name}
           fill
-          className="rounded-lg border border-[var(--border)] object-contain p-0.5"
+          className="rounded-xl border border-[var(--border)] object-contain p-1"
           unoptimized
         />
       </div>
     )
   }
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--n-50)] text-[10px] font-bold text-[var(--text-muted)]">
-      {line.product.brand.slice(0, 2)}
+    <div
+      className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--n-50)]"
+      style={{ width: size, height: size, flexShrink: 0, fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}
+    >
+      {line.product.brand.slice(0, 3).toUpperCase()}
     </div>
   )
 }
 
-// ─── Status pill ───────────────────────────────────────────────────────────────
+// ─── Finish pill ──────────────────────────────────────────────────────────────
 
-function StatusPill({ status, qty }: { status: DispatchStatus; qty?: number }) {
+function FinishPill({ finishName }: { finishName: string }) {
+  const color =
+    /chrome|chromé/i.test(finishName)          ? '#c0c0c0' :
+    /brushed.?nickel|nickel.?brossé/i.test(finishName) ? '#a8a8a8' :
+    /graphite|graph/i.test(finishName)         ? '#3d3d3d' :
+    /gold|or\b/i.test(finishName)              ? '#c5a028' :
+    /white|blanc/i.test(finishName)            ? '#f5f5f4' :
+    /black|noir/i.test(finishName)             ? '#1c1c1c' :
+    /steel|inox/i.test(finishName)             ? '#b0b8c1' :
+    '#9ca3af'
+
   return (
-    <span
-      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
-      style={{ background: DISPATCH_STATUS_BG[status], color: DISPATCH_STATUS_COLOR[status] }}
-    >
-      {status === 'ready' && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-      {DISPATCH_STATUS_LABEL[status]}{qty !== undefined ? ` ×${qty}` : ''}
+    <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--n-50)] px-1.5 py-0.5">
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, border: '1px solid rgba(0,0,0,0.12)', flexShrink: 0 }} />
+      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)' }}>{finishName}</span>
     </span>
   )
 }
 
-// ─── Mark Packed quick action ──────────────────────────────────────────────────
+// ─── Mark Packed inline action ────────────────────────────────────────────────
 
-function MarkPackedButton({
+function MarkPackedAction({
   line,
   onMoved,
+  onDone,
 }: {
   line: PurchaseTrackerLine
   onMoved: Props['onMoved']
+  onDone: () => void
 }) {
-  const [open, setOpen] = useState(false)
   const [location, setLocation] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState('')
-
+  const [saving, setSaving]     = useState(false)
+  const [err, setErr]           = useState('')
   const qty = line.stages.GODOWN
 
   async function doPack() {
     setSaving(true)
     setErr('')
     try {
-      const note = location.trim() ? `Location: ${location.trim()}` : undefined
-      const res = await fetch(`/api/purchase-orders/lines/${encodeURIComponent(line.id)}/move-stage`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromStage: 'GODOWN', toStage: 'IN_BOX', qty, note }),
-      })
+      const res = await fetch(
+        `/api/purchase-orders/lines/${encodeURIComponent(line.id)}/move-stage`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fromStage: 'GODOWN',
+            toStage:   'IN_BOX',
+            qty,
+            location:  location.trim() || undefined,
+          }),
+        },
+      )
       const data = await res.json() as { stageTotals?: HeaderCounts; message?: string }
       if (!res.ok || !data.stageTotals) { setErr(data.message ?? 'Pack failed'); return }
       onMoved(data.stageTotals, line.id, 'GODOWN', 'IN_BOX', qty)
-      setOpen(false)
-      setLocation('')
+      onDone()
     } catch {
       setErr('Network error')
     } finally {
       setSaving(false)
     }
-  }
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1 text-[11px] font-semibold text-[#2563eb] transition hover:bg-[#dbeafe]"
-      >
-        Mark Packed
-      </button>
-    )
   }
 
   return (
@@ -167,9 +137,9 @@ function MarkPackedButton({
         type="text"
         value={location}
         onChange={(e) => setLocation(e.target.value)}
-        placeholder="Box / shelf (e.g. Rack B3)"
+        placeholder="Box / shelf"
         autoFocus
-        className="w-36 rounded-lg border border-[var(--border)] px-2 py-1 text-xs outline-none focus:border-[#60a5fa]"
+        className="w-28 rounded-lg border border-[var(--border)] px-2 py-1 text-xs outline-none focus:border-[#60a5fa]"
       />
       {err && <span className="text-[11px] text-[#dc2626]">{err}</span>}
       <button
@@ -180,365 +150,351 @@ function MarkPackedButton({
       >
         {saving ? '…' : 'Pack'}
       </button>
-      <button
-        type="button"
-        onClick={() => setOpen(false)}
-        className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-      >
-        ×
-      </button>
+      <button type="button" onClick={onDone} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">×</button>
     </div>
   )
 }
 
-// ─── Expanded row ──────────────────────────────────────────────────────────────
+// ─── Next-action button ───────────────────────────────────────────────────────
 
-function ExpandedRow({
+function NextActionButton({
   line,
-  onMoved,
   onSelectLine,
-  onMoveMaterial,
+  onMoved,
 }: {
   line: PurchaseTrackerLine
-  onMoved: Props['onMoved']
   onSelectLine: Props['onSelectLine']
-  onMoveMaterial?: Props['onMoveMaterial']
+  onMoved: Props['onMoved']
 }) {
-  const statuses = getLineDispatchStatuses(line)
+  const [packing, setPacking] = useState(false)
+  const primary = getLinePrimaryStatus(line)
+
+  if (packing) {
+    return <MarkPackedAction line={line} onMoved={onMoved} onDone={() => setPacking(false)} />
+  }
+
+  if (primary === 'ready') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onSelectLine(line.id, 'move') }}
+        className="w-full rounded-lg bg-[#10b981] px-3 py-2 text-[11px] font-bold text-white transition hover:bg-[#059669]"
+      >
+        Dispatch ▷
+      </button>
+    )
+  }
+
+  if (primary === 'awaiting_packing') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setPacking(true) }}
+        className="w-full rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-[11px] font-bold text-[#2563eb] transition hover:bg-[#dbeafe]"
+      >
+        Mark Packed →
+      </button>
+    )
+  }
+
+  if (primary === 'awaiting_distributor') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onSelectLine(line.id, 'history') }}
+        className="w-full rounded-lg border border-[#fcd34d] bg-[#fffbeb] px-3 py-2 text-[11px] font-bold text-[#d97706] transition hover:bg-[#fef3c7]"
+      >
+        Follow Up ⚠
+      </button>
+    )
+  }
 
   return (
-    <tr>
-      <td colSpan={6} className="border-b border-[var(--border)] bg-[#f8fbff] px-5 py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* All status breakdown */}
-          <div className="flex flex-wrap gap-1.5">
-            {statuses.map(({ status, qty }) => (
-              <StatusPill key={status} status={status} qty={qty} />
-            ))}
-          </div>
-
-          <div className="h-4 w-px bg-[var(--border)]" />
-
-          <p className="text-xs text-[var(--text-muted)]">
-            Ordered: <span className="font-semibold text-[var(--text-primary)]">{line.qtyOrdered}</span>
-          </p>
-          <p className="text-xs text-[var(--text-muted)]">
-            PO: <span className="font-mono font-semibold text-[var(--text-primary)]">{line.poNumber}</span>
-          </p>
-
-          <div className="ml-auto flex items-center gap-2">
-            {line.stages.GODOWN > 0 && (
-              <MarkPackedButton line={line} onMoved={onMoved} />
-            )}
-            {onMoveMaterial && (
-              <button
-                type="button"
-                onClick={() => onMoveMaterial(line.product.id, line.id)}
-                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition hover:border-[var(--border-strong)]"
-              >
-                Move Material →
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => onSelectLine(line.id, 'move')}
-              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition hover:border-[var(--border-strong)]"
-            >
-              Move to Stage
-            </button>
-            <button
-              type="button"
-              onClick={() => onSelectLine(line.id, 'history')}
-              className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            >
-              History
-            </button>
-          </div>
-        </div>
-      </td>
-    </tr>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onSelectLine(line.id) }}
+      className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[11px] font-medium text-[var(--text-muted)] transition hover:border-[var(--border-strong)]"
+    >
+      View →
+    </button>
   )
 }
 
-// ─── Excel export ──────────────────────────────────────────────────────────────
+// ─── Stock row ────────────────────────────────────────────────────────────────
 
-async function exportCurrentStock(lines: PurchaseTrackerLine[]) {
-  const ExcelJS = (await import('exceljs')).default
-  const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet('Current Stock')
+function StockRow({
+  line,
+  onSelectLine,
+  onMoved,
+}: {
+  line: PurchaseTrackerLine
+  onSelectLine: Props['onSelectLine']
+  onMoved: Props['onMoved']
+}) {
+  const primary    = getLinePrimaryStatus(line)
+  const primaryQty = getLineDispatchStatuses(line).find((s) => s.status === primary)?.qty ?? 0
 
-  ws.columns = [
-    { header: 'SKU',         key: 'sku',         width: 26 },
-    { header: 'Product',     key: 'name',        width: 42 },
-    { header: 'Brand',       key: 'brand',       width: 12 },
-    { header: 'Customer',    key: 'customer',    width: 30 },
-    { header: 'Site',        key: 'site',        width: 28 },
-    { header: 'Location',    key: 'location',    width: 22 },
-    { header: 'Pend. CO',    key: 'pendingCo',   width: 10 },
-    { header: 'Pend. Dist',  key: 'pendingDist', width: 11 },
-    { header: 'At Godown',   key: 'godown',      width: 11 },
-    { header: 'In Box',      key: 'inBox',       width: 9  },
-    { header: 'Dispatched',  key: 'dispatched',  width: 12 },
-    { header: 'Status',      key: 'status',      width: 20 },
-  ]
+  const rowBg =
+    primary === 'ready'            ? 'bg-[#f0fdf4] hover:bg-[#dcfce7]' :
+    primary === 'awaiting_packing' ? 'hover:bg-[var(--n-50)]' :
+    'opacity-90 hover:bg-[var(--n-50)]'
 
-  for (const line of lines) {
-    const primary = getLinePrimaryStatus(line)
-    ws.addRow({
-      sku:        line.product.sku,
-      name:       line.product.name,
-      brand:      line.product.brand,
-      customer:   line.customer?.name ?? '',
-      site:       line.customer?.siteAddress ?? '',
-      location:   line.locationNote ?? '',
-      pendingCo:  line.stages.PENDING_CO,
-      pendingDist:line.stages.PENDING_DIST,
-      godown:     line.stages.GODOWN,
-      inBox:      line.stages.IN_BOX,
-      dispatched: line.stages.DISPATCHED,
-      status:     DISPATCH_STATUS_LABEL[primary],
-    })
-  }
+  const leftBorder =
+    primary === 'ready'                ? '3px solid #10b981' :
+    primary === 'awaiting_packing'     ? '3px solid #2563eb' :
+    primary === 'awaiting_distributor' ? '3px solid #f59e0b' :
+    '3px solid transparent'
 
-  const headerRow = ws.getRow(1)
-  headerRow.font = { bold: true }
-  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
+  return (
+    <div
+      className={`${GRID} cursor-pointer items-center gap-0 border-b border-[var(--border)] px-4 py-3 transition ${rowBg}`}
+      style={{ borderLeft: leftBorder }}
+      onClick={() => onSelectLine(line.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') onSelectLine(line.id) }}
+    >
+      {/* Thumbnail */}
+      <div className="pr-3">
+        <ProductThumb line={line} size={60} />
+      </div>
 
-  const buffer = await wb.xlsx.writeBuffer()
-  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `stock-${new Date().toISOString().slice(0, 10)}.xlsx`
-  a.click()
-  URL.revokeObjectURL(url)
+      {/* Product + finish */}
+      <div className="min-w-0 pr-3">
+        <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{line.product.name}</p>
+        <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{line.product.sku}</p>
+        {line.product.finishName && <FinishPill finishName={line.product.finishName} />}
+      </div>
+
+      {/* Customer + project */}
+      <div className="min-w-0 pr-3">
+        <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+          {line.customer?.name ?? <span className="text-[var(--text-muted)]">No customer</span>}
+        </p>
+        {line.customer?.siteAddress && (
+          <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{line.customer.siteAddress}</p>
+        )}
+      </div>
+
+      {/* Stage tracker */}
+      <div className="pr-3">
+        <StageTracker line={line} />
+      </div>
+
+      {/* Qty */}
+      <div className="pr-2 text-center">
+        <p
+          className="text-lg font-bold text-[var(--text-primary)]"
+          style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
+        >
+          {primaryQty}
+        </p>
+        <p className="text-[9px] text-[var(--text-muted)]">units</p>
+      </div>
+
+      {/* Location + last activity */}
+      <div className="pr-3">
+        {line.currentLocation ? (
+          <span className="inline-flex items-center gap-1 rounded-md border border-[#bae6fd] bg-[#f0f9ff] px-2 py-0.5 text-[11px] font-semibold text-[#0369a1]">
+            📦 {line.currentLocation}
+          </span>
+        ) : (
+          <span className="text-[11px] text-[var(--text-muted)]">—</span>
+        )}
+        {line.lastActivityAt && (
+          <p
+            className="mt-1 text-[10px]"
+            style={{ color: lastActivityColor(line.lastActivityAt) }}
+          >
+            {formatRelativeTime(new Date(line.lastActivityAt))}
+          </p>
+        )}
+      </div>
+
+      {/* Next action */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <NextActionButton line={line} onSelectLine={onSelectLine} onMoved={onMoved} />
+      </div>
+    </div>
+  )
 }
 
-// ─── Loading skeleton ──────────────────────────────────────────────────────────
+// ─── Section header ───────────────────────────────────────────────────────────
+
+function SectionHeader({
+  label, count, color, bg,
+}: {
+  label: string; count: number; color: string; bg: string
+}) {
+  return (
+    <div className="flex items-center gap-3 border-b border-[var(--border)] bg-white px-4 py-2">
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color }}>{label}</span>
+      <div className="h-px flex-1 bg-[var(--border)]" />
+      <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: bg, color }}>{count}</span>
+    </div>
+  )
+}
+
+// ─── Table header ─────────────────────────────────────────────────────────────
+
+function TableHeader() {
+  return (
+    <div
+      className={`${GRID} border-b border-[var(--border)] bg-[var(--n-50)] px-4 py-2.5`}
+      style={{ borderLeft: '3px solid transparent' }}
+    >
+      <div />
+      <div className="pr-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Product</div>
+      <div className="pr-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Customer · Project</div>
+      <div className="pr-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Stage</div>
+      <div className="pr-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Qty</div>
+      <div className="pr-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Location · Activity</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Next Action</div>
+    </div>
+  )
+}
+
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
 
 function LoadingSkeleton() {
   return (
     <div className="space-y-2 p-6">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="h-16 rounded-xl bg-[linear-gradient(90deg,#f4f4f3,#ffffff,#f4f4f3)] animate-shimmer" />
+        <div key={i} className="h-20 rounded-xl bg-[linear-gradient(90deg,#f4f4f3,#ffffff,#f4f4f3)] animate-shimmer" />
       ))}
     </div>
   )
 }
 
-// ─── Status filter bar ─────────────────────────────────────────────────────────
-
-function StatusFilterBar({
-  value,
-  onChange,
-  total,
-  filtered,
-  onExport,
-  exporting,
-}: {
-  value: DispatchStatus | 'all'
-  onChange: (v: DispatchStatus | 'all') => void
-  total: number
-  filtered: number
-  onExport: () => void
-  exporting: boolean
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {STATUS_FILTER_OPTIONS.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={[
-            'rounded-full border px-3 py-1 text-xs font-semibold transition',
-            value === opt.value
-              ? 'border-[#0f172a] bg-[#0f172a] text-white'
-              : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[var(--border-strong)]',
-          ].join(' ')}
-        >
-          {opt.label}
-        </button>
-      ))}
-      <span className="ml-auto text-xs text-[var(--text-muted)]">
-        {filtered === total ? `${total} lines` : `${filtered} of ${total}`}
-      </span>
-      <button
-        type="button"
-        onClick={onExport}
-        disabled={exporting}
-        className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] disabled:opacity-40"
-      >
-        {exporting ? 'Exporting…' : '↓ Export .xlsx'}
-      </button>
-    </div>
-  )
-}
-
-// ─── Main component ────────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function WorkspaceTrackStock({
   lines,
   isLoading,
   onMoved,
   onSelectLine,
-  onMoveMaterial,
 }: Props) {
-  const [statusFilter, setStatusFilter] = useState<DispatchStatus | 'all'>('all')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [exporting, setExporting] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   if (isLoading) return <LoadingSkeleton />
 
+  // Only lines with physical stock (exclude purely-unallocated)
   const physicalLines = lines.filter(
     (l) =>
-      l.stages.PENDING_CO > 0 ||
-      l.stages.PENDING_DIST > 0 ||
-      l.stages.GODOWN > 0 ||
-      l.stages.IN_BOX > 0 ||
-      l.stages.DISPATCHED > 0 ||
-      l.stages.NOT_DISPLAYED > 0,
+      l.stages.PENDING_CO > 0 || l.stages.PENDING_DIST > 0 ||
+      l.stages.GODOWN > 0     || l.stages.IN_BOX > 0 ||
+      l.stages.DISPATCHED > 0 || l.stages.NOT_DISPLAYED > 0,
   )
 
-  const filtered = statusFilter === 'all'
+  // Apply status filter
+  const filtered: PurchaseTrackerLine[] = statusFilter === 'all'
     ? physicalLines
-    : physicalLines.filter((l) => {
-        const statuses = getLineDispatchStatuses(l)
-        return statuses.some((s) => s.status === statusFilter)
-      })
+    : physicalLines.filter((l) => getLinePrimaryStatus(l) === statusFilter)
 
-  const sorted = [...filtered].sort((a, b) => {
-    const statusOrder: Record<DispatchStatus, number> = {
-      ready: 0,
-      awaiting_packing: 1,
-      awaiting_distributor: 2,
-      awaiting_company: 3,
-      done: 4,
-    }
-    const diff = statusOrder[getLinePrimaryStatus(a)] - statusOrder[getLinePrimaryStatus(b)]
-    if (diff !== 0) return diff
-    return (a.customer?.name ?? '').localeCompare(b.customer?.name ?? '')
+  // Section grouping
+  const readyLines   = filtered.filter((l) => l.stages.IN_BOX > 0)
+  const packingLines = filtered.filter((l) => l.stages.GODOWN > 0 && l.stages.IN_BOX === 0)
+  const waitingLines = filtered.filter(
+    (l) =>
+      (l.stages.PENDING_DIST > 0 || l.stages.PENDING_CO > 0) &&
+      l.stages.GODOWN === 0 && l.stages.IN_BOX === 0,
+  )
+
+  // Sort each section
+  const byCustomer = (a: PurchaseTrackerLine, b: PurchaseTrackerLine) =>
+    (a.customer?.name ?? '').localeCompare(b.customer?.name ?? '')
+  readyLines.sort(byCustomer)
+  packingLines.sort(byCustomer)
+  // Waiting: stale first (oldest lastActivityAt first)
+  waitingLines.sort((a, b) => {
+    const aAge = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : Infinity
+    const bAge = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : Infinity
+    return aAge - bAge
   })
 
-  async function handleExport() {
-    setExporting(true)
-    try { await exportCurrentStock(sorted) } finally { setExporting(false) }
+  const handleExport = () => {
+    exportToCSV(
+      filtered,
+      `stock-${statusFilter}-${new Date().toISOString().slice(0, 10)}.csv`,
+    )
   }
 
-  if (sorted.length === 0) {
+  if (physicalLines.length === 0) {
     return (
-      <div className="p-6">
-        <StatusFilterBar value={statusFilter} onChange={setStatusFilter} total={physicalLines.length} filtered={0} onExport={handleExport} exporting={exporting} />
-        <div className="mt-6 flex h-48 items-center justify-center rounded-2xl border border-dashed border-[var(--border-strong)] bg-white text-sm text-[var(--text-muted)]">
-          {physicalLines.length === 0
-            ? 'No stock in warehouse yet. Items appear once moved past the Unallocated stage.'
-            : 'No lines match this filter.'}
-        </div>
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-10 text-center">
+        <p className="text-sm font-semibold text-[var(--text-primary)]">No physical stock yet</p>
+        <p className="max-w-xs text-xs text-[var(--text-muted)]">
+          Items appear here once they move past the Unallocated stage.
+        </p>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col">
-      {/* Filter bar */}
-      <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-white px-6 py-3">
-        <StatusFilterBar value={statusFilter} onChange={setStatusFilter} total={physicalLines.length} filtered={sorted.length} onExport={handleExport} exporting={exporting} />
+      {/* Filter + export bar */}
+      <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-[var(--border)] bg-white px-4 py-3">
+        {STATUS_FILTER_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setStatusFilter(opt.value)}
+            className={[
+              'rounded-full border px-3 py-1 text-[11px] font-semibold transition',
+              statusFilter === opt.value
+                ? 'border-[#0f172a] bg-[#0f172a] text-white'
+                : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[var(--border-strong)]',
+            ].join(' ')}
+          >
+            {opt.label}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-[var(--text-muted)]">{filtered.length} lines</span>
+        <button
+          type="button"
+          onClick={handleExport}
+          className="flex items-center gap-1.5 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-1.5 text-[11px] font-semibold text-[#15803d] transition hover:bg-[#dcfce7]"
+        >
+          ⬇ Export CSV
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-[var(--border)] bg-[var(--n-50)]">
-              <th className="w-14 py-2.5 pl-4 pr-1 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]" />
-              <th className="py-2.5 pl-2 pr-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Product</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Stage</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Location</th>
-              <th className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Qty</th>
-              <th className="py-2.5 pl-3 pr-6 text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border)]">
-            {sorted.map((line) => {
-              const primary = getLinePrimaryStatus(line)
-              const isExpanded = expandedId === line.id
-              const primaryQty = getLineDispatchStatuses(line).find((s) => s.status === primary)?.qty ?? 0
-              const totalQty = Object.values(line.stages).reduce((s, n) => s + n, 0)
+      {/* Column headers */}
+      <TableHeader />
 
-              return [
-                <tr
-                  key={line.id}
-                  onClick={() => setExpandedId(isExpanded ? null : line.id)}
-                  className={[
-                    'cursor-pointer transition hover:bg-[var(--n-50)]',
-                    isExpanded ? 'bg-[#f8fbff]' : '',
-                  ].join(' ')}
-                >
-                  {/* Image */}
-                  <td className="py-3 pl-4 pr-1">
-                    <ProductThumb line={line} />
-                  </td>
+      {/* Ready section */}
+      {readyLines.length > 0 && (
+        <div>
+          <SectionHeader label="● Ready to Dispatch" count={readyLines.length} color="#15803d" bg="#dcfce7" />
+          {readyLines.map((l) => (
+            <StockRow key={l.id} line={l} onSelectLine={onSelectLine} onMoved={onMoved} />
+          ))}
+        </div>
+      )}
 
-                  {/* Product + Customer */}
-                  <td className="py-3 pl-2 pr-3 max-w-[220px]">
-                    <p className="font-semibold text-[var(--text-primary)] truncate">{line.product.name}</p>
-                    <p className="mt-0.5 font-mono text-[11px] text-[var(--text-muted)]">{line.product.sku}</p>
-                    {line.customer && (
-                      <p className="mt-0.5 text-[11px] text-[var(--text-secondary)] truncate">{line.customer.name}</p>
-                    )}
-                  </td>
+      {/* Awaiting packing section */}
+      {packingLines.length > 0 && (
+        <div>
+          <SectionHeader label="■ Awaiting Packing" count={packingLines.length} color="#1d4ed8" bg="#eff6ff" />
+          {packingLines.map((l) => (
+            <StockRow key={l.id} line={l} onSelectLine={onSelectLine} onMoved={onMoved} />
+          ))}
+        </div>
+      )}
 
-                  {/* Stage tracker */}
-                  <td className="px-3 py-3">
-                    <StageTracker stages={line.stages} />
-                  </td>
+      {/* Waiting external section */}
+      {waitingLines.length > 0 && (
+        <div>
+          <SectionHeader label="⏳ Waiting — External" count={waitingLines.length} color="#d97706" bg="#fffbeb" />
+          {waitingLines.map((l) => (
+            <StockRow key={l.id} line={l} onSelectLine={onSelectLine} onMoved={onMoved} />
+          ))}
+        </div>
+      )}
 
-                  {/* Location */}
-                  <td className="px-3 py-3 max-w-[140px]">
-                    {line.locationNote ? (
-                      <span
-                        className="inline-block rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-2 py-0.5 text-[11px] text-[var(--text-secondary)] truncate max-w-full"
-                        title={line.locationNote}
-                      >
-                        📦 {line.locationNote.replace(/^Location:\s*/i, '')}
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-[var(--text-muted)]">—</span>
-                    )}
-                  </td>
-
-                  {/* Qty */}
-                  <td className="px-3 py-3 text-center">
-                    <span
-                      className="font-semibold text-[var(--text-primary)]"
-                      style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {primaryQty}
-                      {totalQty !== primaryQty && (
-                        <span className="ml-1 text-xs font-normal text-[var(--text-muted)]">/ {totalQty}</span>
-                      )}
-                    </span>
-                  </td>
-
-                  {/* Expand */}
-                  <td className="py-3 pl-3 pr-6 text-right">
-                    <span className="text-xs text-[var(--text-muted)]">{isExpanded ? '▲' : '▾'}</span>
-                  </td>
-                </tr>,
-                isExpanded && (
-                  <ExpandedRow
-                    key={`${line.id}-expanded`}
-                    line={line}
-                    onMoved={onMoved}
-                    onSelectLine={onSelectLine}
-                    onMoveMaterial={onMoveMaterial}
-                  />
-                ),
-              ]
-            })}
-          </tbody>
-        </table>
-      </div>
+      {filtered.length === 0 && physicalLines.length > 0 && (
+        <div className="p-10 text-center text-sm text-[var(--text-muted)]">No lines match this filter.</div>
+      )}
     </div>
   )
 }
