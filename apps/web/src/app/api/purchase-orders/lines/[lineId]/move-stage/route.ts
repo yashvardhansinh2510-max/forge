@@ -71,6 +71,7 @@ const MoveStageSchema = z.object({
   qty: z.number().int().min(1),
   customerId: z.string().optional(),
   note: z.string().max(500).optional(),
+  location: z.string().max(200).optional(),
   brand: z.enum(BRAND_TABS).optional(),
 })
 
@@ -82,7 +83,7 @@ export async function PATCH(
     const user = await requirePermission('Inventory', 'Transfer')
     const { lineId } = await params
     const body = MoveStageSchema.parse(await req.json())
-    const { fromStage, toStage, qty, customerId, note } = body
+    const { fromStage, toStage, qty, customerId, note, location } = body
 
     const allowedTargets = LEGAL_TRANSITIONS[fromStage] ?? []
     if (!allowedTargets.includes(toStage)) {
@@ -155,6 +156,7 @@ export async function PATCH(
           note: customerId
             ? `${note ? `${note} | ` : ''}customer:${customerId}`
             : note ?? null,
+          location: location ?? null,
         },
       }),
     ])
