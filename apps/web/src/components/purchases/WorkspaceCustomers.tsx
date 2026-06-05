@@ -16,8 +16,8 @@ import {
   type PurchaseTrackerLine,
 } from '@/lib/purchases-tracker'
 
-function ProductThumb({ line, size = 10 }: { line: PurchaseTrackerLine; size?: number }) {
-  const dim = size === 10 ? 'h-10 w-10' : 'h-8 w-8'
+function ProductThumb({ line, size = 12 }: { line: PurchaseTrackerLine; size?: number }) {
+  const dim = size === 12 ? 'h-12 w-12' : 'h-8 w-8'
   if (line.product.imageUrl) {
     return (
       <div className={`relative ${dim} shrink-0`}>
@@ -33,7 +33,7 @@ function ProductThumb({ line, size = 10 }: { line: PurchaseTrackerLine; size?: n
   }
   return (
     <div className={`flex ${dim} shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--n-50)] text-[10px] font-bold text-[var(--text-muted)]`}>
-      {line.product.brand.slice(0, 2)}
+      {line.product.brand.slice(0, 3).toUpperCase()}
     </div>
   )
 }
@@ -141,11 +141,15 @@ function MarkPackedInline({
     setSaving(true)
     setErr('')
     try {
-      const note = location.trim() ? `Location: ${location.trim()}` : undefined
       const res = await fetch(`/api/purchase-orders/lines/${encodeURIComponent(line.id)}/move-stage`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromStage: 'GODOWN', toStage: 'IN_BOX', qty, note }),
+        body: JSON.stringify({
+          fromStage: 'GODOWN',
+          toStage:   'IN_BOX',
+          qty,
+          location:  location.trim() || undefined,
+        }),
       })
       const data = await res.json() as { stageTotals?: HeaderCounts; message?: string }
       if (!res.ok || !data.stageTotals) { setErr(data.message ?? 'Pack failed'); return }
