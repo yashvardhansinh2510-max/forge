@@ -3,6 +3,7 @@
 export interface Finish {
   name: string
   code: string
+  sku: string
   color: string
   priceAdj: number
 }
@@ -16,6 +17,7 @@ export interface POSProduct {
   brandColor: string
   category: string
   subCategory: string
+  subcategoryLabel: string
   mrp: number
   gstRate: number
   unit: string

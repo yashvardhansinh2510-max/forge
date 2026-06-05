@@ -1,23 +1,12 @@
 'use client'
 
 import * as React from 'react'
-import { X, Printer, ShoppingBag, Check } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { X, Printer, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Room, ActiveProject } from '@/lib/pos-store'
-import type { BrandFulfilment, PurchaseLineItem, PurchaseOrder } from '@/lib/mock/purchases-data'
-import { usePurchasesStore } from '@/lib/purchases-store'
-import { useProcurementStore } from '@/lib/procurement-store'
-import { skuWithFinish, unitMRP } from '@/lib/mock/pos-data'
+import { skuWithFinish, unitMRP, productImageDataUri } from '@/lib/mock/pos-data'
 import { ProductVisual } from './product-visual'
-
-const BRAND_COLOR_MAP: Record<string, string> = {
-  Grohe:      '#0057A8',
-  Axor:       '#1a1a2e',
-  Hansgrohe:  '#c41e3a',
-  Vitra:      '#e63946',
-  Kajaria:    '#f4a261',
-}
+import { generateQuotationPrintHTML } from '@/lib/quotation-print'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -27,12 +16,6 @@ function fmtINR(n: number): string {
 
 function today(): string {
   return new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
-}
-
-function genQuotationNumber(): string {
-  const y = new Date().getFullYear()
-  const n = Math.floor(Math.random() * 9000) + 1000
-  return `BCH-${y}-${n}`
 }
 
 // ─── Print styles ─────────────────────────────────────────────────────────────
@@ -150,6 +133,11 @@ const PRINT_CSS = `
   .totals-box .gst-row td { font-size: 9px; color: #64748b; }
   .totals-box .grand-row td { font-weight: 800; font-size: 12px; background: #003087; color: #fff; border-top: 2px solid #001f5b; }
 
+  /* ── Project notes ──────────────────────────────────────────── */
+  .notes-box { border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px 14px; margin-bottom: 14px; background: #fafbfc; }
+  .notes-box h4 { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #374151; margin-bottom: 6px; }
+  .notes-box p { font-size: 10px; color: #374151; line-height: 1.55; white-space: pre-wrap; }
+
   /* ── Terms ──────────────────────────────────────────────── */
   .terms-box { border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px 14px; margin-bottom: 14px; }
   .terms-box h4 { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #374151; margin-bottom: 7px; }
@@ -174,83 +162,17 @@ interface Props {
   project: ActiveProject
   rooms: Room[]
   onClose: () => void
+  /** DB-assigned quotation number, passed in once the quotation is saved. */
+  quotationNumber?: string
+  /** True when quotation has not been saved yet — shows warning banner */
+  isDraft?: boolean
 }
 
-export function QuotationPreview({ project, rooms, onClose }: Props) {
+export function QuotationPreview({ project, rooms, onClose, quotationNumber: savedNumber, isDraft = false }: Props) {
   const printRef = React.useRef<HTMLDivElement>(null)
-  const [quotationNumber] = React.useState(() => genQuotationNumber())
-  const [quotationDate]   = React.useState(() => today())
-  const [poCreated, setPOCreated] = React.useState(false)
-  const router   = useRouter()
-  const addOrder = usePurchasesStore((s) => s.addOrder)
-  const addQuotationOrders = useProcurementStore((s) => s.addQuotationOrders)
-
-  function handleCreatePO() {
-    // Group cart items from all filled rooms by brand
-    const brandMap = new Map<string, PurchaseLineItem[]>()
-    for (const { room } of filledRooms) {
-      for (const item of room.items) {
-        if (!brandMap.has(item.product.brand)) brandMap.set(item.product.brand, [])
-        brandMap.get(item.product.brand)!.push({
-          id:           `${item.id}-li`,
-          productId:    item.product.id,
-          productName:  item.product.name,
-          sku:          skuWithFinish(item.product, item.finish),
-          brand:        item.product.brand,
-          finishName:   item.finish.name,
-          finishColor:  item.finish.color,
-          quantity:     item.quantity,
-          unitMRP:      unitMRP(item.product, item.finish),
-          itemDiscount: Math.max(item.itemDiscount ?? 0, room.roomDiscount ?? 0, discount),
-          unit:         'pcs',
-        })
-      }
-    }
-
-    const brands: BrandFulfilment[] = Array.from(brandMap.entries()).map(([brand, items]) => ({
-      brand,
-      brandColor:           BRAND_COLOR_MAP[brand] ?? '#64748b',
-      items,
-      stage:                'pending',
-      poNumber:             null,
-      vendorOrderRef:       null,
-      expectedDeliveryDate: null,
-      receivedQty:          0,
-      shippedToClientQty:   0,
-      notes:                '',
-    }))
-
-    const po: PurchaseOrder = {
-      id:             `PO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
-      quotationRef:   quotationNumber,
-      status:         'draft',
-      createdAt:      new Date().toISOString(),
-      updatedAt:      new Date().toISOString(),
-      client: {
-        name:       project.clientName || 'Unknown Client',
-        phone:      '',
-        email:      '',
-        address:    '',
-        city:       'Mumbai',
-        gstNumber:  '',
-      },
-      referenceBy:    project.referenceBy,
-      globalDiscount: discount,
-      brands,
-      internalNotes:  '',
-    }
-
-    addOrder(po)
-    addQuotationOrders(project, rooms, quotationNumber, discount)
-    setPOCreated(true)
-    toast.success('Purchase order created', {
-      description: `${quotationNumber} → PO added to Purchases`,
-      action: {
-        label: 'View Purchases',
-        onClick: () => { onClose(); router.push('/purchases') },
-      },
-    })
-  }
+  // Use the DB number if available; otherwise show a placeholder (save first)
+  const quotationNumber = savedNumber ?? `DRAFT-${new Date().getFullYear()}`
+  const [quotationDate] = React.useState(() => today())
 
   const discount           = project.globalDiscount
   const roomTotals = rooms.map((room) => {
@@ -277,18 +199,81 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
   validUntil.setDate(validUntil.getDate() + 30)
   const validUntilStr = validUntil.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
 
-  function handlePrint() {
-    const w = window.open('', '_blank', 'width=1040,height=860')
-    if (!w) return
-    const html = printRef.current?.innerHTML ?? ''
-    w.document.write(
-      `<!DOCTYPE html><html><head><meta charset="utf-8">` +
-      `<title>Quotation ${quotationNumber} – ${project.name}</title>` +
-      `<style>${PRINT_CSS}</style></head><body>${html}</body></html>`
+  async function handlePrint() {
+    // Gap 2: client phone required (maps to NUM field in PDF)
+    if (!project.clientPhone.trim()) {
+      toast.error('Client phone number is required before generating the PDF')
+      return
+    }
+    // Gap 3: reference person required (maps to REF field in PDF)
+    if (!project.referenceBy.trim()) {
+      toast.error('Reference person is required before generating the PDF')
+      return
+    }
+
+    // Convert POS rooms → LineItems in Buildcon format
+    const lineItems = rooms.flatMap((room) =>
+      room.items.map((item) => {
+        const effectiveDiscount = Math.max(
+          project.globalDiscount,
+          room.roomDiscount ?? 0,
+          item.itemDiscount ?? 0,
+        )
+        // Resolve image: finish-specific → base imageUrl → SVG data URI placeholder.
+        // Puppeteer runs in about:blank context, so relative paths must be absolutified.
+        const rawImage =
+          item.product.finishImages?.[item.finish.code] ??
+          item.product.imageUrl ??
+          null
+        const resolvedImage = rawImage
+          ? (rawImage.startsWith('/') ? `${window.location.origin}${rawImage}` : rawImage)
+          : productImageDataUri(item.product, item.finish)
+        return {
+          id:            item.id,
+          productId:     item.product.id,
+          productName:   item.product.name,
+          sku:           item.product.sku,
+          articleNumber: item.product.articleNumber,
+          finishName:    item.finish.name || undefined,
+          brand:         item.product.brand,
+          description:   item.product.description ?? '',
+          unit:          item.product.unit,
+          qty:           item.quantity,
+          unitPrice:     unitMRP(item.product, item.finish),
+          discount:      effectiveDiscount,
+          gstRate:       item.product.gstRate,
+          section:       room.name,
+          imageUrl:      resolvedImage,
+        }
+      })
     )
-    w.document.close()
-    w.focus()
-    setTimeout(() => { w.print() }, 500)
+
+    const html = generateQuotationPrintHTML({
+      number:        quotationNumber,
+      customerName:  project.clientName || 'Valued Customer',
+      customerPhone: project.clientPhone.trim(),
+      createdBy:     project.referenceBy.trim(),
+      createdAt:     new Date(),
+      lineItems,
+      projectNotes:  project.notes?.trim() || undefined,
+    })
+
+    // Gap 1: server-side PDF — no browser print chrome
+    try {
+      const res = await fetch('/api/quotations/pdf', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ html, filename: `${quotationNumber}.pdf` }),
+      })
+      if (!res.ok) throw new Error('PDF generation failed')
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = Object.assign(document.createElement('a'), { href: url, download: `${quotationNumber}.pdf` })
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('PDF generation failed — please try again')
+    }
   }
 
   return (
@@ -300,6 +285,29 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
+      {/* Draft warning banner */}
+      {isDraft && (
+        <div
+          className="no-print"
+          style={{
+            width: '100%', maxWidth: 980,
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 16px',
+            background: 'rgba(251,191,36,0.15)',
+            borderBottom: '1px solid rgba(251,191,36,0.3)',
+            flexShrink: 0,
+          }}
+        >
+          <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
+          <span style={{ color: '#92400e', fontSize: 12, fontWeight: 600 }}>
+            Unsaved draft — this document has no quotation number.
+          </span>
+          <span style={{ color: '#b45309', fontSize: 11 }}>
+            Close this preview, click <strong>Save</strong>, then return to print a numbered quotation.
+          </span>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div
         className="no-print"
@@ -310,11 +318,12 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
+          <span style={{ color: isDraft ? '#fbbf24' : '#fff', fontSize: 13, fontWeight: 600 }}>
             {quotationNumber}
+            {isDraft && <span style={{ color: '#f59e0b', marginLeft: 6, fontWeight: 400 }}>(draft)</span>}
           </span>
           <span style={{ color: '#64748b', fontSize: 12 }}>
-            {project.name} · {project.clientName}
+            {project.name ? `${project.name} · ` : ''}{project.clientName}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -323,26 +332,13 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '7px 16px', borderRadius: 6, border: 'none',
-              background: '#3b82f6', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              background: isDraft ? '#d97706' : '#3b82f6',
+              color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
+            title={isDraft ? 'Warning: printing draft without quotation number' : 'Generate PDF'}
           >
             <Printer size={14} />
-            Print / Save PDF
-          </button>
-          <button
-            onClick={handleCreatePO}
-            disabled={poCreated || filledRooms.length === 0}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '7px 16px', borderRadius: 6, border: 'none',
-              background: poCreated ? '#16a34a' : '#7c3aed',
-              color: '#fff', fontSize: 13, fontWeight: 600,
-              cursor: poCreated || filledRooms.length === 0 ? 'default' : 'pointer',
-              opacity: filledRooms.length === 0 ? 0.5 : 1,
-            }}
-          >
-            {poCreated ? <Check size={14} /> : <ShoppingBag size={14} />}
-            {poCreated ? 'PO Created' : 'Create Purchase Order'}
+            {isDraft ? 'Print Draft (no QT#)' : 'Print / Save PDF'}
           </button>
           <button
             onClick={onClose}
@@ -425,6 +421,14 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
               </div>
             </div>
 
+            {/* ── Project Notes ─────────────────────────────────────────────── */}
+            {project.notes && project.notes.trim() && (
+              <div className="notes-box">
+                <h4>Project Notes</h4>
+                <p>{project.notes.trim()}</p>
+              </div>
+            )}
+
             {/* ── Summary Table ──────────────────────────────────────────────── */}
             {filledRooms.length > 0 && (
               <div style={{ marginBottom: 18 }}>
@@ -436,7 +440,7 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
                       <th>Area / Room</th>
                       <th style={{ width: 80 }}>Items</th>
                       <th className="r" style={{ width: 110 }}>MRP (₹)</th>
-                      <th className="r" style={{ width: 130 }}>Offer @ {discount}% off (₹)</th>
+                      <th className="r" style={{ width: 130 }}>Offer Price (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -588,7 +592,7 @@ export function QuotationPreview({ project, rooms, onClose }: Props) {
                       <td className="tv">{fmtINR(grandMRP)}</td>
                     </tr>
                     <tr className="disc-row">
-                      <td className="tl">Discount @ {discount}%</td>
+                      <td className="tl">Discount (blended avg)</td>
                       <td className="tv">− {fmtINR(totalDiscount)}</td>
                     </tr>
                     <tr className="sub-row">

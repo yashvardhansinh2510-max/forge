@@ -1,0 +1,4 @@
+{"type":"server-started","port":51555,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:51555","screen_dir":"/Users/yashvardhansinhjhala/forge/.superpowers/brainstorm/68541-1780605123/content","state_dir":"/Users/yashvardhansinhjhala/forge/.superpowers/brainstorm/68541-1780605123/state"}
+{"type":"screen-added","file":"/Users/yashvardhansinhjhala/forge/.superpowers/brainstorm/68541-1780605123/content/approaches.html"}
+{"type":"screen-added","file":"/Users/yashvardhansinhjhala/forge/.superpowers/brainstorm/68541-1780605123/content/approach-a-real.html"}
+{"type":"server-stopped","reason":"owner process exited"}

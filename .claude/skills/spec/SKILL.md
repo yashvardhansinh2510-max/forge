@@ -1,0 +1,1 @@
+/Users/yashvardhansinhjhala/forge/.claude/skills/gstack/spec/SKILL.md

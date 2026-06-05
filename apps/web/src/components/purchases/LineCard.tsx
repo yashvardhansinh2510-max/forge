@@ -144,7 +144,7 @@ export default function LineCard({ line, context, activeBrand, allLines, onMoved
                 onClick={(e) => { e.stopPropagation(); onTransfer() }}
                 className="ml-auto rounded-lg border border-[var(--border)] bg-white px-2.5 py-1 text-[10px] font-semibold text-[var(--text-secondary)] transition hover:border-[#93c5fd] hover:text-[var(--text-primary)]"
               >
-                Give to Customer ↱
+                Redirect ↱
               </button>
             )}
           </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X, Plus } from 'lucide-react'
 import { usePOSStore } from '@/lib/pos-store'
 import { usePOSCatalog } from '@/lib/pos-catalog'
 import { usePOSSeriesStore } from '@/lib/pos-series-store'
@@ -27,9 +27,35 @@ const BRAND_BG: Record<string, string> = {
   Geberit:    'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)',
 }
 
-function ProductCard({ product, onClick }: { product: POSProduct; onClick: () => void }) {
+// ─── Highlight helper ─────────────────────────────────────────────────────────
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark style={{ background: 'rgba(251,191,36,0.35)', color: 'inherit', borderRadius: 2, padding: '0 1px' }}>
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  )
+}
+
+// ─── Product Card ─────────────────────────────────────────────────────────────
+
+function ProductCard({
+  product, onClick, offerDiscount,
+}: {
+  product: POSProduct
+  onClick: () => void
+  offerDiscount: number
+}) {
   const tier = TIER_COLORS[product.tier] ?? TIER_COLORS.mid!
   const bg   = BRAND_BG[product.brand] ?? 'linear-gradient(135deg, #6B7280, #4B5563)'
+  const offerPrice = offerDiscount > 0 ? product.mrp * (1 - offerDiscount / 100) : null
 
   return (
     <button
@@ -86,10 +112,31 @@ function ProductCard({ product, onClick }: { product: POSProduct; onClick: () =>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
           {product.articleNumber ?? product.sku}
         </div>
-        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', letterSpacing: '-0.02em', marginTop: 2 }}>
-          {formatINR(product.mrp)}
-          <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 3 }}>MRP</span>
+
+        {/* Price row: MRP + offer if discount active */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
+          <span style={{
+            fontSize: offerPrice ? 11 : 14,
+            fontWeight: offerPrice ? 400 : 700,
+            fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
+            color: offerPrice ? 'var(--text-muted)' : 'var(--text-primary)',
+            letterSpacing: '-0.02em',
+            textDecoration: offerPrice ? 'line-through' : 'none',
+          }}>
+            {formatINR(product.mrp)}
+            <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 2 }}>MRP</span>
+          </span>
+          {offerPrice && (
+            <span style={{
+              fontSize: 14, fontWeight: 700,
+              fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
+              color: '#15803d', letterSpacing: '-0.02em',
+            }}>
+              {formatINR(offerPrice)}
+            </span>
+          )}
         </div>
+
         {product.finishes.length > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
             {product.finishes.slice(0, 6).map((f) => (
@@ -105,7 +152,7 @@ function ProductCard({ product, onClick }: { product: POSProduct; onClick: () =>
   )
 }
 
-// ── Search types ──────────────────────────────────────────────────────────────
+// ─── Search types ─────────────────────────────────────────────────────────────
 
 type SearchApiItem = {
   id: string
@@ -118,28 +165,53 @@ type SearchApiItem = {
   seriesName: string | null
 }
 
-type SearchApiResponse = {
-  products: SearchApiItem[]
+type SearchApiResponse = { products: SearchApiItem[] }
+
+type MatchField = 'sku' | 'article' | 'name' | 'series'
+
+function detectMatchField(item: SearchApiItem, query: string): MatchField {
+  const q = query.toLowerCase()
+  if (item.sku.toLowerCase().includes(q) || item.articleNumber.toLowerCase().includes(q)) return 'sku'
+  if (item.seriesName?.toLowerCase().includes(q)) return 'series'
+  return 'name'
 }
 
-function POSSearch({ onSelect }: { onSelect: (product: POSProduct) => void }) {
-  const [query, setQuery]               = React.useState('')
-  const [results, setResults]           = React.useState<SearchApiItem[]>([])
-  const [isOpen, setIsOpen]             = React.useState(false)
-  const [isFetching, setIsFetching]     = React.useState(false)
-  const [activeIdx, setActiveIdx]       = React.useState(-1)
-  const containerRef                    = React.useRef<HTMLDivElement>(null)
-  const inputRef                        = React.useRef<HTMLInputElement>(null)
-  const debounceRef                     = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+const MATCH_LABELS: Record<MatchField, { label: string; bg: string; color: string }> = {
+  sku:    { label: 'SKU',    bg: 'rgba(99,102,241,0.12)',  color: '#4338ca' },
+  article:{ label: 'Article',bg: 'rgba(99,102,241,0.12)',  color: '#4338ca' },
+  series: { label: 'Series', bg: 'rgba(16,185,129,0.12)',  color: '#047857' },
+  name:   { label: 'Name',   bg: 'rgba(107,114,128,0.08)', color: '#4b5563' },
+}
 
-  const BRAND_NAME_MAP: Record<string, string> = {
-    GROHE: 'Grohe', HANSGROHE: 'Hansgrohe', AXOR: 'Axor',
-    VITRA: 'Vitra', GEBERIT: 'Geberit', OTHER: 'Other',
-  }
-  const BRAND_COLORS: Record<string, string> = {
-    Grohe: '#009FE3', Hansgrohe: '#00529A', Axor: '#1C1C1E',
-    Vitra: '#E5002B', Geberit: '#6B7280', Other: '#4B5563',
-  }
+const BRAND_NAME_MAP: Record<string, string> = {
+  GROHE: 'Grohe', HANSGROHE: 'Hansgrohe', AXOR: 'Axor',
+  VITRA: 'Vitra', GEBERIT: 'Geberit', OTHER: 'Other',
+}
+const BRAND_COLORS: Record<string, string> = {
+  Grohe: '#009FE3', Hansgrohe: '#00529A', Axor: '#1C1C1E',
+  Vitra: '#E5002B', Geberit: '#6B7280', Other: '#4B5563',
+}
+
+function POSSearch({
+  onSelect, catalogProducts, globalDiscount,
+}: {
+  onSelect: (product: POSProduct) => void
+  catalogProducts: POSProduct[]
+  globalDiscount: number
+}) {
+  const catalogById = React.useMemo(
+    () => new Map(catalogProducts.map((p) => [p.id, p])),
+    [catalogProducts],
+  )
+  const [query, setQuery]           = React.useState('')
+  const [results, setResults]       = React.useState<SearchApiItem[]>([])
+  const [isOpen, setIsOpen]         = React.useState(false)
+  const [isFetching, setIsFetching] = React.useState(false)
+  const [activeIdx, setActiveIdx]   = React.useState(-1)
+  const containerRef                = React.useRef<HTMLDivElement>(null)
+  const inputRef                    = React.useRef<HTMLInputElement>(null)
+  const listRef                     = React.useRef<HTMLDivElement>(null)
+  const debounceRef                 = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -158,11 +230,11 @@ function POSSearch({ onSelect }: { onSelect: (product: POSProduct) => void }) {
     debounceRef.current = setTimeout(async () => {
       setIsFetching(true)
       try {
-        const res = await fetch(`/api/products?search=${encodeURIComponent(query.trim())}&limit=20`)
+        const res = await fetch(`/api/products?search=${encodeURIComponent(query.trim())}&limit=30`)
         if (!res.ok) return
         const data = await res.json() as SearchApiResponse
         const items = data.products ?? []
-        // Exact SKU/article matches bubble to top
+        // Exact SKU/article match → top
         const q = query.trim().toLowerCase()
         items.sort((a, b) => {
           const aExact = a.sku.toLowerCase() === q || a.articleNumber.toLowerCase() === q ? 0 : 1
@@ -188,33 +260,31 @@ function POSSearch({ onSelect }: { onSelect: (product: POSProduct) => void }) {
   }
 
   function selectResult(item: SearchApiItem) {
+    const fullProduct = catalogById.get(item.id)
+    if (fullProduct) {
+      onSelect(fullProduct)
+      setQuery('')
+      setIsOpen(false)
+      return
+    }
     const brandName = BRAND_NAME_MAP[item.brand] ?? item.brand
     const posProduct: POSProduct = {
-      id:             item.id,
-      sku:            item.sku,
-      articleNumber:  item.articleNumber,
-      name:           item.name,
-      description:    '',
-      brand:          brandName,
-      brandColor:     BRAND_COLORS[brandName] ?? '#4B5563',
-      category:       '',
-      subCategory:    item.seriesName ?? '',
-      seriesName:     item.seriesName ?? undefined,
-      mrp:            item.mrp,
-      gstRate:        18,
-      unit:           'pcs',
-      tier:           'premium',
-      finishes:       [{ name: 'Standard', code: 'STD', color: '#C8D0D8', priceAdj: 0 }],
-      defaultFinish:  'Standard',
-      requiresPartIds: [],
-      isConcealed:    false,
-      features:       [],
-      imageUrl:       item.imageUrl ?? undefined,
+      id: item.id, sku: item.sku, articleNumber: item.articleNumber,
+      name: item.name, description: '',
+      brand: brandName, brandColor: BRAND_COLORS[brandName] ?? '#4B5563',
+      category: '', subCategory: item.seriesName ?? '',
+      subcategoryLabel: '', seriesName: item.seriesName ?? undefined,
+      mrp: item.mrp, gstRate: 18, unit: 'pcs', tier: 'premium',
+      finishes: [{ name: 'Chrome', code: '000', sku: item.sku, color: '#B0B7BC', priceAdj: 0 }],
+      defaultFinish: 'Chrome', requiresPartIds: [], isConcealed: false, features: [],
+      imageUrl: item.imageUrl ?? undefined,
     }
     onSelect(posProduct)
     setQuery('')
     setIsOpen(false)
   }
+
+  const displayResults = results // show all, dropdown is scrollable
 
   return (
     <div ref={containerRef} style={{ position: 'relative', flexShrink: 0 }}>
@@ -223,7 +293,7 @@ function POSSearch({ onSelect }: { onSelect: (product: POSProduct) => void }) {
         height: 28, paddingInline: 8,
         border: '1px solid var(--border)',
         borderRadius: 7, background: 'var(--surface)',
-        width: 220,
+        width: 240,
         transition: 'border-color 150ms',
       }}>
         <Search size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -233,7 +303,7 @@ function POSSearch({ onSelect }: { onSelect: (product: POSProduct) => void }) {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => { if (results.length > 0) setIsOpen(true) }}
-          placeholder="Search article, name, series…"
+          placeholder="Search article, name, SKU, series…"
           style={{
             flex: 1, border: 'none', outline: 'none', background: 'transparent',
             fontSize: 11, color: 'var(--text-primary)',
@@ -253,74 +323,115 @@ function POSSearch({ onSelect }: { onSelect: (product: POSProduct) => void }) {
         )}
       </div>
 
-      {isOpen && results.length > 0 && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0,
-          width: 360,
-          background: 'var(--background)',
-          border: '1px solid var(--border)',
-          borderRadius: 10,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
-          overflow: 'hidden',
-          zIndex: 50,
-        }}>
-          {results.slice(0, 10).map((item, idx) => {
-            const brandName = BRAND_NAME_MAP[item.brand] ?? item.brand
-            const bg = BRAND_BG[brandName] ?? 'linear-gradient(135deg, #6B7280, #4B5563)'
-            return (
-              <button
-                key={item.id}
-                onMouseDown={() => selectResult(item)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  width: '100%', padding: '8px 12px',
-                  border: 'none', textAlign: 'left', cursor: 'pointer',
-                  background: idx === activeIdx ? 'var(--surface-tint)' : 'transparent',
-                  transition: 'background 80ms',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-tint)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = idx === activeIdx ? 'var(--surface-tint)' : 'transparent' }}
-              >
-                {/* Thumbnail */}
-                <div style={{
-                  width: 36, height: 36, borderRadius: 6, flexShrink: 0, overflow: 'hidden',
-                  background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4, background: 'rgba(255,255,255,0.9)' }} />
-                  ) : (
-                    <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.8)' }}>
-                      {brandName.slice(0, 2).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                {/* Text */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.name}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
-                    Article&nbsp;
-                    <span style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
-                      {item.articleNumber}
-                    </span>
-                    {item.seriesName && (
-                      <span style={{ marginLeft: 6, color: 'var(--text-muted)', opacity: 0.7 }}>· {item.seriesName}</span>
+      {isOpen && displayResults.length > 0 && (
+        <div
+          ref={listRef}
+          style={{
+            position: 'absolute', top: 'calc(100% + 4px)', right: 0,
+            width: 400,
+            background: 'var(--background)',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+            overflow: 'hidden',
+            zIndex: 50,
+            maxHeight: 360,
+            display: 'flex', flexDirection: 'column',
+          }}
+        >
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {displayResults.map((item, idx) => {
+              const brandName   = BRAND_NAME_MAP[item.brand] ?? item.brand
+              const bg          = BRAND_BG[brandName] ?? 'linear-gradient(135deg, #6B7280, #4B5563)'
+              const matchField  = detectMatchField(item, query)
+              const matchConfig = MATCH_LABELS[matchField]
+              const isActive    = idx === activeIdx
+              const offerPrice  = globalDiscount > 0 ? item.mrp * (1 - globalDiscount / 100) : null
+
+              return (
+                <button
+                  key={item.id}
+                  onMouseDown={() => selectResult(item)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    width: '100%', padding: '8px 12px',
+                    border: 'none', textAlign: 'left', cursor: 'pointer',
+                    background: isActive ? 'var(--surface-tint)' : 'transparent',
+                    transition: 'background 80ms',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-tint)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isActive ? 'var(--surface-tint)' : 'transparent' }}
+                >
+                  {/* Thumbnail */}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 6, flexShrink: 0, overflow: 'hidden',
+                    background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4, background: 'rgba(255,255,255,0.9)' }} />
+                    ) : (
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.8)' }}>
+                        {brandName.slice(0, 2).toUpperCase()}
+                      </span>
                     )}
                   </div>
-                </div>
-                {/* Price */}
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                  {formatINR(item.mrp)}
-                </div>
-              </button>
-            )
-          })}
-          {results.length > 10 && (
-            <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
-              +{results.length - 10} more — type more to narrow down
-            </div>
-          )}
+
+                  {/* Text */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                        <Highlight text={item.name} query={matchField === 'name' ? query : ''} />
+                      </div>
+                      {/* Match source badge */}
+                      <span style={{
+                        fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3,
+                        background: matchConfig.bg, color: matchConfig.color,
+                        letterSpacing: '0.04em', flexShrink: 0,
+                      }}>
+                        {matchConfig.label}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', gap: 6 }}>
+                      <span style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
+                        <Highlight text={item.articleNumber} query={matchField === 'sku' || matchField === 'article' ? query : ''} />
+                      </span>
+                      {item.seriesName && (
+                        <span style={{ opacity: 0.7 }}>
+                          · <Highlight text={item.seriesName} query={matchField === 'series' ? query : ''} />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Price */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, gap: 2 }}>
+                    <div style={{
+                      fontSize: offerPrice ? 10 : 12, fontWeight: 600,
+                      color: offerPrice ? 'var(--text-muted)' : 'var(--text-primary)',
+                      fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
+                      textDecoration: offerPrice ? 'line-through' : 'none',
+                    }}>
+                      {formatINR(item.mrp)}
+                    </div>
+                    {offerPrice && (
+                      <div style={{
+                        fontSize: 12, fontWeight: 700,
+                        color: '#15803d',
+                        fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {formatINR(offerPrice)}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
+            {results.length} result{results.length !== 1 ? 's' : ''} — click to configure &amp; add
+          </div>
         </div>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -328,28 +439,34 @@ function POSSearch({ onSelect }: { onSelect: (product: POSProduct) => void }) {
   )
 }
 
-// ── Main grid ─────────────────────────────────────────────────────────────────
+// ─── Main grid ────────────────────────────────────────────────────────────────
 
 export function ProductGrid() {
   const selectedBrand    = usePOSStore((s) => s.selectedBrand)
   const selectedCategory = usePOSStore((s) => s.selectedCategory)
+  const selectedTier     = usePOSStore((s) => s.selectedTier)
+  const globalDiscount   = usePOSStore((s) => s.project.globalDiscount)
   const openModal        = usePOSStore((s) => s.openModal)
+  const openCustomModal  = usePOSStore((s) => s.openCustomModal)
   const selectedSeries   = usePOSSeriesStore((s) => s.selectedSeries)
   const { products: catalogProducts, isLoading, error, mutate } = usePOSCatalog()
 
   const products = React.useMemo(() => {
     let list = catalogProducts.filter((p) => !p.isConcealed)
     if (selectedBrand)    list = list.filter((p) => p.brand === selectedBrand)
-    if (selectedCategory) list = list.filter((p) => p.category === selectedCategory)
+    if (selectedCategory) list = list.filter((p) => p.subcategoryLabel === selectedCategory)
     if (selectedSeries)   list = list.filter((p) => p.subCategory === selectedSeries)
+    if (selectedTier)     list = list.filter((p) => p.tier === selectedTier)
     return list
-  }, [catalogProducts, selectedBrand, selectedCategory, selectedSeries])
+  }, [catalogProducts, selectedBrand, selectedCategory, selectedSeries, selectedTier])
+
+  const activeFilterCount = [selectedCategory, selectedSeries, selectedTier].filter(Boolean).length
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: 'var(--surface)' }}>
       <style>{`@keyframes pos-pulse{0%,100%{opacity:.4}50%{opacity:1}}`}</style>
 
-      {/* Filter + search bar */}
+      {/* Filter bar */}
       <div style={{
         height: 48, display: 'flex', alignItems: 'center', paddingInline: 16, gap: 8,
         borderBottom: '1px solid var(--border)', flexShrink: 0, background: 'var(--background)',
@@ -359,19 +476,61 @@ export function ProductGrid() {
           {selectedBrand && ` · ${selectedBrand}`}
           {selectedCategory && ` · ${selectedCategory}`}
           {selectedSeries && ` · ${selectedSeries}`}
+          {selectedTier && ` · ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
         </span>
         {!isLoading && (
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>— click to configure &amp; add</span>
         )}
+        {/* Active filter count bubble */}
+        {activeFilterCount > 0 && (
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999,
+            background: 'rgba(99,102,241,0.12)', color: '#4338ca',
+          }}>
+            {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+          </span>
+        )}
         <div style={{ flex: 1 }} />
-        <POSSearch onSelect={openModal} />
+        <button
+          onClick={openCustomModal}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            height: 28, paddingInline: 10,
+            border: '1px solid var(--border)',
+            borderRadius: 7,
+            background: 'var(--surface)',
+            cursor: 'pointer',
+            fontSize: 11, fontWeight: 600,
+            color: 'var(--text-secondary)',
+            transition: 'border-color 150ms, color 150ms, background 150ms',
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#1d4ed8'
+            e.currentTarget.style.color = '#1d4ed8'
+            e.currentTarget.style.background = 'rgba(29,78,216,0.05)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.color = 'var(--text-secondary)'
+            e.currentTarget.style.background = 'var(--surface)'
+          }}
+        >
+          <Plus size={11} />
+          Custom
+        </button>
+        <POSSearch
+          onSelect={openModal}
+          catalogProducts={catalogProducts}
+          globalDiscount={globalDiscount}
+        />
       </div>
 
       {/* Product grid */}
       <div style={{
         flex: 1, overflowY: 'auto', padding: 14,
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
         gridAutoRows: 'max-content', gap: 12, alignContent: 'start',
       }}>
         {isLoading ? (
@@ -390,12 +549,17 @@ export function ProductGrid() {
           </div>
         ) : products.length === 0 ? (
           <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 60, color: 'var(--text-muted)', gap: 8 }}>
-            <span style={{ fontSize: 13 }}>No products found</span>
-            <span style={{ fontSize: 11 }}>Select a brand from the left to browse</span>
+            <span style={{ fontSize: 13 }}>No products match the current filters</span>
+            <span style={{ fontSize: 11 }}>Try selecting a different brand, category, or tier from the left panel</span>
           </div>
         ) : (
           products.map((p) => (
-            <ProductCard key={p.id} product={p} onClick={() => openModal(p)} />
+            <ProductCard
+              key={p.id}
+              product={p}
+              onClick={() => openModal(p)}
+              offerDiscount={globalDiscount}
+            />
           ))
         )}
       </div>

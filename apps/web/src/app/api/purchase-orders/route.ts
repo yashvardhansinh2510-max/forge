@@ -9,6 +9,7 @@ import { requirePermission } from '@/lib/auth'
 import { buildPOFromRevision } from '@/lib/quotationToPO'
 import { ValidationError } from '@/lib/errors'
 import { logActivity } from '@/lib/activity-log'
+import { writeAuditLog } from '@/lib/auth'
 
 const CreatePOSchema = z.object({
   mode:             z.enum(['PROJECT_LINKED', 'BULK_COMPANY']),
@@ -63,6 +64,15 @@ export async function POST(req: NextRequest) {
       userId,
       description: `Created purchase order ${po.poNumber}`,
       projectId: po.projectId,
+    })
+
+    await writeAuditLog({
+      actorId: userId,
+      action: 'PURCHASE_ORDER_CREATED',
+      category: 'PURCHASES',
+      entityType: 'PurchaseOrder',
+      entityId: po.id,
+      afterSnapshot: { poNumber: po.poNumber, mode: po.mode, vendorName: po.vendorName ?? null, projectId: po.projectId ?? null },
     })
 
     return NextResponse.json(po, { status: 201 })

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import {
   STAGE_FRIENDLY_NAME,
   type BrandTab,
@@ -38,7 +39,6 @@ export default function UniversalTransfer({ line, activeBrand, onMoved }: Univer
   const [showDropdown, setShowDropdown] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const [done, setDone] = useState('')
   const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -48,7 +48,6 @@ export default function UniversalTransfer({ line, activeBrand, onMoved }: Univer
     setQuery('')
     setSelectedProject(null)
     setErr('')
-    setDone('')
   }, [line.id])
 
   useEffect(() => {
@@ -86,7 +85,6 @@ export default function UniversalTransfer({ line, activeBrand, onMoved }: Univer
     if (!fromStage || !reason.trim()) return
     setSaving(true)
     setErr('')
-    setDone('')
 
     const isNew = query.trim() && !selectedProject
     const body = isNew
@@ -108,7 +106,7 @@ export default function UniversalTransfer({ line, activeBrand, onMoved }: Univer
         return
       }
       onMoved(data.stageTotals)
-      setDone(`Transferred ${qty} unit${qty > 1 ? 's' : ''} to ${isNew ? query.trim() : selectedProject!.clientName}`)
+      toast.success(`Transferred ${qty} unit${qty > 1 ? 's' : ''} to ${isNew ? query.trim() : selectedProject!.clientName}`)
       setQty(1)
       setReason('')
       setQuery('')
@@ -126,10 +124,6 @@ export default function UniversalTransfer({ line, activeBrand, onMoved }: Univer
 
   return (
     <div className="space-y-4">
-      {done && (
-        <p className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] p-2 text-xs text-[#15803d]">✓ {done}</p>
-      )}
-
       <div>
         <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">Taking from</p>
         <div className="flex flex-wrap gap-1.5">
@@ -152,7 +146,7 @@ export default function UniversalTransfer({ line, activeBrand, onMoved }: Univer
       </div>
 
       <div ref={searchRef} className="relative">
-        <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">Give to customer</p>
+        <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">Redirect to customer</p>
         {selectedProject ? (
           <div className="flex items-center gap-2 rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-3 py-2">
             <span className="flex-1 text-sm font-semibold text-[#1d4ed8]">{selectedProject.clientName}</span>
@@ -257,7 +251,7 @@ export default function UniversalTransfer({ line, activeBrand, onMoved }: Univer
         disabled={saving || !fromStage || (!selectedProject && !query.trim()) || !reason.trim()}
         className="w-full rounded-xl bg-[#0f172a] py-2.5 text-sm font-bold text-white transition hover:bg-black disabled:opacity-40"
       >
-        {saving ? 'Transferring…' : `Give ${qty} unit${qty > 1 ? 's' : ''} to Customer ↱`}
+        {saving ? 'Redirecting…' : `Redirect ${qty} unit${qty > 1 ? 's' : ''} to Customer ↱`}
       </button>
     </div>
   )

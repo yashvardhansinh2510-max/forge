@@ -14,7 +14,13 @@ export async function GET(
 
     const items = await prisma.pOLineItem.findMany({
       where: {
-        po: { projectId: customerId },
+        quotationItem: {
+          room: {
+            revision: {
+              quotation: { projectId: customerId },
+            },
+          },
+        },
       },
       select: {
         qtyOrdered: true,

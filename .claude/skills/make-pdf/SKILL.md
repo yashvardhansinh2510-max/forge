@@ -1,0 +1,1 @@
+/Users/yashvardhansinhjhala/forge/.claude/skills/gstack/make-pdf/SKILL.md

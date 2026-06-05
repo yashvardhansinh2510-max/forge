@@ -16,12 +16,14 @@ interface CompanyViewProps {
   lines: PurchaseTrackerLine[]
   activeBrand: BrandTab
   onMoved: (newCounts: HeaderCounts, lineId: string, fromStage: PurchaseStage, toStage: PurchaseStage, qty: number) => void
+  onSelectLine?: (lineId: string) => void
 }
 
 export default function CompanyView({
   lines,
   activeBrand,
   onMoved,
+  onSelectLine,
 }: CompanyViewProps) {
   const groups = lines.reduce<Record<string, PurchaseTrackerLine[]>>((acc, line) => {
     const key = getBrandSectionKey(line.product.brand)
@@ -77,8 +79,10 @@ export default function CompanyView({
                     key={line.id}
                     line={line}
                     context="company"
+                    activeBrand={activeBrand}
+                    allLines={lines}
                     onMoved={onMoved}
-                    brandScope={activeBrand}
+                    onSelect={() => onSelectLine?.(line.id)}
                   />
                 ))}
             </div>

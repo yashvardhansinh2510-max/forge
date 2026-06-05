@@ -285,8 +285,10 @@ export default function CustomerView({
                       key={line.id}
                       line={line}
                       context="customer"
+                      activeBrand={activeBrand}
+                      allLines={selectedLines}
                       onMoved={onMoved}
-                      brandScope={activeBrand}
+                      onSelect={() => {}}
                     />
                   ))
               )}

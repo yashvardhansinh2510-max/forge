@@ -1,0 +1,321 @@
+<h2>Purchases V6 — Three Design Directions</h2>
+<p class="subtitle">Which layout gives a warehouse worker instant inventory comprehension?</p>
+
+<style>
+  .mockup-body { padding: 0; overflow: hidden; }
+  .demo-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; background: #fff; }
+  .demo-thumb { width: 64px; height: 64px; border-radius: 10px; border: 1px solid #e5e7eb; background: #f8f8f7; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #9ca3af; flex-shrink: 0; overflow: hidden; }
+  .demo-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+  .demo-col { display: flex; flex-direction: column; gap: 2px; }
+  .demo-name { font-size: 13px; font-weight: 600; color: #111827; }
+  .demo-sub { font-size: 11px; color: #6b7280; }
+  .demo-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  .pill-green { background: #f0fdf4; color: #15803d; }
+  .pill-blue { background: #eff6ff; color: #1d4ed8; }
+  .pill-amber { background: #fffbeb; color: #d97706; }
+  .pill-purple { background: #f5f3ff; color: #7c3aed; }
+  .pill-gray { background: #f9fafb; color: #6b7280; }
+
+  /* Stage tracker */
+  .stage-track { display: flex; align-items: center; gap: 0; }
+  .stage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .stage-line { flex: 1; height: 2px; min-width: 14px; }
+  .stage-dot.done { background: #10b981; }
+  .stage-dot.active { background: #2563eb; box-shadow: 0 0 0 3px #bfdbfe; }
+  .stage-dot.pending { background: #e5e7eb; }
+  .stage-line.done { background: #10b981; }
+  .stage-line.pending { background: #e5e7eb; }
+  .stage-label-row { display: flex; align-items: center; gap: 0; margin-top: 2px; }
+  .stage-label { font-size: 9px; color: #9ca3af; width: 36px; text-align: center; line-height: 1.2; }
+
+  /* Card grid */
+  .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 12px; }
+  .inv-card { border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; background: #fff; }
+  .inv-card-img { height: 100px; background: #f8f8f7; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #f0f0f0; }
+  .inv-card-body { padding: 10px; }
+
+  /* Kanban */
+  .kanban { display: flex; gap: 0; height: 220px; }
+  .kanban-col { flex: 1; border-right: 1px solid #f0f0f0; display: flex; flex-direction: column; }
+  .kanban-col:last-child { border-right: none; }
+  .kanban-header { padding: 8px 10px; background: #f9fafb; border-bottom: 1px solid #f0f0f0; }
+  .kanban-header-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
+  .kanban-count { display: inline-block; background: #e5e7eb; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 700; color: #374151; margin-left: 4px; }
+  .kanban-cards { padding: 8px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .kanban-card { border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; padding: 8px; display: flex; gap: 6px; align-items: center; }
+  .kanban-thumb { width: 32px; height: 32px; border-radius: 6px; background: #f4f4f3; flex-shrink: 0; }
+
+  .next-action-btn { border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; border: none; cursor: pointer; white-space: nowrap; }
+  .btn-green { background: #15803d; color: #fff; }
+  .btn-blue { background: #2563eb; color: #fff; }
+  .btn-amber { background: #fffbeb; color: #d97706; border: 1px solid #fcd34d; }
+
+  .loc-badge { display: inline-flex; align-items: center; gap: 3px; border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
+
+  .approach-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #9ca3af; padding: 8px 14px; background: #f9fafb; border-bottom: 1px solid #f0f0f0; }
+  .recommended-badge { display: inline-block; background: #fef3c7; color: #92400e; border-radius: 4px; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-left: 6px; }
+</style>
+
+<div class="cards">
+
+  <!-- Option A: Visual Smart Rows -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="approach-label">A — Visual Smart Rows <span class="recommended-badge">RECOMMENDED</span></div>
+      <div style="padding: 0;">
+        <!-- Row 1 -->
+        <div class="demo-row">
+          <div class="demo-thumb" style="width:72px;height:72px;">
+            <div style="background:linear-gradient(135deg,#f0f4ff,#e8f0ff);width:100%;height:100%;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🚿</div>
+          </div>
+          <div class="demo-col" style="flex:1;min-width:0;">
+            <div class="demo-name">Grohe Essence Basin Mixer</div>
+            <div class="demo-sub">Supersteel · SKU: 32896DC0</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+              <span class="demo-pill pill-blue">Mehta Architects</span>
+              <span class="demo-sub">Lodha Altamount</span>
+            </div>
+          </div>
+          <div class="demo-col" style="align-items:center;gap:6px;flex-shrink:0;">
+            <!-- Stage tracker -->
+            <div class="stage-track" style="width:120px;">
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot active"></div><div class="stage-line pending"></div>
+              <div class="stage-dot pending"></div>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:#2563eb;text-align:center;">At Godown</div>
+          </div>
+          <div class="demo-col" style="align-items:center;flex-shrink:0;gap:4px;">
+            <span style="font-size:18px;font-weight:700;color:#111827;">6</span>
+            <span class="demo-sub">units</span>
+          </div>
+          <div class="demo-col" style="align-items:flex-start;flex-shrink:0;gap:4px;">
+            <span class="loc-badge">📦 Rack B-3</span>
+            <button class="next-action-btn btn-blue">Mark Packed →</button>
+          </div>
+        </div>
+        <!-- Row 2 -->
+        <div class="demo-row" style="background:#f0fdf4;">
+          <div class="demo-thumb" style="width:72px;height:72px;">
+            <div style="background:linear-gradient(135deg,#f0fff4,#dcfce7);width:100%;height:100%;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🪥</div>
+          </div>
+          <div class="demo-col" style="flex:1;min-width:0;">
+            <div class="demo-name">Hansgrohe Raindance Shower</div>
+            <div class="demo-sub">Chrome · SKU: 27379000</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+              <span class="demo-pill pill-green">Oberoi Realty</span>
+              <span class="demo-sub">Sky Garden Tower</span>
+            </div>
+          </div>
+          <div class="demo-col" style="align-items:center;gap:6px;flex-shrink:0;">
+            <div class="stage-track" style="width:120px;">
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot active" style="background:#10b981;box-shadow:0 0 0 3px #bbf7d0;"></div>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:#15803d;text-align:center;">● Packed · Ready</div>
+          </div>
+          <div class="demo-col" style="align-items:center;flex-shrink:0;gap:4px;">
+            <span style="font-size:18px;font-weight:700;color:#15803d;">4</span>
+            <span class="demo-sub">units</span>
+          </div>
+          <div class="demo-col" style="align-items:flex-start;flex-shrink:0;gap:4px;">
+            <span class="loc-badge">📦 Box 12</span>
+            <button class="next-action-btn btn-green">Dispatch ▷</button>
+          </div>
+        </div>
+        <!-- Row 3 -->
+        <div class="demo-row">
+          <div class="demo-thumb" style="width:72px;height:72px;">
+            <div style="background:linear-gradient(135deg,#fefce8,#fef9c3);width:100%;height:100%;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🪒</div>
+          </div>
+          <div class="demo-col" style="flex:1;min-width:0;">
+            <div class="demo-name">Vitra Nest Toilet Suite</div>
+            <div class="demo-sub">White Gloss · SKU: 7856B003</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+              <span class="demo-pill pill-amber">Prestige Group</span>
+              <span class="demo-sub">Leela Residences</span>
+            </div>
+          </div>
+          <div class="demo-col" style="align-items:center;gap:6px;flex-shrink:0;">
+            <div class="stage-track" style="width:120px;">
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot active" style="background:#f59e0b;box-shadow:0 0 0 3px #fde68a;"></div><div class="stage-line pending"></div>
+              <div class="stage-dot pending"></div><div class="stage-line pending"></div>
+              <div class="stage-dot pending"></div><div class="stage-line pending"></div>
+              <div class="stage-dot pending"></div>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:#d97706;text-align:center;">With Distributor · 14d</div>
+          </div>
+          <div class="demo-col" style="align-items:center;flex-shrink:0;gap:4px;">
+            <span style="font-size:18px;font-weight:700;color:#111827;">10</span>
+            <span class="demo-sub">units</span>
+          </div>
+          <div class="demo-col" style="align-items:flex-start;flex-shrink:0;gap:4px;">
+            <span style="font-size:10px;color:#9ca3af;">No location</span>
+            <button class="next-action-btn btn-amber">Follow Up ⚠</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Visual Smart Rows</h3>
+      <p>Table stays scannable. Each row: 72px thumbnail + product name + finish + customer + project + inline stage tracker + qty + physical location + one-tap next action. Best for fast scanning and comparing many items.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Card Grid -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="approach-label">B — Large Card Grid</div>
+      <div class="card-grid">
+        <div class="inv-card">
+          <div class="inv-card-img" style="font-size:36px;">🚿</div>
+          <div class="inv-card-body">
+            <div style="font-size:11px;font-weight:700;color:#111827;margin-bottom:2px;">Grohe Essence Basin</div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:6px;">Supersteel · Mehta Arch.</div>
+            <div class="stage-track" style="margin-bottom:4px;">
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot active"></div><div class="stage-line pending"></div>
+              <div class="stage-dot pending"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+              <span class="demo-pill pill-blue" style="font-size:10px;">At Godown</span>
+              <span style="font-size:13px;font-weight:700;">×6</span>
+            </div>
+            <button class="next-action-btn btn-blue" style="width:100%;margin-top:6px;text-align:center;">Mark Packed →</button>
+          </div>
+        </div>
+        <div class="inv-card" style="border-color:#bbf7d0;">
+          <div class="inv-card-img" style="font-size:36px;background:#f0fdf4;">🪥</div>
+          <div class="inv-card-body">
+            <div style="font-size:11px;font-weight:700;color:#111827;margin-bottom:2px;">Hansgrohe Raindance</div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:6px;">Chrome · Oberoi Realty</div>
+            <div class="stage-track" style="margin-bottom:4px;">
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot active" style="background:#10b981;box-shadow:0 0 0 3px #bbf7d0;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+              <span class="demo-pill pill-green" style="font-size:10px;">● Ready</span>
+              <span style="font-size:13px;font-weight:700;color:#15803d;">×4</span>
+            </div>
+            <button class="next-action-btn btn-green" style="width:100%;margin-top:6px;text-align:center;">Dispatch ▷</button>
+          </div>
+        </div>
+        <div class="inv-card">
+          <div class="inv-card-img" style="font-size:36px;">🪒</div>
+          <div class="inv-card-body">
+            <div style="font-size:11px;font-weight:700;color:#111827;margin-bottom:2px;">Vitra Nest Toilet</div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:6px;">White Gloss · Prestige</div>
+            <div class="stage-track" style="margin-bottom:4px;">
+              <div class="stage-dot done"></div><div class="stage-line done"></div>
+              <div class="stage-dot active" style="background:#f59e0b;box-shadow:0 0 0 3px #fde68a;"></div><div class="stage-line pending"></div>
+              <div class="stage-dot pending"></div><div class="stage-line pending"></div>
+              <div class="stage-dot pending"></div><div class="stage-line pending"></div>
+              <div class="stage-dot pending"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+              <span class="demo-pill pill-amber" style="font-size:10px;">With Dist. ⚠</span>
+              <span style="font-size:13px;font-weight:700;">×10</span>
+            </div>
+            <button class="next-action-btn btn-amber" style="width:100%;margin-top:6px;text-align:center;">Follow Up</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Large Card Grid</h3>
+      <p>Each product gets its own card with a large image. Better visual identity, feels more like an app. Harder to scan and compare many items at once — you have to scroll through a grid.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Kanban by Stage -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="approach-label">C — Kanban by Stage</div>
+      <div class="kanban">
+        <div class="kanban-col">
+          <div class="kanban-header">
+            <span class="kanban-header-label" style="color:#d97706;">With Dist.</span>
+            <span class="kanban-count">3</span>
+          </div>
+          <div class="kanban-cards">
+            <div class="kanban-card">
+              <div class="kanban-thumb" style="font-size:14px;display:flex;align-items:center;justify-content:center;">🪒</div>
+              <div style="min-width:0;">
+                <div style="font-size:10px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Vitra Nest Toilet</div>
+                <div style="font-size:9px;color:#6b7280;">Prestige · ×10</div>
+              </div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-thumb" style="font-size:14px;display:flex;align-items:center;justify-content:center;">🔧</div>
+              <div style="min-width:0;">
+                <div style="font-size:10px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Grohe Tap</div>
+                <div style="font-size:9px;color:#6b7280;">Lodha · ×3</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-header">
+            <span class="kanban-header-label" style="color:#7c3aed;">At Godown</span>
+            <span class="kanban-count">4</span>
+          </div>
+          <div class="kanban-cards">
+            <div class="kanban-card">
+              <div class="kanban-thumb" style="font-size:14px;display:flex;align-items:center;justify-content:center;">🚿</div>
+              <div style="min-width:0;">
+                <div style="font-size:10px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Grohe Essence</div>
+                <div style="font-size:9px;color:#6b7280;">Mehta Arch · ×6</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-col" style="background:#f0fdf4;">
+          <div class="kanban-header" style="background:#dcfce7;border-bottom-color:#bbf7d0;">
+            <span class="kanban-header-label" style="color:#15803d;">● Packed</span>
+            <span class="kanban-count" style="background:#bbf7d0;color:#15803d;">2</span>
+          </div>
+          <div class="kanban-cards">
+            <div class="kanban-card" style="border-color:#bbf7d0;">
+              <div class="kanban-thumb" style="font-size:14px;display:flex;align-items:center;justify-content:center;">🪥</div>
+              <div style="min-width:0;">
+                <div style="font-size:10px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Hansgrohe Raindance</div>
+                <div style="font-size:9px;color:#6b7280;">Oberoi · ×4</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-header">
+            <span class="kanban-header-label" style="color:#059669;">Dispatched</span>
+            <span class="kanban-count">8</span>
+          </div>
+          <div class="kanban-cards">
+            <div class="kanban-card" style="opacity:0.5;">
+              <div class="kanban-thumb" style="font-size:14px;display:flex;align-items:center;justify-content:center;">✓</div>
+              <div style="min-width:0;">
+                <div style="font-size:10px;font-weight:600;color:#374151;">Axor Citterio</div>
+                <div style="font-size:9px;color:#6b7280;">Godrej · ×2</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Kanban by Stage</h3>
+      <p>Columns per stage. Great for a bird's-eye pipeline view. Problem: a single product can have qty split across multiple stages (e.g. 3 at Godown, 2 Packed), so one card would appear in two columns simultaneously — confusing.</p>
+    </div>
+  </div>
+
+</div>

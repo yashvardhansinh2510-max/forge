@@ -11,6 +11,7 @@ const fetcher = (url: string) => fetch(url).then(res => res.json())
 export default function AuditCenterClient() {
   const [page, setPage] = useState(1)
   const [filters, setFilters] = useState({
+    userId: '',
     category: '',
     entityType: '',
     entityId: '',
@@ -24,6 +25,7 @@ export default function AuditCenterClient() {
   const queryParams = new URLSearchParams()
   queryParams.set('page', page.toString())
   queryParams.set('limit', '20')
+  if (filters.userId) queryParams.set('userId', filters.userId)
   if (filters.category) queryParams.set('category', filters.category)
   if (filters.entityType) queryParams.set('entityType', filters.entityType)
   if (filters.entityId) queryParams.set('entityId', filters.entityId)

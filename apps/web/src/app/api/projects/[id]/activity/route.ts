@@ -5,15 +5,16 @@ import { requireUser } from '@/lib/auth'
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return withErrorHandling(async () => {
     const user = await requireUser()
+    const { id } = await params
     const body = await request.json()
 
     const activity = await prisma.activity.create({
       data: {
-        projectId: params.id,
+        projectId: id,
         type: body.type || 'NOTE',
         description: body.description,
         source: body.source || 'USER',

@@ -3,6 +3,7 @@ import { prisma } from '@forge/db'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
 import { AppError } from '@/lib/errors'
+import { getCurrentUser, writeAuditLog } from '@/lib/auth'
 
 const patchSchema = z.object({
   status: z.enum(['PENDING', 'CONTACTED', 'INTERESTED', 'NEGOTIATING', 'WON', 'LOST']).optional(),
@@ -21,6 +22,7 @@ const patchSchema = z.object({
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withErrorHandling(async () => {
+    const actor = await getCurrentUser()
     const { id } = await params
     const body = await req.json() as unknown
     const data = patchSchema.parse(body)
@@ -49,6 +51,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }),
       },
       include: { responses: { orderBy: { date: 'desc' } } },
+    })
+
+    const action = data.status === 'WON' || data.status === 'LOST'
+      ? 'FOLLOWUP_CLOSED'
+      : 'FOLLOWUP_UPDATED'
+
+    await writeAuditLog({
+      actorId: actor?.id ?? null,
+      action,
+      category: 'FOLLOWUPS',
+      entityType: 'FollowUp',
+      entityId: id,
+      beforeSnapshot: { status: existing.status },
+      afterSnapshot: { status: updated.status, updatedFields: Object.keys(data) },
     })
 
     return NextResponse.json({ followUp: updated })

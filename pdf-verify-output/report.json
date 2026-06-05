@@ -1,0 +1,645 @@
+{
+  "totalPass": 67,
+  "totalFail": 0,
+  "failedSKUs": [],
+  "scenarios": [
+    {
+      "label": "S01 — Chrome only (single finish)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-01.png",
+      "rows": [
+        {
+          "sku": "10003000",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 601,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10623800",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10750180",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 100,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "11020000",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 164,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S02 — Matt Black finish (code 670/677/678)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-02.png",
+      "rows": [
+        {
+          "sku": "10010000",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 86,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10621800",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10625800",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 678,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10651000",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 143,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S03 — Brushed Bronze (code 140)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-03.png",
+      "rows": [
+        {
+          "sku": "10020000",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 51,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10621800",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10627800",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 678,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10651000",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 143,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S04 — Polished Gold (code 990/997)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-04.png",
+      "rows": [
+        {
+          "sku": "10103000",
+          "finish": "990 (Polished Gold Optic)",
+          "imgType": "absolute-local",
+          "natural": 58,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10628000",
+          "finish": "990 (Polished Gold Optic)",
+          "imgType": "absolute-local",
+          "natural": 266,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10921180",
+          "finish": "990 (Polished Gold Optic)",
+          "imgType": "absolute-local",
+          "natural": 600,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S05 — Brushed Black Chrome (340/347)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-05.png",
+      "rows": [
+        {
+          "sku": "10111000",
+          "finish": "340 (Brushed Black Chrome)",
+          "imgType": "absolute-local",
+          "natural": 75,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10629000",
+          "finish": "340 (Brushed Black Chrome)",
+          "imgType": "absolute-local",
+          "natural": 266,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10922180",
+          "finish": "340 (Brushed Black Chrome)",
+          "imgType": "absolute-local",
+          "natural": 218,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S06 — Multi-finish: 10621800 (3 finishes)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-06.png",
+      "rows": [
+        {
+          "sku": "10621800",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10621800",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10621800",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S07 — Relative imageUrl absolutified to localhost",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-07.png",
+      "rows": [
+        {
+          "sku": "10003000",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 601,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10010000",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 86,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10020000",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 51,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10103000",
+          "finish": "990 (Polished Gold Optic)",
+          "imgType": "absolute-local",
+          "natural": 58,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S08 — SVG fallback (imageUrl=null simulated)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-08.png",
+      "rows": [
+        {
+          "sku": "10003000",
+          "finish": "000 (Chrome)",
+          "imgType": "SVG-fallback (simulated null imageUrl)",
+          "natural": 160,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10010000",
+          "finish": "670 (Matt Black)",
+          "imgType": "SVG-fallback (simulated null imageUrl)",
+          "natural": 160,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10020000",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "SVG-fallback (simulated null imageUrl)",
+          "natural": 160,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10103000",
+          "finish": "990 (Polished Gold Optic)",
+          "imgType": "SVG-fallback (simulated null imageUrl)",
+          "natural": 160,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S09 — Mixed finishes in one quotation",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-09.png",
+      "rows": [
+        {
+          "sku": "10003000",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 601,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10010000",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 86,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10103000",
+          "finish": "990 (Polished Gold Optic)",
+          "imgType": "absolute-local",
+          "natural": 58,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10020000",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 51,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S10 — Empty/blank finish code (default Chrome)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-10.png",
+      "rows": [
+        {
+          "sku": "10003000",
+          "finish": " (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 601,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10010000",
+          "finish": " (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 86,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10020000",
+          "finish": " (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 51,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S11 — Matt White (700/708)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-11.png",
+      "rows": [
+        {
+          "sku": "10123000",
+          "finish": "700 (Matt White)",
+          "imgType": "absolute-local",
+          "natural": 60,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10637000",
+          "finish": "700 (Matt White)",
+          "imgType": "absolute-local",
+          "natural": 272,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10925000",
+          "finish": "700 (Matt White)",
+          "imgType": "absolute-local",
+          "natural": 276,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S13 — Brushed Nickel (820)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-12.png",
+      "rows": [
+        {
+          "sku": "10129000",
+          "finish": "820 (Brushed Nickel)",
+          "imgType": "absolute-local",
+          "natural": 48,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10637140",
+          "finish": "820 (Brushed Nickel)",
+          "imgType": "absolute-local",
+          "natural": 900,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10929000",
+          "finish": "820 (Brushed Nickel)",
+          "imgType": "absolute-local",
+          "natural": 899,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S15 — Five products mixed in one room",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-13.png",
+      "rows": [
+        {
+          "sku": "10003000",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 601,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10010000",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 86,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10020000",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 51,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10103000",
+          "finish": "990 (Polished Gold Optic)",
+          "imgType": "absolute-local",
+          "natural": 58,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10111000",
+          "finish": "340 (Brushed Black Chrome)",
+          "imgType": "absolute-local",
+          "natural": 75,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S16 — Polished/Brushed Red Gold (300/310)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-14.png",
+      "rows": [
+        {
+          "sku": "10303180",
+          "finish": "300 (Polished Red Gold)",
+          "imgType": "absolute-local",
+          "natural": 680,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10637300",
+          "finish": "300 (Polished Red Gold)",
+          "imgType": "absolute-local",
+          "natural": 543,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10942000",
+          "finish": "300 (Polished Red Gold)",
+          "imgType": "absolute-local",
+          "natural": 205,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S17 — White & White/Chrome (450/400)",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-15.png",
+      "rows": [
+        {
+          "sku": "10410000",
+          "finish": "450 (White)",
+          "imgType": "absolute-local",
+          "natural": 134,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10650180",
+          "finish": "450 (White)",
+          "imgType": "absolute-local",
+          "natural": 112,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10971180",
+          "finish": "450 (White)",
+          "imgType": "absolute-local",
+          "natural": 109,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S19 — Chrome + Matt Black side-by-side in same section",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-16.png",
+      "rows": [
+        {
+          "sku": "10003000",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 601,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10010000",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 86,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10621800",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10623800",
+          "finish": "000 (Chrome)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "S20 — Large quotation: 10 items all non-Chrome finishes",
+      "screenshot": "/Users/yashvardhansinhjhala/forge/pdf-verify-output/scenario-17.png",
+      "rows": [
+        {
+          "sku": "10010000",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 86,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10020000",
+          "finish": "140 (Brushed Bronze)",
+          "imgType": "absolute-local",
+          "natural": 51,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10103000",
+          "finish": "990 (Polished Gold Optic)",
+          "imgType": "absolute-local",
+          "natural": 58,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10111000",
+          "finish": "340 (Brushed Black Chrome)",
+          "imgType": "absolute-local",
+          "natural": 75,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10123000",
+          "finish": "700 (Matt White)",
+          "imgType": "absolute-local",
+          "natural": 60,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10129000",
+          "finish": "820 (Brushed Nickel)",
+          "imgType": "absolute-local",
+          "natural": 48,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10303180",
+          "finish": "300 (Polished Red Gold)",
+          "imgType": "absolute-local",
+          "natural": 680,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10410000",
+          "finish": "450 (White)",
+          "imgType": "absolute-local",
+          "natural": 134,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10621800",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 675,
+          "broken": false,
+          "status": "PASS"
+        },
+        {
+          "sku": "10625800",
+          "finish": "670 (Matt Black)",
+          "imgType": "absolute-local",
+          "natural": 678,
+          "broken": false,
+          "status": "PASS"
+        }
+      ]
+    }
+  ]
+}

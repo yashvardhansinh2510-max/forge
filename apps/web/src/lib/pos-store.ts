@@ -26,17 +26,27 @@ export interface Room {
   name: string
   items: RoomItem[]
   sortOrder: number
-  roomDiscount: number   // per-room/bathroom % discount (0-60)
+  roomDiscount: number   // per-room % discount (0-60)
 }
 
 export interface ActiveProject {
   id: string
   name: string
   clientName: string
-  clientPhone: string    // customer contact number
-  siteAddress: string    // site / delivery address
-  referenceBy: string    // who referred this client
+  clientPhone: string
+  siteAddress: string
+  referenceBy: string
   globalDiscount: number
+  notes: string
+}
+
+export interface QuotationContext {
+  quotationId: string
+  revisionId: string
+  quotationNumber: string
+  revisionNumber: number
+  status: string
+  lastSavedAt: string  // ISO string
 }
 
 interface POSState {
@@ -45,7 +55,11 @@ interface POSState {
   activeRoomId: string | null
   selectedBrand: string | null
   selectedCategory: string | null
+  selectedTier: string | null
   modalProduct: POSProduct | null
+  customModalOpen: boolean
+  quotationContext: QuotationContext | null
+  lastAutoSavedAt: string | null
 }
 
 interface POSActions {
@@ -56,10 +70,19 @@ interface POSActions {
   setClientPhone: (phone: string) => void
   setSiteAddress: (address: string) => void
   setReferenceBy: (ref: string) => void
+  setProjectName: (name: string) => void
+  setProjectNotes: (notes: string) => void
+  // Quotation context
+  setQuotationContext: (ctx: QuotationContext) => void
+  clearQuotationContext: () => void
+  // Auto-save
+  updateAutoSaveTimestamp: () => void
   // Rooms
   addRoom: (name: string) => void
   removeRoom: (id: string) => void
   renameRoom: (id: string, name: string) => void
+  duplicateRoom: (id: string) => void
+  clearRoom: (id: string) => void
   setActiveRoom: (id: string) => void
   setRoomDiscount: (roomId: string, pct: number) => void
   reorderRooms: (fromIndex: number, toIndex: number) => void
@@ -70,6 +93,7 @@ interface POSActions {
     qty: number,
     includeConcealedParts?: boolean,
     concealedParts?: POSProduct[],
+    initialDiscount?: number,
   ) => void
   removeItem: (roomId: string, itemId: string) => void
   updateItemQty: (roomId: string, itemId: string, delta: number) => void
@@ -77,15 +101,20 @@ interface POSActions {
   reorderItems: (roomId: string, fromIndex: number, toIndex: number) => void
   moveItem: (fromRoomId: string, toRoomId: string, itemId: string) => void
   updateItemFinish: (roomId: string, itemId: string, finish: Finish) => void
+  duplicateItem: (roomId: string, itemId: string) => void
   // Catalog
   setSelectedBrand: (brand: string | null) => void
   setSelectedCategory: (category: string | null) => void
+  setSelectedTier: (tier: string | null) => void
   // Modal
   openModal: (product: POSProduct) => void
   closeModal: () => void
+  openCustomModal: () => void
+  closeCustomModal: () => void
   // Reset / Load
   resetBuilder: () => void
   loadSnapshot: (project: ActiveProject, rooms: Room[]) => void
+  loadSnapshotWithContext: (project: ActiveProject, rooms: Room[], ctx: QuotationContext) => void
 }
 
 // ─── Initial State ─────────────────────────────────────────────────────────────
@@ -97,12 +126,13 @@ const DEFAULT_ROOMS: Room[] = [
 
 const DEFAULT_PROJECT: ActiveProject = {
   id: 'new-project',
-  name: 'New Project',
+  name: '',
   clientName: '',
   clientPhone: '',
   siteAddress: '',
   referenceBy: '',
   globalDiscount: 0,
+  notes: '',
 }
 
 // ─── Store ─────────────────────────────────────────────────────────────────────
@@ -115,7 +145,11 @@ export const usePOSStore = create<POSState & POSActions>()(
       activeRoomId: 'room-1',
       selectedBrand: 'Grohe',
       selectedCategory: null,
+      selectedTier: null,
       modalProduct: null,
+      customModalOpen: false,
+      quotationContext: null,
+      lastAutoSavedAt: null,
 
       // ── Project ──────────────────────────────────────────────────────────
       setProject: (project) =>
@@ -135,6 +169,22 @@ export const usePOSStore = create<POSState & POSActions>()(
 
       setReferenceBy: (ref) =>
         set((s) => { s.project.referenceBy = ref }),
+
+      setProjectName: (name) =>
+        set((s) => { s.project.name = name }),
+
+      setProjectNotes: (notes) =>
+        set((s) => { s.project.notes = notes }),
+
+      // ── Quotation context ────────────────────────────────────────────────
+      setQuotationContext: (ctx) =>
+        set((s) => { s.quotationContext = ctx }),
+
+      clearQuotationContext: () =>
+        set((s) => { s.quotationContext = null }),
+
+      updateAutoSaveTimestamp: () =>
+        set((s) => { s.lastAutoSavedAt = new Date().toISOString() }),
 
       // ── Rooms ────────────────────────────────────────────────────────────
       addRoom: (name) =>
@@ -158,6 +208,24 @@ export const usePOSStore = create<POSState & POSActions>()(
           if (room) room.name = name
         }),
 
+      duplicateRoom: (id) =>
+        set((s) => {
+          const room = s.rooms.find((r) => r.id === id)
+          if (!room) return
+          const newRoom: Room = {
+            id: `room-${Date.now()}`,
+            name: `${room.name} (copy)`,
+            items: room.items.map((item) => ({
+              ...item,
+              id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            })),
+            sortOrder: s.rooms.length,
+            roomDiscount: room.roomDiscount,
+          }
+          s.rooms.push(newRoom)
+          s.activeRoomId = newRoom.id
+        }),
+
       setActiveRoom: (id) =>
         set((s) => { s.activeRoomId = id }),
 
@@ -171,18 +239,23 @@ export const usePOSStore = create<POSState & POSActions>()(
         set((s) => {
           const [moved] = s.rooms.splice(fromIndex, 1)
           if (moved) s.rooms.splice(toIndex, 0, moved)
-          s.rooms.forEach((r, i) => { r.sortOrder = i })
+          s.rooms.forEach((room, i) => { room.sortOrder = i })
+        }),
+
+      clearRoom: (id) =>
+        set((s) => {
+          const room = s.rooms.find((r) => r.id === id)
+          if (room) room.items = []
         }),
 
       // ── Items ────────────────────────────────────────────────────────────
-      addItemToActiveRoom: (product, finish, qty, includeConcealedParts = false, concealedParts = []) =>
+      addItemToActiveRoom: (product, finish, qty, includeConcealedParts = false, concealedParts = [], initialDiscount = 0) =>
         set((s) => {
           const roomId = s.activeRoomId
           if (!roomId) return
           const room = s.rooms.find((r) => r.id === roomId)
           if (!room) return
 
-          // Same product + finish → increment qty
           const existing = room.items.find(
             (i) => i.product.id === product.id && i.finish.code === finish.code
           )
@@ -191,23 +264,21 @@ export const usePOSStore = create<POSState & POSActions>()(
             return
           }
 
-          // Add main item
           room.items.push({
             id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             product,
             finish,
             quantity: qty,
-            itemDiscount: 0,
+            itemDiscount: Math.round(Math.max(0, Math.min(60, initialDiscount)) * 100) / 100,
             isAutoAdded: false,
             sortOrder: room.items.length,
           })
 
-          // Only bundle concealed parts if user explicitly opted in
           if (includeConcealedParts) {
             for (const part of concealedParts) {
               const alreadyHasPart = room.items.some((i) => i.product.id === part.id)
               if (alreadyHasPart) continue
-              const partFinish = part.finishes[0] ?? { name: '', code: '', color: '#9ca3af', priceAdj: 0 }
+              const partFinish = part.finishes[0] ?? { name: '', code: '', sku: part.sku, color: '#9ca3af', priceAdj: 0 }
               room.items.push({
                 id: `item-${Date.now()}-${part.id}`,
                 product: part,
@@ -238,7 +309,7 @@ export const usePOSStore = create<POSState & POSActions>()(
         set((s) => {
           const room = s.rooms.find((r) => r.id === roomId)
           const item = room?.items.find((i) => i.id === itemId)
-          if (item) item.itemDiscount = Math.max(0, Math.min(60, discount))
+          if (item) item.itemDiscount = Math.round(Math.max(0, Math.min(60, discount)) * 100) / 100
         }),
 
       reorderItems: (roomId, fromIndex, toIndex) =>
@@ -274,6 +345,19 @@ export const usePOSStore = create<POSState & POSActions>()(
           if (item) item.finish = finish
         }),
 
+      duplicateItem: (roomId, itemId) =>
+        set((s) => {
+          const room = s.rooms.find((r) => r.id === roomId)
+          if (!room) return
+          const item = room.items.find((i) => i.id === itemId)
+          if (!item) return
+          room.items.push({
+            ...item,
+            id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            sortOrder: room.items.length,
+          })
+        }),
+
       // ── Catalog ──────────────────────────────────────────────────────────
       setSelectedBrand: (brand) =>
         set((s) => {
@@ -284,6 +368,9 @@ export const usePOSStore = create<POSState & POSActions>()(
       setSelectedCategory: (category) =>
         set((s) => { s.selectedCategory = category }),
 
+      setSelectedTier: (tier) =>
+        set((s) => { s.selectedTier = tier }),
+
       // ── Modal ────────────────────────────────────────────────────────────
       openModal: (product) =>
         set((s) => { s.modalProduct = product }),
@@ -291,30 +378,53 @@ export const usePOSStore = create<POSState & POSActions>()(
       closeModal: () =>
         set((s) => { s.modalProduct = null }),
 
+      openCustomModal: () =>
+        set((s) => { s.customModalOpen = true }),
+
+      closeCustomModal: () =>
+        set((s) => { s.customModalOpen = false }),
+
       // ── Reset / Load ─────────────────────────────────────────────────────
       resetBuilder: () =>
         set((s) => {
+          s.project = { ...DEFAULT_PROJECT }
           s.rooms = DEFAULT_ROOMS.map((r) => ({ ...r, items: [], roomDiscount: 0 }))
           s.activeRoomId = 'room-1'
           s.selectedBrand = 'Grohe'
           s.selectedCategory = null
+          s.selectedTier = null
           s.modalProduct = null
+          s.customModalOpen = false
+          s.quotationContext = null
         }),
 
       loadSnapshot: (project, rooms) =>
         set((s) => {
-          s.project = project
+          s.project = { ...DEFAULT_PROJECT, ...project }
           s.rooms = rooms
           s.activeRoomId = rooms[0]?.id ?? null
           s.selectedBrand = 'Grohe'
           s.selectedCategory = null
+          s.selectedTier = null
           s.modalProduct = null
+          s.quotationContext = null
+        }),
+
+      loadSnapshotWithContext: (project, rooms, ctx) =>
+        set((s) => {
+          s.project = { ...DEFAULT_PROJECT, ...project }
+          s.rooms = rooms
+          s.activeRoomId = rooms[0]?.id ?? null
+          s.selectedBrand = 'Grohe'
+          s.selectedCategory = null
+          s.selectedTier = null
+          s.modalProduct = null
+          s.quotationContext = ctx
         }),
     })),
     {
-      name: 'forge-pos-store-v3',   // version bump clears all stale data
+      name: 'forge-pos-store-v5',
       storage: createJSONStorage(() => {
-        // Safe localStorage wrapper — returns empty on SSR
         if (typeof window === 'undefined') {
           return {
             getItem: () => null,
@@ -328,14 +438,17 @@ export const usePOSStore = create<POSState & POSActions>()(
         project: state.project,
         rooms: state.rooms,
         activeRoomId: state.activeRoomId,
+        quotationContext: state.quotationContext,
+        selectedBrand: state.selectedBrand,
       }),
-      // Migrate or wipe incompatible stored state
       migrate: () => ({
         project: DEFAULT_PROJECT,
         rooms: DEFAULT_ROOMS,
         activeRoomId: 'room-1',
+        quotationContext: null,
+        selectedBrand: 'Grohe',
       }),
-      version: 3,
+      version: 5,
     }
   )
 )
@@ -359,7 +472,6 @@ export function useTotals() {
       for (const item of room.items) {
         const unitMRP    = item.product.mrp + item.finish.priceAdj
         const lineMRP    = unitMRP * item.quantity
-        // Apply the highest of global, room-level, or item-level discount
         const effectiveDiscount = Math.max(discount, room.roomDiscount ?? 0, item.itemDiscount ?? 0)
         const lineOffer  = lineMRP * (1 - effectiveDiscount / 100)
         totalMRP   += lineMRP
@@ -377,4 +489,19 @@ export function useTotals() {
       roomCount: rooms.length,
     }
   }, [rooms, discount])
+}
+
+// Returns which discount level wins for a given item
+export function effectiveDiscountSource(
+  globalDiscount: number,
+  roomDiscount: number,
+  itemDiscount: number,
+): { pct: number; source: 'global' | 'room' | 'item' | 'none' } {
+  const pct = Math.max(globalDiscount, roomDiscount, itemDiscount)
+  if (pct === 0) return { pct: 0, source: 'none' }
+  if (itemDiscount >= roomDiscount && itemDiscount >= globalDiscount && itemDiscount === pct)
+    return { pct, source: 'item' }
+  if (roomDiscount >= globalDiscount && roomDiscount === pct)
+    return { pct, source: 'room' }
+  return { pct, source: 'global' }
 }

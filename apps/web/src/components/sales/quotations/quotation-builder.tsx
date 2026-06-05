@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  X, GripVertical, Plus, Send, Check, ChevronRight, Search, Trash2, Lock, Printer,
+  X, GripVertical, Plus, Send, Check, ChevronRight, Search, Trash2, Lock, Printer, Clock, GitBranch,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -442,23 +442,46 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
     toast.success(`Quotation ${quotation?.number} sent to ${quotation?.customerName}`)
   }
 
-  function handlePrint() {
+  async function handlePrint() {
     if (!quotation) return
-    const html = generateQuotationPrintHTML({
-      number: quotation.number,
-      customerName,
-      customerPhone: customerPhone || undefined,
-      createdBy: quotation.createdBy,
-      createdAt: quotation.createdAt,
-      lineItems,
-    })
-    const win = window.open('', '_blank')
-    if (!win) {
-      toast.error('Pop-ups blocked — allow pop-ups for this site and try again')
+
+    // Gap 2: customer phone is required (maps to NUM field in PDF)
+    if (!customerPhone.trim()) {
+      toast.error('Customer phone number is required before generating the PDF')
       return
     }
-    win.document.write(html)
-    win.document.close()
+    // Gap 3: reference person is required (maps to REF field in PDF)
+    if (!quotation.createdBy.trim()) {
+      toast.error('Reference person is required before generating the PDF')
+      return
+    }
+
+    const html = generateQuotationPrintHTML({
+      number:        quotation.number,
+      customerName,
+      customerPhone: customerPhone.trim(),
+      createdBy:     quotation.createdBy,
+      createdAt:     quotation.createdAt,
+      lineItems,
+      projectNotes:  notes.trim() || undefined,
+    })
+
+    // Gap 1: server-side PDF — no browser print chrome
+    try {
+      const res = await fetch('/api/quotations/pdf', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ html, filename: `Quotation-${quotation.number}.pdf` }),
+      })
+      if (!res.ok) throw new Error('PDF generation failed')
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = Object.assign(document.createElement('a'), { href: url, download: `Quotation-${quotation.number}.pdf` })
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('PDF generation failed — please try again')
+    }
   }
 
   async function handleSave(): Promise<string | null> {
@@ -483,6 +506,12 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
             unitPrice: li.unitPrice,
             discount: li.discount,
             gstRate: li.gstRate,
+            section: li.section ?? undefined,
+            finishCode: li.finishCode ?? undefined,
+            finishName: li.finishName ?? undefined,
+            finishSku: li.finishSku ?? undefined,
+            finishColor: li.finishColor ?? undefined,
+            brand: li.brand ?? undefined,
           })),
       }
 
@@ -613,9 +642,11 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                     <StatusBadge status={status} size="md" />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button onClick={() => void handleSave()} style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid var(--border-default)', background: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                      Save Draft
-                    </button>
+                    {revisionStatus !== 'LOCKED' && (
+                      <button onClick={() => void handleSave()} style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid var(--border-default)', background: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                        Save Draft
+                      </button>
+                    )}
                     <button
                       onClick={handlePrint}
                       style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid var(--border-default)', background: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}
@@ -623,6 +654,24 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                       <Printer size={12} />
                       Print / Save PDF
                     </button>
+                    {/* History button — always visible */}
+                    <button
+                      onClick={() => setShowHistoryModal(true)}
+                      style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid var(--border-default)', background: 'white', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}
+                    >
+                      <Clock size={12} />
+                      History
+                    </button>
+                    {/* Locked: Create New Revision button */}
+                    {revisionStatus === 'LOCKED' && (
+                      <button
+                        onClick={() => setShowHistoryModal(true)}
+                        style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid rgba(37,99,235,0.3)', background: '#EFF6FF', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                      >
+                        <GitBranch size={12} />
+                        Create Revision
+                      </button>
+                    )}
                     {canConvert ? (
                       revisionStatus === 'LOCKED' ? (
                         <div style={{ height: 30, padding: '0 12px', borderRadius: 7, border: '1px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -639,13 +688,15 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                         </button>
                       )
                     ) : (
-                      <button
-                        onClick={handleSend}
-                        style={{ height: 30, padding: '0 12px', borderRadius: 7, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
-                      >
-                        <Send size={12} />
-                        Send to Customer
-                      </button>
+                      revisionStatus !== 'LOCKED' && (
+                        <button
+                          onClick={handleSend}
+                          style={{ height: 30, padding: '0 12px', borderRadius: 7, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                        >
+                          <Send size={12} />
+                          Send to Customer
+                        </button>
+                      )
                     )}
                     <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border-default)', background: 'white', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
                       <X size={14} />
@@ -875,6 +926,10 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
         isOpen={showHistoryModal}
         onClose={() => setShowHistoryModal(false)}
         quotation={quotation}
+        onRevisionCreated={(_newRevisionId, _revNo) => {
+          setShowHistoryModal(false)
+          onClose()
+        }}
       />
     </DialogPrimitive.Root>
   )

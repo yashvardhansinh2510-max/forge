@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { BRAND_GROUPS } from '@/lib/purchases-tracker'
+import { BRAND_GROUPS, effectiveCeiling } from '@/lib/purchases-tracker'
 import { prisma } from '@forge/db'
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     const result = lines.map((line) => ({
       ...line,
       qtyAtStage: stage === 'ALL'
-        ? line.qtyOrdered
+        ? effectiveCeiling(line)
         : (line[STAGE_FIELD_MAP[stage] as keyof typeof line] as number),
     }))
 

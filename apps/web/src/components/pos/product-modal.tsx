@@ -6,10 +6,6 @@ import { usePOSStore, useActiveRoom } from '@/lib/pos-store'
 import type { Finish } from '@/lib/mock/pos-data'
 import { usePOSCatalog } from '@/lib/pos-catalog'
 
-function skuWithFinish(sku: string, finishCode: string): string {
-  if (!finishCode) return sku
-  return sku.endsWith(`-${finishCode}`) ? sku : `${sku}-${finishCode}`
-}
 import { ProductVisual } from './product-visual'
 
 function formatINR(n: number): string {
@@ -64,7 +60,7 @@ export function ProductModal() {
 
   const handleAdd = () => {
     if (!canAdd) return
-    const finish = selectedFinish ?? { name: '', code: '', color: '#9ca3af', priceAdj: 0 }
+    const finish = selectedFinish ?? { name: '', code: '', sku: product.sku, color: '#9ca3af', priceAdj: 0 }
     addItemToActiveRoom(product, finish, qty, includeConcealedParts)
     closeModal()
   }
@@ -120,16 +116,9 @@ export function ProductModal() {
                 boxShadow: '0 14px 34px rgba(0,0,0,0.16)',
                 flexShrink: 0,
                 overflow: 'hidden',
+                position: 'relative',
               }}>
-                {product.imageUrl ? (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    style={{ width: 200, height: 200, objectFit: 'contain', padding: 16 }}
-                  />
-                ) : (
-                  <ProductVisual product={product} finish={selectedFinish} size={160} />
-                )}
+                <ProductVisual product={product} finish={selectedFinish} size={160} showRepresentativeBadge />
               </div>
               <div style={{ minWidth: 0 }}>
               <div
@@ -162,7 +151,7 @@ export function ProductModal() {
               <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginBottom: 3 }}>
                 Article No.{' '}
                 <span style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em' }}>
-                  {skuWithFinish(product.sku, selectedFinish?.code ?? '')}
+                  {selectedFinish?.sku || product.sku}
                 </span>
               </div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.68)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>

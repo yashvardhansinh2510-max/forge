@@ -4,13 +4,39 @@ import * as React from 'react'
 import type { Finish, POSProduct } from '@/lib/mock/pos-data'
 
 interface ProductVisualProps {
-  product: Pick<POSProduct, 'category' | 'subCategory' | 'brand' | 'name' | 'imageUrl'>
-  finish?: Pick<Finish, 'name' | 'color'> | null
+  product: Pick<POSProduct, 'category' | 'subCategory' | 'brand' | 'name' | 'imageUrl' | 'finishImages'>
+  finish?: Pick<Finish, 'name' | 'color' | 'code'> | null
   size?: number
   muted?: boolean
+  showRepresentativeBadge?: boolean
 }
 
-function finishTone(product: ProductVisualProps['product'], finish?: ProductVisualProps['finish']) {
+// Finish codes that map to "Chrome" — images are assumed to be photographed in Chrome
+const CHROME_CODES = new Set(['000', '007', '008', '147', '180', '187', '408'])
+
+function isChrome(code?: string): boolean {
+  return !code || CHROME_CODES.has(code)
+}
+
+function resolveImage(
+  product: Pick<POSProduct, 'imageUrl' | 'finishImages'>,
+  finish?: Pick<Finish, 'code'> | null,
+): { url: string; isRepresentative: boolean } | null {
+  const code = finish?.code ?? ''
+  if (code && product.finishImages?.[code]) {
+    return { url: product.finishImages[code]!, isRepresentative: false }
+  }
+  const chromeUrl = product.finishImages?.['000']
+  if (chromeUrl) {
+    return { url: chromeUrl, isRepresentative: !isChrome(code) }
+  }
+  if (product.imageUrl) {
+    return { url: product.imageUrl, isRepresentative: !isChrome(code) }
+  }
+  return null
+}
+
+function finishTone(product: Pick<ProductVisualProps['product'], 'brand'>, finish?: Pick<Finish, 'color'> | null) {
   if (finish?.color) return finish.color
   if (product.brand === 'Vitra') return '#f7f5f0'
   if (product.brand === 'Geberit') return '#c7ccd4'
@@ -22,23 +48,71 @@ function strokeFor(fill: string) {
   return light.some((token) => fill.toLowerCase().startsWith(token)) ? '#c9c7bf' : 'rgba(17,24,39,0.38)'
 }
 
-export function ProductVisual({ product, finish, size = 64, muted = false }: ProductVisualProps) {
-  if (product.imageUrl) {
+export function ProductVisual({ product, finish, size = 64, muted = false, showRepresentativeBadge = false }: ProductVisualProps) {
+  const resolved = resolveImage(product, finish)
+
+  if (resolved) {
+    const showBadge = showRepresentativeBadge && resolved.isRepresentative
+    const r = parseInt(finish?.color?.slice(1, 3) ?? 'ff', 16)
+    const g = parseInt(finish?.color?.slice(3, 5) ?? 'ff', 16)
+    const b = parseInt(finish?.color?.slice(5, 7) ?? 'ff', 16)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    // lighter finishes (white, matt white) get a slightly deeper overlay so they're visible
+    const overlayOpacity = resolved.isRepresentative ? (luminance > 0.8 ? 0.14 : 0.26) : 0
+
     return (
-      <img
-        src={product.imageUrl}
-        alt={`${product.name}${finish?.name ? ` in ${finish.name}` : ''}`}
-        width={size}
-        height={size}
-        style={{
-          display: 'block',
-          width: size,
-          height: size,
-          objectFit: 'contain',
-          borderRadius: Math.max(6, Math.round(size * 0.14)),
-          opacity: muted ? 0.58 : 1,
-        }}
-      />
+      <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+        <img
+          src={resolved.url}
+          alt={`${product.name}${finish?.name ? ` in ${finish.name}` : ''}`}
+          width={size}
+          height={size}
+          style={{
+            display: 'block',
+            width: size,
+            height: size,
+            objectFit: 'contain',
+            borderRadius: Math.max(6, Math.round(size * 0.14)),
+            opacity: muted ? 0.58 : 1,
+          }}
+        />
+        {finish?.color && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: finish.color,
+              opacity: overlayOpacity,
+              borderRadius: Math.max(6, Math.round(size * 0.14)),
+              pointerEvents: 'none',
+              transition: 'opacity 0.12s ease, background 0.12s ease',
+            }}
+          />
+        )}
+        {showBadge && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 4,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '2px 6px',
+              borderRadius: 999,
+              background: 'rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(4px)',
+              fontSize: 9,
+              fontWeight: 600,
+              color: '#fff',
+              whiteSpace: 'nowrap',
+              letterSpacing: '0.02em',
+              pointerEvents: 'none',
+            }}
+          >
+            Representative image
+          </div>
+        )}
+      </div>
     )
   }
 

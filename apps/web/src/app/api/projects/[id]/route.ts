@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
 import { prisma, ProjectStatus, ProjectHealth } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { requireUser } from '@/lib/auth'
+import { requireUser, writeAuditLog } from '@/lib/auth'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return withErrorHandling(async () => {
     await requireUser()
+    const { id } = await params
 
     const project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         company: { select: { name: true } },
         activities: {
@@ -58,14 +59,14 @@ export async function GET(
     // quotationValue: aggregate from linked quotation items
     const qAgg = await prisma.quotationItem.aggregate({
       _sum: { totalOffer: true },
-      where: { room: { revision: { quotation: { projectId: project.id } } } }
+      where: { room: { revision: { quotation: { projectId: id } } } }
     })
     const quotationValue = (qAgg._sum.totalOffer as number | null) ?? offerTotal
 
     // purchaseValue: aggregate from linked PO line items
     const poAgg = await prisma.pOLineItem.aggregate({
       _sum: { qtyOrdered: true },
-      where: { po: { projectId: project.id } }
+      where: { po: { projectId: id } }
     })
     const purchaseValue = (poAgg._sum.qtyOrdered as number | null) ?? 0
 
@@ -81,10 +82,11 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return withErrorHandling(async () => {
     const user = await requireUser()
+    const { id } = await params
     const body = await request.json()
 
     // Map body attributes to only what's allowed to update
@@ -100,19 +102,35 @@ export async function PUT(
     if (body.status !== undefined) updateData.status = body.status as ProjectStatus
     if (body.health !== undefined) updateData.health = body.health as ProjectHealth
 
+    const existing = await prisma.project.findUnique({
+      where: { id },
+      select: { status: true, health: true, projectName: true },
+    })
+
     const project = await prisma.project.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...updateData,
         activities: {
           create: {
-            type: 'NOTE', // Using NOTE for manual update
+            type: 'NOTE',
             description: `Project details updated`,
             source: 'USER',
             userId: user.id
           }
         }
       }
+    })
+
+    const action = updateData.status !== undefined ? 'PROJECT_STATUS_CHANGED' : 'PROJECT_UPDATED'
+    await writeAuditLog({
+      actorId: user.id,
+      action,
+      category: 'PROJECTS',
+      entityType: 'Project',
+      entityId: id,
+      beforeSnapshot: existing ?? undefined,
+      afterSnapshot: { ...updateData },
     })
 
     return NextResponse.json(project)

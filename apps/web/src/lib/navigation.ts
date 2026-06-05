@@ -8,6 +8,7 @@ import {
   Settings2,
   PhoneCall,
   Wallet,
+  Activity,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -52,6 +53,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Price Lists', href: '/settings/price-lists', icon: Tag },
       { label: 'Users', href: '/settings/users', icon: Users },
+      { label: 'Audit Center', href: '/settings/audit', icon: Activity },
       { label: 'Settings', href: '/settings', icon: Settings2 },
     ],
   },

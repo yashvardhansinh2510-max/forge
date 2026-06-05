@@ -46,6 +46,29 @@ export interface DashboardPurchaseStage {
   qty: number
 }
 
+export interface DashboardBillingQueueItem {
+  id: string
+  customerName: string
+  number: string
+  outstanding: number
+}
+
+export interface DashboardRecentPayment {
+  id: string
+  amount: number
+  customerName: string
+  method: string
+  receivedAt: string
+}
+
+export interface DashboardRecentQuotation {
+  id: string
+  number: string
+  customerName: string | null
+  currentStatus: string
+  createdAt: string
+}
+
 export interface DashboardData {
   kpis: DashboardKPIs
   recentActivity: DashboardActivityItem[]

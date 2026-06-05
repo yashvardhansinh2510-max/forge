@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Purchases V6 — Visual Smart Rows</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f4f3; min-height: 100vh; }
+
+  .page-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .page-title { font-size: 13px; font-weight: 700; color: #111827; }
+  .page-subtitle { font-size: 12px; color: #9ca3af; }
+  .export-btn {
+    margin-left: auto;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .filter-bar {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .filter-chip {
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #6b7280;
+    cursor: pointer;
+  }
+  .filter-chip.active {
+    background: #111827;
+    border-color: #111827;
+    color: white;
+  }
+  .filter-count { margin-left: auto; font-size: 11px; color: #9ca3af; }
+
+  /* Table */
+  .table-wrap { background: white; margin: 0; }
+  .table-head {
+    display: grid;
+    grid-template-columns: 80px 1fr 160px 200px 80px 120px 140px;
+    gap: 0;
+    padding: 8px 16px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 80px 1fr 160px 200px 80px 120px 140px;
+    gap: 0;
+    padding: 10px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+  .row:hover { background: #fafafa; }
+  .row.ready { background: #f0fdf4; }
+  .row.ready:hover { background: #dcfce7; }
+  .row.blocked { background: #fffbeb; }
+  .row.blocked:hover { background: #fef3c7; }
+
+  /* Left accent bar */
+  .row.ready { border-left: 3px solid #10b981; }
+  .row.blocked { border-left: 3px solid #f59e0b; }
+  .row.pending-co { border-left: 3px solid #9ca3af; }
+
+  /* Thumbnail */
+  .thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #f8f8f7;
+    object-fit: contain;
+    padding: 4px;
+    display: block;
+  }
+  .thumb-placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #f4f4f3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+  }
+
+  /* Product col */
+  .product-name { font-size: 13px; font-weight: 600; color: #111827; line-height: 1.3; }
+  .product-meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  .finish-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #374151;
+    margin-top: 4px;
+  }
+  .finish-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Customer col */
+  .customer-name { font-size: 12px; font-weight: 600; color: #111827; }
+  .project-name { font-size: 11px; color: #6b7280; margin-top: 1px; }
+
+  /* Stage tracker */
+  .stage-tracker { display: flex; flex-direction: column; gap: 4px; }
+  .track-row { display: flex; align-items: center; }
+  .s-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .s-dot.done { background: #10b981; }
+  .s-dot.active-green { background: #10b981; box-shadow: 0 0 0 3px #bbf7d0; }
+  .s-dot.active-blue { background: #2563eb; box-shadow: 0 0 0 3px #bfdbfe; }
+  .s-dot.active-amber { background: #f59e0b; box-shadow: 0 0 0 3px #fde68a; }
+  .s-dot.future { background: #e5e7eb; }
+  .s-line { flex: 1; height: 2px; min-width: 8px; }
+  .s-line.done { background: #10b981; }
+  .s-line.future { background: #e5e7eb; }
+  .stage-label {
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 3px;
+  }
+  .label-green { color: #15803d; }
+  .label-blue { color: #1d4ed8; }
+  .label-amber { color: #d97706; }
+  .label-gray { color: #9ca3af; }
+
+  /* Qty */
+  .qty-num { font-size: 20px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+  .qty-unit { font-size: 10px; color: #9ca3af; }
+
+  /* Location */
+  .loc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #0369a1;
+  }
+  .loc-none { font-size: 11px; color: #d1d5db; }
+
+  /* Next action */
+  .next-btn {
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    width: 100%;
+    text-align: center;
+  }
+  .btn-dispatch { background: #10b981; color: white; }
+  .btn-pack { background: #2563eb; color: white; }
+  .btn-followup { background: #fffbeb; color: #d97706; border: 1px solid #fcd34d; }
+  .btn-wait { background: #f9fafb; color: #9ca3af; border: 1px solid #e5e7eb; }
+
+  /* Section headers */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px 6px;
+    background: white;
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .section-divider { flex: 1; height: 1px; background: #f0f0f0; }
+  .section-count {
+    font-size: 10px;
+    font-weight: 700;
+    background: #e5e7eb;
+    border-radius: 999px;
+    padding: 1px 7px;
+    color: #374151;
+  }
+
+  /* Annotation callouts */
+  .callout-layer {
+    position: relative;
+    pointer-events: none;
+  }
+  .annotation {
+    position: absolute;
+    background: #1e1b4b;
+    color: white;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  .annotation::after {
+    content: '';
+    position: absolute;
+    border: 5px solid transparent;
+  }
+</style>
+</head>
+<body>
+
+<!-- Page header -->
+<div class="page-header">
+  <div>
+    <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#9ca3af;">Purchases</span>
+    <span style="color:#d1d5db;margin:0 6px;">/</span>
+    <span class="page-title">Stock</span>
+  </div>
+  <button class="export-btn">⬇ Export to Excel</button>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+  <button class="filter-chip active">All stock</button>
+  <button class="filter-chip" style="color:#15803d;border-color:#bbf7d0;">● Ready (2)</button>
+  <button class="filter-chip" style="color:#2563eb;border-color:#bfdbfe;">Awaiting Packing (1)</button>
+  <button class="filter-chip" style="color:#d97706;border-color:#fcd34d;">With Distributor (1)</button>
+  <button class="filter-chip" style="color:#9ca3af;">Awaiting Company (1)</button>
+  <span class="filter-count">5 lines</span>
+</div>
+
+<!-- Table -->
+<div class="table-wrap">
+  <div class="table-head">
+    <div class="th"></div>
+    <div class="th">Product</div>
+    <div class="th">Customer · Project</div>
+    <div class="th">Stage</div>
+    <div class="th">Qty</div>
+    <div class="th">Location</div>
+    <div class="th">Next Action</div>
+  </div>
+
+  <!-- READY section -->
+  <div class="section-header">
+    <span class="section-label" style="color:#15803d;">● Ready to Dispatch</span>
+    <div class="section-divider"></div>
+    <span class="section-count" style="background:#dcfce7;color:#15803d;">2</span>
+  </div>
+
+  <!-- Row 1: Ready -->
+  <div class="row ready">
+    <div><img class="thumb" src="http://localhost:3000/product-images/product-003.png" alt="product" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="thumb-placeholder" style="display:none;">GRO</div></div>
+    <div>
+      <div class="product-name">Grohe Essence Basin Mixer</div>
+      <div class="product-meta">SKU: 32896DC0 · Grohe</div>
+      <div class="finish-pill">
+        <span class="finish-dot" style="background:#c0c0c0;"></span>
+        Supersteel
+      </div>
+    </div>
+    <div>
+      <div class="customer-name">Mehta Architects</div>
+      <div class="project-name">Lodha Altamount</div>
+    </div>
+    <div class="stage-tracker">
+      <div class="track-row">
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot active-green"></div>
+      </div>
+      <div class="stage-label label-green">● Packed · Ready</div>
+    </div>
+    <div>
+      <div class="qty-num">6</div>
+      <div class="qty-unit">units</div>
+    </div>
+    <div><span class="loc-badge">📦 Box 12</span></div>
+    <div><button class="next-btn btn-dispatch">Dispatch ▷</button></div>
+  </div>
+
+  <!-- Row 2: Ready -->
+  <div class="row ready">
+    <div><img class="thumb" src="http://localhost:3000/product-images/product-005.png" alt="product" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="thumb-placeholder" style="display:none;">HAN</div></div>
+    <div>
+      <div class="product-name">Hansgrohe Raindance Select E 300</div>
+      <div class="product-meta">SKU: 27379000 · Hansgrohe</div>
+      <div class="finish-pill">
+        <span class="finish-dot" style="background:#d4d4d8;border:1px solid #9ca3af;"></span>
+        Chrome
+      </div>
+    </div>
+    <div>
+      <div class="customer-name">Oberoi Realty</div>
+      <div class="project-name">Sky Garden Tower</div>
+    </div>
+    <div class="stage-tracker">
+      <div class="track-row">
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot active-green"></div>
+      </div>
+      <div class="stage-label label-green">● Packed · Ready</div>
+    </div>
+    <div>
+      <div class="qty-num">4</div>
+      <div class="qty-unit">units</div>
+    </div>
+    <div><span class="loc-badge">📦 Rack B-3</span></div>
+    <div><button class="next-btn btn-dispatch">Dispatch ▷</button></div>
+  </div>
+
+  <!-- AWAITING PACKING section -->
+  <div class="section-header" style="margin-top:4px;">
+    <span class="section-label" style="color:#2563eb;">■ Awaiting Packing</span>
+    <div class="section-divider"></div>
+    <span class="section-count" style="background:#eff6ff;color:#2563eb;">1</span>
+  </div>
+
+  <!-- Row 3: At Godown -->
+  <div class="row">
+    <div><img class="thumb" src="http://localhost:3000/product-images/product-007.png" alt="product" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="thumb-placeholder" style="display:none;">GRO</div></div>
+    <div>
+      <div class="product-name">Grohe Euphoria Massage Shower</div>
+      <div class="product-meta">SKU: 26453DC0 · Grohe</div>
+      <div class="finish-pill">
+        <span class="finish-dot" style="background:#1c1c1c;"></span>
+        Hard Graphite
+      </div>
+    </div>
+    <div>
+      <div class="customer-name">Lodha Group</div>
+      <div class="project-name">Lodha Altamount</div>
+    </div>
+    <div class="stage-tracker">
+      <div class="track-row">
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot active-blue"></div><div class="s-line future"></div>
+        <div class="s-dot future"></div>
+      </div>
+      <div class="stage-label label-blue">At Godown · Pack it</div>
+    </div>
+    <div>
+      <div class="qty-num">8</div>
+      <div class="qty-unit">units</div>
+    </div>
+    <div><span class="loc-badge">📦 Shelf C-1</span></div>
+    <div><button class="next-btn btn-pack">Mark Packed →</button></div>
+  </div>
+
+  <!-- WITH DISTRIBUTOR section -->
+  <div class="section-header" style="margin-top:4px;">
+    <span class="section-label" style="color:#d97706;">⏳ Waiting — External</span>
+    <div class="section-divider"></div>
+    <span class="section-count" style="background:#fffbeb;color:#d97706;">2</span>
+  </div>
+
+  <!-- Row 4: With Distributor -->
+  <div class="row blocked">
+    <div><img class="thumb" src="http://localhost:3000/product-images/product-010.png" alt="product" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="thumb-placeholder" style="display:none;">VIT</div></div>
+    <div>
+      <div class="product-name">Vitra Nest Toilet Suite</div>
+      <div class="product-meta">SKU: 7856B003 · Vitra</div>
+      <div class="finish-pill">
+        <span class="finish-dot" style="background:#ffffff;border:1px solid #d1d5db;"></span>
+        White Gloss
+      </div>
+    </div>
+    <div>
+      <div class="customer-name">Prestige Group</div>
+      <div class="project-name">Leela Residences</div>
+    </div>
+    <div class="stage-tracker">
+      <div class="track-row">
+        <div class="s-dot done"></div><div class="s-line done"></div>
+        <div class="s-dot active-amber"></div><div class="s-line future"></div>
+        <div class="s-dot future"></div><div class="s-line future"></div>
+        <div class="s-dot future"></div><div class="s-line future"></div>
+        <div class="s-dot future"></div>
+      </div>
+      <div class="stage-label label-amber">⚠ With Distributor · 14 days</div>
+    </div>
+    <div>
+      <div class="qty-num">10</div>
+      <div class="qty-unit">units</div>
+    </div>
+    <div><span class="loc-none">No location yet</span></div>
+    <div><button class="next-btn btn-followup">Follow Up ⚠</button></div>
+  </div>
+
+  <!-- Row 5: Awaiting Company -->
+  <div class="row" style="opacity:0.75;">
+    <div><img class="thumb" src="http://localhost:3000/product-images/product-014.png" alt="product" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="thumb-placeholder" style="display:none;">AXO</div></div>
+    <div>
+      <div class="product-name">Axor Citterio 250 Thermostatic</div>
+      <div class="product-meta">SKU: AX-CT-TH-CH · Axor</div>
+      <div class="finish-pill">
+        <span class="finish-dot" style="background:#d4d4d8;border:1px solid #9ca3af;"></span>
+        Brushed Nickel
+      </div>
+    </div>
+    <div>
+      <div class="customer-name">Godrej Properties</div>
+      <div class="project-name">Godrej Reserve</div>
+    </div>
+    <div class="stage-tracker">
+      <div class="track-row">
+        <div class="s-dot active-amber" style="background:#9ca3af;box-shadow:none;"></div><div class="s-line future"></div>
+        <div class="s-dot future"></div><div class="s-line future"></div>
+        <div class="s-dot future"></div><div class="s-line future"></div>
+        <div class="s-dot future"></div><div class="s-line future"></div>
+        <div class="s-dot future"></div>
+      </div>
+      <div class="stage-label label-gray">Awaiting Company · 3 days</div>
+    </div>
+    <div>
+      <div class="qty-num">2</div>
+      <div class="qty-unit">units</div>
+    </div>
+    <div><span class="loc-none">No location yet</span></div>
+    <div><button class="next-btn btn-wait">Waiting…</button></div>
+  </div>
+
+</div>
+
+<!-- Legend -->
+<div style="background:white;border-top:1px solid #e5e7eb;padding:12px 20px;display:flex;gap:20px;align-items:center;">
+  <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#9ca3af;">Stage pipeline:</span>
+  <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280;">
+    <span style="width:7px;height:7px;border-radius:50%;background:#e5e7eb;display:inline-block;"></span> Order Placed
+    <span style="margin:0 2px;color:#d1d5db;">›</span>
+    <span style="width:7px;height:7px;border-radius:50%;background:#e5e7eb;display:inline-block;"></span> With Distributor
+    <span style="margin:0 2px;color:#d1d5db;">›</span>
+    <span style="width:7px;height:7px;border-radius:50%;background:#e5e7eb;display:inline-block;"></span> At Godown
+    <span style="margin:0 2px;color:#d1d5db;">›</span>
+    <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span> Packed
+    <span style="margin:0 2px;color:#d1d5db;">›</span>
+    <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span> Dispatched
+  </div>
+</div>
+
+<script>
+// Inject helper for selection tracking
+</script>
+</body>
+</html>

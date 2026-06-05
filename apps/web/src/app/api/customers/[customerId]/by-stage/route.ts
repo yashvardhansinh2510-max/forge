@@ -81,7 +81,7 @@ export async function GET(
     const result = lines.map((line) => ({
       ...line,
       qtyAtStage: stage === 'ALL'
-        ? line.qtyOrdered
+        ? effectiveCeiling(line)
         : (line[STAGE_FIELD_MAP[stage] as keyof typeof line] as number),
     }))
 

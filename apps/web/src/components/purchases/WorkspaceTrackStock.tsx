@@ -378,12 +378,13 @@ export default function WorkspaceTrackStock({
 
   if (isLoading) return <LoadingSkeleton />
 
-  // Only lines with physical stock (exclude purely-unallocated)
+  // Only lines with actionable physical stock — exclude completed stages
+  // (DISPATCHED / NOT_DISPLAYED have no active stock left; counting them causes
+  // filtered.length > 0 while all three render sections come up empty)
   const physicalLines = lines.filter(
     (l) =>
       l.stages.PENDING_CO > 0 || l.stages.PENDING_DIST > 0 ||
-      l.stages.GODOWN > 0     || l.stages.IN_BOX > 0 ||
-      l.stages.DISPATCHED > 0 || l.stages.NOT_DISPLAYED > 0,
+      l.stages.GODOWN > 0     || l.stages.IN_BOX > 0,
   )
 
   // Apply status filter

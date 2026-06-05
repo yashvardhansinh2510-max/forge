@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { requirePermission, requireUser } from '@/lib/auth'
+import { requirePermission, requireUser, writeAuditLog } from '@/lib/auth'
 import { logActivity } from '@/lib/activity-log'
 import { computeOrderOutstanding } from '@/lib/calculations/outstanding'
 
@@ -18,6 +18,8 @@ export type AgingBuckets = {
 export type OrderSummary = {
   id: string
   number: string
+  customerName: string
+  customerPhone: string | null
   projectName: string | null
   mrpTotal: number
   offerTotal: number
@@ -29,6 +31,8 @@ export type OrderSummary = {
   dueDate: string
   agingDays: number
 }
+
+export type PaymentSummary = OrderSummary
 
 export type LedgerEntry = {
   id: string
@@ -67,6 +71,7 @@ export type PaymentsKPIs = {
 export type PaymentsListResponse = {
   customerLedger: LedgerEntry[]
   projectLedger: LedgerEntry[]
+  orders: OrderSummary[]
   timeline: TimelineEntry[]
   kpis: PaymentsKPIs
   agingSummary: AgingBuckets
@@ -112,6 +117,7 @@ export async function GET() {
 
     const customerMap = new Map<string, LedgerEntry>()
     const projectMap = new Map<string, LedgerEntry>()
+    const allOrders: OrderSummary[] = []
     const timeline: TimelineEntry[] = []
     
     const globalAging: AgingBuckets = { '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 }
@@ -163,6 +169,8 @@ export async function GET() {
       const orderSummary: OrderSummary = {
         id: order.id,
         number: order.number,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
         projectName: order.projectName,
         mrpTotal: order.mrpTotal,
         offerTotal: order.offerTotal,
@@ -174,6 +182,7 @@ export async function GET() {
         dueDate: dueDate.toISOString(),
         agingDays: daysSinceCreation,
       }
+      allOrders.push(orderSummary)
 
       // ── Build Customer Ledger ──
       const customerKey = order.customerName || 'Unknown Customer'
@@ -266,12 +275,13 @@ export async function GET() {
       fullyPaidOrders,
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       customerLedger,
       projectLedger,
+      orders: allOrders,
       timeline,
       kpis,
-      agingSummary: globalAging 
+      agingSummary: globalAging
     } satisfies PaymentsListResponse)
   })
 }
@@ -318,28 +328,16 @@ export async function POST(request: NextRequest) {
     const afterPaid = beforePaid + data.amount
     const afterOutstanding = Math.max(0, order.offerTotal - afterPaid) // afterPaid already includes new payment
 
-    // Audit Logging with BEFORE and AFTER snapshots
-    await prisma.auditLog.create({
-      data: {
-        action: 'PAYMENT_RECORDED',
-        actorId: actor.id,
-        target: `SalesOrder:${order.id}`,
-        metadata: {
-          entityType: 'PAYMENT',
-          entityId: payment.id,
-          orderNumber: order.number,
-          method: data.method,
-          amount: data.amount,
-          before: {
-            paid: beforePaid,
-            outstanding: beforeOutstanding,
-          },
-          after: {
-            paid: afterPaid,
-            outstanding: afterOutstanding,
-          },
-        },
-      }
+    await writeAuditLog({
+      actorId: actor.id,
+      action: 'PAYMENT_RECORDED',
+      category: 'PAYMENTS',
+      entityType: 'CustomerPayment',
+      entityId: payment.id,
+      target: `SalesOrder:${order.id}`,
+      beforeSnapshot: { paid: beforePaid, outstanding: beforeOutstanding },
+      afterSnapshot: { paid: afterPaid, outstanding: afterOutstanding, amount: data.amount, method: data.method },
+      metadata: { orderNumber: order.number, orderId: order.id },
     })
 
     await logActivity({

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import type { Route } from 'next'
 
 type AuditLog = {
   id: string
@@ -95,8 +96,8 @@ export default function AuditTimeline({ logs }: { logs: AuditLog[] }) {
                       </span>
                     )}
                     {log.entityType && log.entityId && getEntityHref(log.entityType, log.entityId) !== '#' && (
-                      <Link 
-                        href={getEntityHref(log.entityType, log.entityId)}
+                      <Link
+                        href={getEntityHref(log.entityType, log.entityId) as Route}
                         onClick={(e) => e.stopPropagation()}
                         className="text-xs text-blue-600 hover:text-blue-800 hover:underline ml-2"
                       >

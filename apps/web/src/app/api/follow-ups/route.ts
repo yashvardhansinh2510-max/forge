@@ -3,6 +3,7 @@ import { prisma } from '@forge/db'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
 import { followUps as mockFollowUps } from '@/lib/mock/followup-data'
+import { getCurrentUser, writeAuditLog } from '@/lib/auth'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -189,6 +190,7 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return withErrorHandling(async () => {
+    const actor = await getCurrentUser()
     const body = await request.json() as unknown
     const data = createFollowUpSchema.parse(body)
 
@@ -211,6 +213,15 @@ export async function POST(request: NextRequest) {
         assignedTo: data.assignedTo ?? null,
       },
       include: { responses: true },
+    })
+
+    await writeAuditLog({
+      actorId: actor?.id ?? null,
+      action: 'FOLLOWUP_CREATED',
+      category: 'FOLLOWUPS',
+      entityType: 'FollowUp',
+      entityId: followUp.id,
+      afterSnapshot: { customerName: data.customerName, status: data.status, type: data.type },
     })
 
     return NextResponse.json({ followUp }, { status: 201 })

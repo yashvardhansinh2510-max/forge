@@ -62,29 +62,30 @@ const CATEGORY_LABEL_MAP: Record<string, string> = {
 }
 
 const DEFAULT_FINISH: Finish = {
-  name: 'Standard', code: 'STD', color: '#C8D0D8', priceAdj: 0,
+  name: 'Chrome', code: '000', sku: '', color: '#B0B7BC', priceAdj: 0,
 }
 
-function parseFinishes(variants: unknown): Finish[] {
-  if (!variants || typeof variants !== 'object') return [DEFAULT_FINISH]
+function parseFinishes(variants: unknown, productSku = ''): Finish[] {
+  if (!variants || typeof variants !== 'object') return [{ ...DEFAULT_FINISH, sku: productSku }]
   const maybeFinishes = (variants as { finishes?: unknown }).finishes
-  if (!Array.isArray(maybeFinishes) || maybeFinishes.length === 0) return [DEFAULT_FINISH]
+  if (!Array.isArray(maybeFinishes) || maybeFinishes.length === 0) return [{ ...DEFAULT_FINISH, sku: productSku }]
 
   const finishes = maybeFinishes
     .map((finish): Finish | null => {
       if (!finish || typeof finish !== 'object') return null
-      const f = finish as { name?: unknown; code?: unknown; color?: unknown; priceAdj?: unknown }
+      const f = finish as { name?: unknown; code?: unknown; sku?: unknown; color?: unknown; priceAdj?: unknown }
       if (typeof f.name !== 'string' || typeof f.code !== 'string') return null
       return {
         name:     f.name,
         code:     f.code,
+        sku:      typeof f.sku === 'string' ? f.sku : productSku,
         color:    typeof f.color === 'string' ? f.color : DEFAULT_FINISH.color,
         priceAdj: typeof f.priceAdj === 'number' ? f.priceAdj : 0,
       }
     })
     .filter((f): f is Finish => f !== null)
 
-  return finishes.length > 0 ? finishes : [DEFAULT_FINISH]
+  return finishes.length > 0 ? finishes : [{ ...DEFAULT_FINISH, sku: productSku }]
 }
 
 function mapTier(raw: string): POSProduct['tier'] {
@@ -113,32 +114,33 @@ export type ProductApiItem = {
 }
 
 export function mapToPOSProduct(product: ProductApiItem): POSProduct {
-  const brandName = BRAND_NAME_MAP[product.brand] ?? product.brand
-  const finishes  = parseFinishes(product.variants)
-  const category  = CATEGORY_LABEL_MAP[product.category] ?? 'Accessories'
+  const brandName   = BRAND_NAME_MAP[product.brand] ?? product.brand
+  const finishes    = parseFinishes(product.variants, product.sku)
+  const category    = CATEGORY_LABEL_MAP[product.category] ?? 'Accessories'
   const isConcealed = product.category === 'CONCEALED'
 
   return {
-    id:             product.id,
-    sku:            product.sku,
-    articleNumber:  product.articleNumber,
-    name:           product.name,
-    description:    product.description ?? `${brandName} ${category} product`,
-    brand:          brandName,
-    brandColor:     BRAND_COLORS[brandName] ?? BRAND_COLORS['Other']!,
+    id:               product.id,
+    sku:              product.sku,
+    articleNumber:    product.articleNumber,
+    name:             product.name,
+    description:      product.description ?? `${brandName} ${category} product`,
+    brand:            brandName,
+    brandColor:       BRAND_COLORS[brandName] ?? BRAND_COLORS['Other']!,
     category,
-    subCategory:    product.seriesName ?? CATEGORY_LABEL_MAP[product.subcategory] ?? category,
-    seriesName:     product.seriesName ?? undefined,
-    mrp:            product.mrp,
-    gstRate:        product.gstRate,
-    unit:           product.unit,
-    tier:           mapTier(product.tier),
+    subCategory:      product.seriesName ?? CATEGORY_LABEL_MAP[product.subcategory] ?? category,
+    subcategoryLabel: category,
+    seriesName:       product.seriesName ?? undefined,
+    mrp:              product.mrp,
+    gstRate:          product.gstRate,
+    unit:             product.unit,
+    tier:             mapTier(product.tier),
     finishes,
-    defaultFinish:  finishes[0]?.name ?? DEFAULT_FINISH.name,
-    requiresPartIds: product.concealedPartId ? [product.concealedPartId] : [],
+    defaultFinish:    finishes[0]?.name ?? DEFAULT_FINISH.name,
+    requiresPartIds:  product.concealedPartId ? [product.concealedPartId] : [],
     isConcealed,
-    features:       [],
-    imageUrl:       product.imageUrl ?? undefined,
+    features:         [],
+    imageUrl:         product.imageUrl ?? undefined,
   }
 }
 

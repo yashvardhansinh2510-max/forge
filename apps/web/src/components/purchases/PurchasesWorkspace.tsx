@@ -6,19 +6,11 @@ import useSWR from 'swr'
 import {
   BRAND_TABS,
   BRAND_ACCENTS,
-  DISPLAY_STAGE_ORDER,
-  DISPLAY_STAGE_LABEL,
-  DISPATCH_READINESS_COLOR,
   createEmptyBrandCounts,
   createEmptyHeaderCounts,
-  getDispatchReadiness,
-  getDisplayStageCount,
-  getInBoxQty,
-  getLineUrgency,
-  lineMatchesDisplayStage,
-  URGENCY_COLORS,
+  getLinePrimaryStatus,
+  lineIsReady,
   type BrandTab,
-  type DisplayStage,
   type HeaderCounts,
   type PurchaseLinesResponse,
   type PurchaseStage,
@@ -28,14 +20,21 @@ import ContextPanel from '@/components/purchases/ContextPanel'
 import WorkspaceTrackStock from '@/components/purchases/WorkspaceTrackStock'
 import WorkspaceCustomers from '@/components/purchases/WorkspaceCustomers'
 import WorkspaceDispatch from '@/components/purchases/WorkspaceDispatch'
+import MoveMaterialModal from '@/components/purchases/MoveMaterialModal'
 
-export type Workspace = 'pipeline' | 'customers' | 'dispatch'
+export type Workspace = 'today' | 'stock' | 'customers'
 
 const WORKSPACE_ITEMS: { id: Workspace; label: string; icon: string }[] = [
-  { id: 'pipeline', label: 'Track Stock', icon: '◈' },
+  { id: 'today', label: 'Today', icon: '▷' },
+  { id: 'stock', label: 'Stock', icon: '◈' },
   { id: 'customers', label: 'Customers', icon: '◎' },
-  { id: 'dispatch', label: 'Dispatch Queue', icon: '▷' },
 ]
+
+const WORKSPACE_LABEL: Record<Workspace, string> = {
+  today: 'Today',
+  stock: 'Stock',
+  customers: 'Customers',
+}
 
 const fetcher = async (url: string): Promise<PurchaseLinesResponse> => {
   const res = await fetch(url)
@@ -47,14 +46,18 @@ const fetcher = async (url: string): Promise<PurchaseLinesResponse> => {
 }
 
 export default function PurchasesWorkspace() {
-  const [workspace, setWorkspace] = useState<Workspace>('pipeline')
+  const [workspace, setWorkspace] = useState<Workspace>('today')
   const [activeBrand, setActiveBrand] = useState<BrandTab>('ALL')
   const [search, setSearch] = useState('')
-  const [stageFilter, setStageFilter] = useState<DisplayStage | null>(null)
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
   const [contextPanelTab, setContextPanelTab] = useState<'move' | 'transfer' | 'history'>('move')
   const [headerCounts, setHeaderCounts] = useState<HeaderCounts>(createEmptyHeaderCounts())
   const optimisticLines = useRef<Map<string, PurchaseTrackerLine['stages']>>(new Map())
+
+  // Move Material modal state
+  const [moveMaterialOpen, setMoveMaterialOpen] = useState(false)
+  const [moveInitialProductId, setMoveInitialProductId] = useState<string | undefined>()
+  const [moveInitialLineId, setMoveInitialLineId] = useState<string | undefined>()
 
   const { data, error, mutate, isLoading } = useSWR(
     `/api/purchase-orders/lines?brand=${encodeURIComponent(activeBrand)}`,
@@ -86,10 +89,6 @@ export default function PurchasesWorkspace() {
       )
     : lines
 
-  const stageFilteredLines = stageFilter
-    ? filteredLines.filter((l) => lineMatchesDisplayStage(l, stageFilter))
-    : filteredLines
-
   const handleMoved = (
     newCounts: HeaderCounts,
     movedLineId?: string,
@@ -112,31 +111,35 @@ export default function PurchasesWorkspace() {
 
   const selectedLine = selectedLineId ? lines.find((l) => l.id === selectedLineId) ?? null : null
 
-  // Count urgency for badge on sidebar
+  // Badges
+  const dispatchReadyCount = lines.filter(lineIsReady).length
   const urgentCount = lines.filter((l) => {
-    const u = getLineUrgency(l)
-    return u === 'critical' || u === 'warning'
+    const s = getLinePrimaryStatus(l)
+    return s === 'awaiting_company' || s === 'awaiting_distributor'
   }).length
-
-  // Dispatch-ready count (IN_BOX or GODOWN > 0)
-  const dispatchReadyCount = lines.filter((l) => getInBoxQty(l) > 0).length
 
   function handleSelectLine(lineId: string, tab: 'move' | 'transfer' | 'history' = 'move') {
     setSelectedLineId(lineId)
     setContextPanelTab(tab)
   }
 
+  function openMoveMaterial(productId?: string, sourceLineId?: string) {
+    setMoveInitialProductId(productId)
+    setMoveInitialLineId(sourceLineId)
+    setMoveMaterialOpen(true)
+  }
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* ── Topbar ─────────────────────────────────────────────── */}
+      {/* ── Topbar ──────────────────────────────────────────────── */}
       <header className="flex h-14 shrink-0 items-center gap-4 border-b border-[var(--border)] bg-white/95 px-4 backdrop-blur">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
             Purchases
           </span>
           <span className="text-[var(--border-strong)]">/</span>
-          <span className="text-sm font-semibold capitalize text-[var(--text-primary)]">
-            {workspace}
+          <span className="text-sm font-semibold text-[var(--text-primary)]">
+            {WORKSPACE_LABEL[workspace]}
           </span>
         </div>
 
@@ -162,6 +165,13 @@ export default function PurchasesWorkspace() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openMoveMaterial()}
+            className="rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-3 py-1.5 text-xs font-semibold text-[#2563eb] transition hover:bg-[#dbeafe]"
+          >
+            Move Material →
+          </button>
           <Link
             href="/purchases/new"
             className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
@@ -171,25 +181,25 @@ export default function PurchasesWorkspace() {
         </div>
       </header>
 
-      {/* ── Body: sidebar + main + context panel ───────────────── */}
+      {/* ── Body ──────────────────────────────────────────────────── */}
       <div className="relative flex min-h-0 flex-1">
         {/* ── Sidebar ──────────────────────────────── */}
-        <aside className="flex w-56 shrink-0 flex-col overflow-y-auto border-r border-[var(--border)] bg-white">
+        <aside className="flex w-52 shrink-0 flex-col overflow-y-auto border-r border-[var(--border)] bg-white">
+
           {/* Workspaces */}
           <div className="p-3">
             <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
-              Workspaces
+              View
             </p>
             {WORKSPACE_ITEMS.map((item) => {
               const active = workspace === item.id
               const badge =
-                item.id === 'dispatch' && dispatchReadyCount > 0 ? dispatchReadyCount :
-                item.id === 'pipeline' && urgentCount > 0 ? urgentCount : 0
+                item.id === 'today' && dispatchReadyCount > 0 ? dispatchReadyCount : 0
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => { setWorkspace(item.id); setStageFilter(null) }}
+                  onClick={() => setWorkspace(item.id)}
                   className={[
                     'flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition',
                     active
@@ -202,11 +212,13 @@ export default function PurchasesWorkspace() {
                     {item.label}
                   </span>
                   {badge > 0 && (
-                    <span
-                      className="rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white"
-                      style={{ background: item.id === 'pipeline' ? '#EF4444' : '#10B981' }}
-                    >
+                    <span className="rounded-full bg-[#10B981] px-1.5 py-0.5 text-[10px] font-bold text-white">
                       {badge}
+                    </span>
+                  )}
+                  {item.id === 'today' && urgentCount > 0 && badge === 0 && (
+                    <span className="rounded-full bg-[#F59E0B] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {urgentCount}
                     </span>
                   )}
                 </button>
@@ -252,51 +264,6 @@ export default function PurchasesWorkspace() {
             })}
           </div>
 
-          <div className="mx-3 border-t border-[var(--border)]" />
-
-          {/* Stage summary */}
-          <div className="p-3">
-            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
-              Stages
-            </p>
-            {DISPLAY_STAGE_ORDER.map((stage) => {
-              const count = getDisplayStageCount(headerCounts, stage)
-              const active = stageFilter === stage
-              const hasUrgent = lines.some((l) => {
-                if (!lineMatchesDisplayStage(l, stage)) return false
-                const u = getLineUrgency(l)
-                return u === 'critical' || u === 'warning'
-              })
-              const dotColor = hasUrgent ? URGENCY_COLORS.warning : '#6B7280'
-              return (
-                <button
-                  key={stage}
-                  type="button"
-                  onClick={() => setStageFilter(active ? null : stage)}
-                  className={[
-                    'flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-medium transition',
-                    active ? 'bg-[var(--n-100)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--n-50)]',
-                    count === 0 ? 'opacity-40' : '',
-                  ].join(' ')}
-                >
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: dotColor }} />
-                  <span className="min-w-0 flex-1 truncate">{DISPLAY_STAGE_LABEL[stage]}</span>
-                  <span
-                    className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
-                    style={{
-                      background: active ? '#2563eb20' : 'var(--n-100)',
-                      color: active ? '#2563eb' : 'var(--text-muted)',
-                      fontFamily: 'var(--font-ui)',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-
           {error && (
             <div className="m-3 rounded-xl bg-[#fef2f2] p-2 text-xs text-[#b91c1c]">
               {error.message}
@@ -314,30 +281,32 @@ export default function PurchasesWorkspace() {
 
         {/* ── Main workspace ─────────────────────────── */}
         <main className="min-w-0 flex-1 overflow-y-auto">
-          {workspace === 'pipeline' && (
+          {workspace === 'today' && (
+            <WorkspaceDispatch
+              lines={filteredLines}
+              onMoved={handleMoved}
+              onSelectLine={handleSelectLine}
+              onMoveMaterial={openMoveMaterial}
+            />
+          )}
+          {workspace === 'stock' && (
             <WorkspaceTrackStock
-              lines={stageFilteredLines}
+              lines={filteredLines}
+              allLines={lines}
               activeBrand={activeBrand}
-              stageFilter={stageFilter}
               isLoading={isLoading && !data}
               onMoved={handleMoved}
               onSelectLine={handleSelectLine}
-              allLines={lines}
+              onMoveMaterial={openMoveMaterial}
             />
           )}
           {workspace === 'customers' && (
             <WorkspaceCustomers
-              lines={stageFilteredLines}
+              lines={filteredLines}
               activeBrand={activeBrand}
               onMoved={handleMoved}
               onSelectLine={handleSelectLine}
-            />
-          )}
-          {workspace === 'dispatch' && (
-            <WorkspaceDispatch
-              lines={lines}
-              onMoved={handleMoved}
-              onSelectLine={handleSelectLine}
+              onMoveMaterial={openMoveMaterial}
             />
           )}
         </main>
@@ -354,6 +323,24 @@ export default function PurchasesWorkspace() {
           />
         )}
       </div>
+
+      {/* ── Move Material modal ─────────────────────── */}
+      {moveMaterialOpen && (
+        <MoveMaterialModal
+          lines={lines}
+          activeBrand={activeBrand}
+          onMoved={(counts) => {
+            handleMoved(counts)
+          }}
+          onClose={() => {
+            setMoveMaterialOpen(false)
+            setMoveInitialProductId(undefined)
+            setMoveInitialLineId(undefined)
+          }}
+          initialProductId={moveInitialProductId}
+          initialSourceLineId={moveInitialLineId}
+        />
+      )}
     </div>
   )
 }

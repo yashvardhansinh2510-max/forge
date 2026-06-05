@@ -4,6 +4,7 @@ import React from 'react'
 import { Button, Input } from '@forge/ui'
 
 type Filters = {
+  userId: string
   category: string
   entityType: string
   entityId: string
@@ -26,6 +27,7 @@ export default function AuditFilters({ filters, setFilters, onExport }: AuditFil
 
   const clearFilters = () => {
     setFilters({
+      userId: '',
       category: '',
       entityType: '',
       entityId: '',
@@ -54,6 +56,16 @@ export default function AuditFilters({ filters, setFilters, onExport }: AuditFil
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">User ID</label>
+          <Input
+            name="userId"
+            placeholder="Filter by user ID"
+            value={filters.userId}
+            onChange={handleChange}
+          />
+        </div>
+
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
           <select 

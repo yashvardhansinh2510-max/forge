@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import useSWR from 'swr'
 import { usePOSStore } from '@/lib/pos-store'
 import { usePOSCatalog } from '@/lib/pos-catalog'
@@ -14,6 +14,12 @@ interface SeriesGroup {
 
 const seriesFetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<SeriesGroup[]>)
 
+const TIER_CONFIG: { key: 'luxury' | 'premium' | 'mid'; label: string; dot: string }[] = [
+  { key: 'luxury',  label: 'Luxury',  dot: '#92700A' },
+  { key: 'premium', label: 'Premium', dot: '#4338CA' },
+  { key: 'mid',     label: 'Mid',     dot: '#4B5563' },
+]
+
 interface BrandSidebarProps {
   collapsed: boolean
   onToggle: () => void
@@ -22,8 +28,10 @@ interface BrandSidebarProps {
 export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
   const selectedBrand       = usePOSStore((s) => s.selectedBrand)
   const selectedCategory    = usePOSStore((s) => s.selectedCategory)
+  const selectedTier        = usePOSStore((s) => s.selectedTier)
   const setSelectedBrand    = usePOSStore((s) => s.setSelectedBrand)
   const setSelectedCategory = usePOSStore((s) => s.setSelectedCategory)
+  const setSelectedTier     = usePOSStore((s) => s.setSelectedTier)
   const selectedSeries      = usePOSSeriesStore((s) => s.selectedSeries)
   const setSelectedSeries   = usePOSSeriesStore((s) => s.setSelectedSeries)
   const { products, brands, isLoading } = usePOSCatalog()
@@ -42,54 +50,58 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
     }
   }, [brands, selectedBrand, setSelectedBrand])
 
-  // Reset series when brand changes
   React.useEffect(() => { setSelectedSeries(null) }, [selectedBrand, setSelectedSeries])
 
-  // Series list from endpoint, counts from loaded products
   const seriesList = React.useMemo(() => {
     if (!selectedBrand || !seriesData) return []
     const brandUpper = selectedBrand.toUpperCase()
     const group = seriesData.find((g) => g.brand === brandUpper)
     if (!group) return []
 
-    // Count products per series from loaded data
     const counts = new Map<string, number>()
     for (const p of products) {
-      if (p.brand === selectedBrand && !p.isConcealed && p.seriesName)
-        counts.set(p.seriesName, (counts.get(p.seriesName) ?? 0) + 1)
+      if (p.brand === selectedBrand && !p.isConcealed && p.seriesName) {
+        if (!selectedCategory || p.subcategoryLabel === selectedCategory)
+          counts.set(p.seriesName, (counts.get(p.seriesName) ?? 0) + 1)
+      }
     }
-    return group.series.map((name) => ({ name, count: counts.get(name) ?? 0 }))
-  }, [seriesData, selectedBrand, products])
+    const list = group.series.map((name) => ({ name, count: counts.get(name) ?? 0 }))
+    return selectedCategory ? list.filter(({ count }) => count > 0) : list
+  }, [seriesData, selectedBrand, products, selectedCategory])
 
-  // Derive categories + counts for the selected brand
   const categories = React.useMemo(() => {
     if (!selectedBrand) return []
     const catMap = new Map<string, number>()
     for (const p of products) {
       if (p.brand === selectedBrand && !p.isConcealed)
-        catMap.set(p.category, (catMap.get(p.category) ?? 0) + 1)
+        catMap.set(p.subcategoryLabel, (catMap.get(p.subcategoryLabel) ?? 0) + 1)
     }
-    return Array.from(catMap.entries()).map(([name, count]) => ({ name, count }))
+    return Array.from(catMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, count]) => ({ name, count }))
   }, [products, selectedBrand])
 
-  // Brand color for selected-series pill
   const activeBrandColor = React.useMemo(() => {
     return brands.find((b) => b.name === selectedBrand)?.color ?? 'rgba(255,255,255,0.4)'
   }, [brands, selectedBrand])
 
+  const hasActiveFilters = !!(selectedCategory || selectedSeries || selectedTier)
+
+  function clearAllFilters() {
+    setSelectedCategory(null)
+    setSelectedSeries(null)
+    setSelectedTier(null)
+  }
+
   if (collapsed) {
     return (
-      <div
-        style={{
-          width: 36, flexShrink: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          background: 'var(--shell-bg)',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
-          overflow: 'hidden',
-          paddingTop: 8,
-          gap: 6,
-        }}
-      >
+      <div style={{
+        width: 36, flexShrink: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        background: 'var(--shell-bg)',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        overflow: 'hidden', paddingTop: 8, gap: 6,
+      }}>
         <button
           onClick={onToggle}
           title="Expand brand panel"
@@ -127,46 +139,63 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
   }
 
   return (
-    <div
-      style={{
-        width: 180, flexShrink: 0,
-        display: 'flex', flexDirection: 'column',
-        background: 'var(--shell-bg)',
-        borderRight: '1px solid rgba(255,255,255,0.08)',
-        overflow: 'hidden',
-      }}
-    >
+    <div style={{
+      width: 180, flexShrink: 0,
+      display: 'flex', flexDirection: 'column',
+      background: 'var(--shell-bg)',
+      borderRight: '1px solid rgba(255,255,255,0.08)',
+      overflow: 'hidden',
+    }}>
       {/* Header row */}
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 14px 6px',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.38)',
-            textTransform: 'uppercase', letterSpacing: '0.08em',
-          }}
-        >
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 14px 6px',
+      }}>
+        <span style={{
+          fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.38)',
+          textTransform: 'uppercase', letterSpacing: '0.08em',
+        }}>
           Brands
         </span>
-        <button
-          onClick={onToggle}
-          title="Collapse brand panel"
-          style={{
-            width: 20, height: 20, borderRadius: 4,
-            background: 'rgba(255,255,255,0.06)', border: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'rgba(255,255,255,0.4)',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
-        >
-          <ChevronLeft size={11} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* Clear all filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearAllFilters}
+              title="Clear all filters"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                padding: '2px 6px', borderRadius: 4,
+                background: 'rgba(239,68,68,0.18)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                cursor: 'pointer', fontSize: 9, fontWeight: 600,
+                color: '#fca5a5',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.28)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.18)' }}
+            >
+              <X size={9} />
+              Clear
+            </button>
+          )}
+          <button
+            onClick={onToggle}
+            title="Collapse brand panel"
+            style={{
+              width: 20, height: 20, borderRadius: 4,
+              background: 'rgba(255,255,255,0.06)', border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'rgba(255,255,255,0.4)',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+          >
+            <ChevronLeft size={11} />
+          </button>
+        </div>
       </div>
 
+      {/* Brand list */}
       <div style={{ flexShrink: 0 }}>
         {brands.map((brand) => {
           const isActive = selectedBrand === brand.name
@@ -185,30 +214,24 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
               onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
             >
               {isActive && (
-                <div
-                  style={{
-                    position: 'absolute', left: 0, top: 4, bottom: 4,
-                    width: 2, background: brand.color, borderRadius: '0 2px 2px 0',
-                  }}
-                />
+                <div style={{
+                  position: 'absolute', left: 0, top: 4, bottom: 4,
+                  width: 2, background: brand.color, borderRadius: '0 2px 2px 0',
+                }} />
               )}
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: brand.color, flexShrink: 0 }} />
-              <span
-                style={{
-                  flex: 1, fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.62)',
-                  letterSpacing: '-0.01em',
-                }}
-              >
+              <span style={{
+                flex: 1, fontSize: 13,
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? '#fff' : 'rgba(255,255,255,0.62)',
+                letterSpacing: '-0.01em',
+              }}>
                 {brand.name}
               </span>
-              <span
-                style={{
-                  fontSize: 11, color: 'rgba(255,255,255,0.28)',
-                  fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
-                }}
-              >
+              <span style={{
+                fontSize: 11, color: 'rgba(255,255,255,0.28)',
+                fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
+              }}>
                 {brand.count}
               </span>
             </button>
@@ -216,7 +239,49 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
         })}
       </div>
 
-      {/* Series section */}
+      {/* ── Tier Filter ─────────────────────────────────────────────────────── */}
+      <>
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0', flexShrink: 0 }} />
+        <div style={{
+          padding: '0 14px 6px', fontSize: 10, fontWeight: 600,
+          color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase',
+          letterSpacing: '0.08em', flexShrink: 0,
+        }}>
+          Tier
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingBottom: 2, flexShrink: 0 }}>
+          {TIER_CONFIG.map(({ key, label, dot }) => {
+            const isActive = selectedTier === key
+            return (
+              <button
+                key={key}
+                onClick={() => setSelectedTier(isActive ? null : key)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '5px 14px',
+                  background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  border: 'none', cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = isActive ? 'rgba(255,255,255,0.08)' : 'transparent' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+                  <span style={{
+                    fontSize: 12, fontWeight: isActive ? 600 : 400,
+                    color: isActive ? '#fff' : 'rgba(255,255,255,0.52)',
+                  }}>
+                    {label}
+                  </span>
+                </div>
+                {isActive && <X size={10} style={{ color: 'rgba(255,255,255,0.4)' }} />}
+              </button>
+            )
+          })}
+        </div>
+      </>
+
+      {/* ── Series ───────────────────────────────────────────────────────────── */}
       {!isLoading && selectedBrand && seriesList.length > 0 && (
         <>
           <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0', flexShrink: 0 }} />
@@ -227,7 +292,7 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
           }}>
             Series
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '0 10px 8px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '0 10px 8px', maxHeight: 140, overflowY: 'auto' }}>
             {seriesList.map(({ name, count }) => {
               const isActive = selectedSeries === name
               return (
@@ -236,8 +301,7 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
                   onClick={() => setSelectedSeries(isActive ? null : name)}
                   title={count > 0 ? `${count} products` : name}
                   style={{
-                    padding: '3px 8px',
-                    borderRadius: 999,
+                    padding: '3px 8px', borderRadius: 999,
                     border: isActive
                       ? `1px solid ${activeBrandColor}`
                       : '1px solid rgba(255,255,255,0.14)',
@@ -263,9 +327,11 @@ export function BrandSidebar({ collapsed, onToggle }: BrandSidebarProps) {
         </>
       )}
 
-      {/* Category section */}
+      {/* ── Category ─────────────────────────────────────────────────────────── */}
       {isLoading && (
-        <div className="px-4 py-3 text-xs text-[rgba(255,255,255,0.42)]">Loading catalog…</div>
+        <div style={{ padding: '12px 14px', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+          Loading catalog…
+        </div>
       )}
       {selectedBrand && categories.length > 0 && (
         <>

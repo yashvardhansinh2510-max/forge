@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { BrandSidebar } from './brand-sidebar'
+import { CustomProductModal } from './custom-product-modal'
 import { ProductGrid } from './product-grid'
 import { ProductModal } from './product-modal'
 import { RoomPanel } from './room-panel'
@@ -29,6 +30,7 @@ export function POSBuilder() {
         onToggle={() => setRoomCollapsed((v) => !v)}
       />
       <ProductModal />
+      <CustomProductModal />
     </div>
   )
 }
