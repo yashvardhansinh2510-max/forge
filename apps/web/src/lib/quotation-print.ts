@@ -91,6 +91,8 @@ const CSS = `
   .brand-hdr { font-size: 12pt; font-weight: bold; padding: 6px 8px; text-align: center; }
   .col-hdr { font-weight: bold; text-align: center; }
   .offer-val { font-size: 13pt; font-weight: bold; color: #c05000; }
+  .offer-row { background: #FFFF00 !important; }
+  .offer-row td { color: #E41B23; font-weight: bold; }
 
   /* ── Notes ──────────────────────────────────────────── */
   .note-block { margin-top: 10px; font-size: 8.5pt; line-height: 1.65; }
@@ -205,9 +207,9 @@ function coverPage(
         <td colspan="2" class="gold center bold" style="font-size:11pt;">TOTAL</td>
         <td class="gold right bold" style="font-size:11pt;">${fmt(grandMrp)}</td>
       </tr>
-      <tr>
-        <td colspan="2" class="gold center bold" style="font-size:12pt;">SPECIAL OFFER RATE</td>
-        <td class="gold right offer-val">${fmt(grandOffer)}</td>
+      <tr class="offer-row">
+        <td colspan="2" class="center bold" style="font-size:12pt;">SPECIAL OFFER RATE</td>
+        <td class="right bold" style="font-size:13pt;">${fmt(grandOffer)}</td>
       </tr>
     </table>
 
