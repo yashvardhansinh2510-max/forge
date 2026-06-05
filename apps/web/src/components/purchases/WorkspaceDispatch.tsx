@@ -40,7 +40,7 @@ interface DispatchConfirm {
 function ProductThumb({ line }: { line: PurchaseTrackerLine }) {
   if (line.product.imageUrl) {
     return (
-      <div className="relative h-10 w-10 shrink-0">
+      <div className="relative h-12 w-12 shrink-0">
         <Image
           src={line.product.imageUrl}
           alt={line.product.name}
@@ -52,8 +52,8 @@ function ProductThumb({ line }: { line: PurchaseTrackerLine }) {
     )
   }
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--n-50)] text-[10px] font-bold text-[var(--text-muted)]">
-      {line.product.brand.slice(0, 2)}
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--n-50)] text-[10px] font-bold text-[var(--text-muted)]">
+      {line.product.brand.slice(0, 3).toUpperCase()}
     </div>
   )
 }
