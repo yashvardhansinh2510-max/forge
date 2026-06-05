@@ -34,6 +34,7 @@ interface Movement {
   toStage: string
   qty: number
   note: string | null
+  location: string | null
   movedAt: string
   movedBy: { name: string; email: string }
 }
@@ -91,6 +92,7 @@ function MoveSection({
   const [fromStage, setFromStage] = useState<PurchaseStage | null>(null)
   const [toStage, setToStage] = useState<PurchaseStage | ''>('')
   const [qty, setQty] = useState(1)
+  const [locationNote, setLocationNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -100,6 +102,7 @@ function MoveSection({
     setFromStage(activeStages[0] ?? null)
     setToStage('')
     setQty(1)
+    setLocationNote('')
     setErr('')
   }, [line.id])
 
@@ -107,6 +110,7 @@ function MoveSection({
     if (fromStage) {
       setToStage(LEGAL[fromStage][0] ?? '')
       setQty(1)
+      setLocationNote('')
     }
   }, [fromStage])
 
@@ -116,6 +120,8 @@ function MoveSection({
 
   const targets = fromStage ? LEGAL[fromStage] : []
   const available = fromStage ? line.stages[fromStage] : 0
+  // Show location input when moving INTO godown or packing into box
+  const needsLocation = toStage === 'GODOWN' || toStage === 'IN_BOX'
 
   async function doMove() {
     if (!fromStage || !toStage) return
@@ -127,7 +133,13 @@ function MoveSection({
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fromStage, toStage, qty, brand: activeBrand }),
+          body: JSON.stringify({
+            fromStage,
+            toStage,
+            qty,
+            brand: activeBrand,
+            location: locationNote.trim() || undefined,
+          }),
         },
       )
       const data = await res.json() as { stageTotals?: HeaderCounts; message?: string; error?: string }
@@ -137,6 +149,7 @@ function MoveSection({
       }
       onMoved(data.stageTotals, line.id, fromStage, toStage, qty)
       setQty(1)
+      setLocationNote('')
       setErr('')
     } catch {
       setErr('Network error')
@@ -213,6 +226,22 @@ function MoveSection({
             <span className="text-xs text-[var(--text-muted)]">of {available}</span>
           </div>
 
+          {/* Location note — shown when moving goods INTO godown or packing into box */}
+          {needsLocation && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[var(--text-muted)]">
+                {toStage === 'GODOWN' ? 'Godown location (shelf / bay)' : 'Box number / location'}
+              </label>
+              <input
+                type="text"
+                value={locationNote}
+                onChange={(e) => setLocationNote(e.target.value)}
+                placeholder={toStage === 'GODOWN' ? 'e.g. Rack B3, Bay 4' : 'e.g. Box 12'}
+                className="w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[#60a5fa]"
+              />
+            </div>
+          )}
+
           {err && <p className="rounded-xl bg-[#fef2f2] p-2 text-xs text-[#dc2626]">{err}</p>}
 
           <button
@@ -273,6 +302,11 @@ function HistorySection({ lineId }: { lineId: string }) {
               </span>
             </div>
             {m.note && <p className="mt-1 text-[11px] text-[var(--text-muted)]">{m.note}</p>}
+            {m.location && (
+              <p className="mt-0.5 text-[11px] text-[#0369a1]">
+                📦 {m.location}
+              </p>
+            )}
             <p className="mt-1 text-[11px] text-[var(--text-muted)]">{m.movedBy.name}</p>
           </div>
         )
@@ -281,12 +315,31 @@ function HistorySection({ lineId }: { lineId: string }) {
   )
 }
 
+function resolveDefaultTab(
+  line: PurchaseTrackerLine,
+  requested: 'move' | 'transfer' | 'history',
+): 'move' | 'transfer' | 'history' {
+  if (requested !== 'move') return requested
+  // If no moveable stock exists, skip to history — "Move to Stage" would be empty
+  const LEGAL: Record<PurchaseStage, PurchaseStage[]> = {
+    UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
+    PENDING_CO: ['PENDING_DIST', 'GODOWN'],
+    PENDING_DIST: ['GODOWN'],
+    GODOWN: ['IN_BOX'],
+    IN_BOX: ['DISPATCHED'],
+    DISPATCHED: ['NOT_DISPLAYED'],
+    NOT_DISPLAYED: [],
+  }
+  const hasMoveable = STAGE_ORDER.some((s) => line.stages[s] > 0 && LEGAL[s].length > 0)
+  return hasMoveable ? 'move' : 'history'
+}
+
 export default function ContextPanel({ line, allLines: _allLines, activeBrand, defaultTab = 'move', onClose, onMoved }: Props) {
-  const [tab, setTab] = useState<'move' | 'transfer' | 'history'>(defaultTab)
+  const [tab, setTab] = useState<'move' | 'transfer' | 'history'>(() => resolveDefaultTab(line, defaultTab))
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setTab(defaultTab)
+    setTab(resolveDefaultTab(line, defaultTab))
   }, [line.id, defaultTab])
 
   return (
@@ -372,7 +425,7 @@ export default function ContextPanel({ line, allLines: _allLines, activeBrand, d
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
                 ].join(' ')}
               >
-                {t === 'move' ? 'Move Stock' : t === 'transfer' ? 'Give to Customer' : 'Activity Log'}
+                {t === 'move' ? 'Move to Stage' : t === 'transfer' ? 'Redirect to Customer' : 'History'}
               </button>
             ))}
           </div>
