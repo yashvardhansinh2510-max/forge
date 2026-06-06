@@ -1,3 +1,5 @@
+// ─── Canonical stage order ─────────────────────────────────────────────────────
+
 export const STAGE_ORDER = [
   'UNALLOCATED',
   'PENDING_CO',
@@ -7,6 +9,48 @@ export const STAGE_ORDER = [
   'DISPATCHED',
   'NOT_DISPLAYED',
 ] as const
+
+export type PurchaseStage = typeof STAGE_ORDER[number]
+
+// ─── Canonical label maps — SSOT for all stage text ───────────────────────────
+// Every other label table or string in the module derives from these two.
+
+export const STAGE_LABEL: Record<PurchaseStage, string> = {
+  UNALLOCATED:  'No Customer',
+  PENDING_CO:   'ORDER IN COMPANY',
+  PENDING_DIST: 'COMPANY BILLING',
+  GODOWN:       'IN BOX',
+  IN_BOX:       'IN BOX',
+  DISPATCHED:   'DISPATCHED',
+  NOT_DISPLAYED:'Closed',
+}
+
+export const STAGE_SHORT_LABEL: Record<PurchaseStage, string> = {
+  UNALLOCATED:  'No Customer',
+  PENDING_CO:   'Order Co.',
+  PENDING_DIST: 'Co. Billing',
+  GODOWN:       'In Box',
+  IN_BOX:       'In Box',
+  DISPATCHED:   'Dispatched',
+  NOT_DISPLAYED:'Closed',
+}
+
+// ─── Canonical stage → DB field mapping — SSOT for all Prisma updates ─────────
+
+export const DB_STAGE_FIELDS = {
+  PENDING_CO:    'qtyPendingCo',
+  PENDING_DIST:  'qtyPendingDist',
+  GODOWN:        'qtyAtGodown',
+  IN_BOX:        'qtyInBox',
+  DISPATCHED:    'qtyDispatched',
+  NOT_DISPLAYED: 'qtyNotDisplayed',
+} as const satisfies Record<Exclude<PurchaseStage, 'UNALLOCATED'>, string>
+
+export type DbStageField = (typeof DB_STAGE_FIELDS)[keyof typeof DB_STAGE_FIELDS]
+
+export function stageToDbField(stage: Exclude<PurchaseStage, 'UNALLOCATED'>): DbStageField {
+  return DB_STAGE_FIELDS[stage]
+}
 
 // ─── Operator-facing display stage model ──────────────────────────────────────
 // GODOWN and IN_BOX are unified as IN_BOX_COMBINED — staff never sees the distinction.
@@ -23,35 +67,51 @@ export const DISPLAY_STAGE_ORDER = [
 export type DisplayStage = typeof DISPLAY_STAGE_ORDER[number]
 
 export const DISPLAY_STAGE_LABEL: Record<DisplayStage, string> = {
-  UNALLOCATED: 'No Customer Yet',
-  PENDING_CO: 'Order Placed',
-  PENDING_DIST: 'With Distributor',
-  IN_BOX_COMBINED: 'In Box',
-  DISPATCHED: 'Dispatched',
-  NOT_DISPLAYED: 'Closed',
+  UNALLOCATED:     STAGE_LABEL.UNALLOCATED,
+  PENDING_CO:      STAGE_LABEL.PENDING_CO,
+  PENDING_DIST:    STAGE_LABEL.PENDING_DIST,
+  IN_BOX_COMBINED: STAGE_LABEL.IN_BOX,
+  DISPATCHED:      STAGE_LABEL.DISPATCHED,
+  NOT_DISPLAYED:   STAGE_LABEL.NOT_DISPLAYED,
 }
 
 export const DISPLAY_STAGE_SHORT: Record<DisplayStage, string> = {
-  UNALLOCATED: 'NO CUSTOMER',
-  PENDING_CO: 'ORDERED',
-  PENDING_DIST: 'WITH DIST.',
-  IN_BOX_COMBINED: 'IN BOX',
-  DISPATCHED: 'DISPATCHED',
-  NOT_DISPLAYED: 'CLOSED',
+  UNALLOCATED:     STAGE_SHORT_LABEL.UNALLOCATED,
+  PENDING_CO:      STAGE_SHORT_LABEL.PENDING_CO,
+  PENDING_DIST:    STAGE_SHORT_LABEL.PENDING_DIST,
+  IN_BOX_COMBINED: STAGE_SHORT_LABEL.IN_BOX,
+  DISPATCHED:      STAGE_SHORT_LABEL.DISPATCHED,
+  NOT_DISPLAYED:   STAGE_SHORT_LABEL.NOT_DISPLAYED,
 }
 
-// Maps any raw stage string (including transfer pseudo-stages) to a friendly name.
-// Used in the Activity Log tab and Move Stock form.
+// Includes pseudo-stages (TRANSFERRED_IN/OUT) used in activity log.
+// Canonical stages derive from STAGE_LABEL above.
 export const STAGE_FRIENDLY_NAME: Record<string, string> = {
-  UNALLOCATED: 'No Customer Yet',
-  PENDING_CO: 'Order Placed',
-  PENDING_DIST: 'With Distributor',
-  GODOWN: 'At Godown',
-  IN_BOX: 'Packed / Ready',
-  DISPATCHED: 'Dispatched',
-  NOT_DISPLAYED: 'Closed',
-  TRANSFERRED_IN: 'Received from transfer',
+  ...STAGE_LABEL,
+  TRANSFERRED_IN:  'Received from transfer',
   TRANSFERRED_OUT: 'Given to customer',
+}
+
+export const STAGE_COLORS: Record<PurchaseStage, string> = {
+  UNALLOCATED: '#3B82F6',
+  PENDING_CO: '#F59E0B',
+  PENDING_DIST: '#F97316',
+  GODOWN: '#8B5CF6',
+  IN_BOX: '#06B6D4',
+  DISPATCHED: '#10B981',
+  NOT_DISPLAYED: '#6B7280',
+}
+
+// ─── Header counts ─────────────────────────────────────────────────────────────
+
+export interface HeaderCounts {
+  UNALLOCATED: number
+  PENDING_CO: number
+  PENDING_DIST: number
+  GODOWN: number
+  IN_BOX: number
+  DISPATCHED: number
+  NOT_DISPLAYED: number
 }
 
 export function getDisplayStageCount(counts: HeaderCounts, stage: DisplayStage): number {
@@ -68,9 +128,78 @@ export function getInBoxQty(line: PurchaseTrackerLine): number {
   return line.stages.GODOWN + line.stages.IN_BOX
 }
 
-// ─── New warehouse-first dispatch status model ─────────────────────────────────
-// Replaces the old DispatchReadiness model with a 4-state operational status.
-// A line can have qty at multiple stages simultaneously; we surface all of them.
+// ─── Brand tabs ────────────────────────────────────────────────────────────────
+
+export const BRAND_TABS = ['ALL', 'GROHE', 'HANSGROHE', 'VITRA', 'GEBERIT'] as const
+
+export type BrandTab = typeof BRAND_TABS[number]
+export type BrandTabFilter = Exclude<BrandTab, 'ALL'>
+
+export const BRAND_GROUPS: Record<BrandTabFilter, string[]> = {
+  GROHE: ['GROHE'],
+  HANSGROHE: ['HANSGROHE', 'AXOR'],
+  VITRA: ['VITRA'],
+  GEBERIT: ['GEBERIT'],
+}
+
+export const BRAND_ACCENTS: Record<BrandTabFilter, string> = {
+  GROHE: '#00A3E0',
+  HANSGROHE: '#E30613',
+  VITRA: '#005BAC',
+  GEBERIT: '#003087',
+}
+
+// ─── Core data types ───────────────────────────────────────────────────────────
+
+export interface PurchaseTrackerLine {
+  id: string
+  poId: string
+  poNumber: string
+  vendorName: string | null
+  projectId: string | null
+  createdAt?: string
+  locationNote?: string | null
+  customer: {
+    id: string
+    name: string
+    siteAddress: string | null
+  } | null
+  product: {
+    id: string
+    sku: string
+    name: string
+    brand: string
+    imageUrl: string | null
+    seriesName: string | null
+    finishName: string | null
+    articleNumber: string | null
+    mrp: number
+    unit: string
+    tier: string
+  }
+  qtyOrdered: number
+  qtyTransferredIn: number
+  qtyTransferredOut: number
+  qtyReceived: number
+  stages: HeaderCounts
+  followUpStatus?: string | null
+  currentLocation: string | null      // derived from latest StageMovement.location
+  lastActivityAt: string | null       // ISO string of latest StageMovement.movedAt
+}
+
+export interface PurchaseLinesResponse {
+  lines: PurchaseTrackerLine[]
+  headerCounts: HeaderCounts
+  brandCounts: Record<BrandTab, number>
+}
+
+export interface CustomerOption {
+  id: string
+  name: string
+  lineId?: string
+}
+
+// ─── Dispatch status model ─────────────────────────────────────────────────────
 
 export type DispatchStatus =
   | 'ready'                 // IN_BOX > 0 — packed, can ship now
@@ -80,27 +209,36 @@ export type DispatchStatus =
   | 'done'                  // DISPATCHED / NOT_DISPLAYED only
 
 export const DISPATCH_STATUS_LABEL: Record<DispatchStatus, string> = {
-  ready: 'Ready',
-  awaiting_packing: 'Awaiting Packing',
-  awaiting_distributor: 'With Distributor',
-  awaiting_company: 'Awaiting Company',
-  done: 'Dispatched',
+  ready:                'Ready',
+  awaiting_packing:     'Awaiting Packing',
+  awaiting_distributor: 'Company Billing',
+  awaiting_company:     'Awaiting Company',
+  done:                 'Dispatched',
 }
 
 export const DISPATCH_STATUS_COLOR: Record<DispatchStatus, string> = {
-  ready: '#10B981',
-  awaiting_packing: '#3B82F6',
+  ready:                '#10B981',
+  awaiting_packing:     '#3B82F6',
   awaiting_distributor: '#F59E0B',
-  awaiting_company: '#9CA3AF',
-  done: '#6EE7B7',
+  awaiting_company:     '#9CA3AF',
+  done:                 '#6EE7B7',
 }
 
 export const DISPATCH_STATUS_BG: Record<DispatchStatus, string> = {
-  ready: '#f0fdf4',
-  awaiting_packing: '#eff6ff',
+  ready:                '#f0fdf4',
+  awaiting_packing:     '#eff6ff',
   awaiting_distributor: '#fffbeb',
-  awaiting_company: '#f9fafb',
-  done: '#f0fdf4',
+  awaiting_company:     '#f9fafb',
+  done:                 '#f0fdf4',
+}
+
+// Maps dispatch status back to the corresponding raw stage for label lookups.
+export const DISPATCH_STATUS_TO_STAGE: Record<DispatchStatus, PurchaseStage> = {
+  ready:                'IN_BOX',
+  awaiting_packing:     'GODOWN',
+  awaiting_distributor: 'PENDING_DIST',
+  awaiting_company:     'PENDING_CO',
+  done:                 'DISPATCHED',
 }
 
 /** All active statuses for a line, ordered by priority (most actionable first). */
@@ -179,102 +317,7 @@ export const DISPATCH_READINESS_COLOR: Record<DispatchReadiness, string> = {
   archived: '#D1D5DB',
 }
 
-export type PurchaseStage = typeof STAGE_ORDER[number]
-
-export interface HeaderCounts {
-  UNALLOCATED: number
-  PENDING_CO: number
-  PENDING_DIST: number
-  GODOWN: number
-  IN_BOX: number
-  DISPATCHED: number
-  NOT_DISPLAYED: number
-}
-
-export const STAGE_LABEL: Record<PurchaseStage, string> = {
-  UNALLOCATED: 'No Customer',
-  PENDING_CO: 'Order Placed',
-  PENDING_DIST: 'With Distributor',
-  GODOWN: 'At Godown',
-  IN_BOX: 'Packed',
-  DISPATCHED: 'Dispatched',
-  NOT_DISPLAYED: 'Closed',
-}
-
-export const STAGE_SHORT_LABEL: Record<PurchaseStage, string> = {
-  UNALLOCATED: 'UNALLOCATED',
-  PENDING_CO: 'PEND.CO',
-  PENDING_DIST: 'PEND.DIST',
-  GODOWN: 'GODOWN',
-  IN_BOX: 'IN BOX',
-  DISPATCHED: 'DISPATCHED',
-  NOT_DISPLAYED: 'NOT DISPLAYED',
-}
-
-export const STAGE_COLORS: Record<PurchaseStage, string> = {
-  UNALLOCATED: '#3B82F6',
-  PENDING_CO: '#F59E0B',
-  PENDING_DIST: '#F97316',
-  GODOWN: '#8B5CF6',
-  IN_BOX: '#06B6D4',
-  DISPATCHED: '#10B981',
-  NOT_DISPLAYED: '#6B7280',
-}
-
-export const BRAND_TABS = ['ALL', 'GROHE', 'HANSGROHE', 'VITRA', 'GEBERIT'] as const
-
-export type BrandTab = typeof BRAND_TABS[number]
-export type BrandTabFilter = Exclude<BrandTab, 'ALL'>
-
-export const BRAND_GROUPS: Record<BrandTabFilter, string[]> = {
-  GROHE: ['GROHE'],
-  HANSGROHE: ['HANSGROHE', 'AXOR'],
-  VITRA: ['VITRA'],
-  GEBERIT: ['GEBERIT'],
-}
-
-export const BRAND_ACCENTS: Record<BrandTabFilter, string> = {
-  GROHE: '#00A3E0',
-  HANSGROHE: '#E30613',
-  VITRA: '#005BAC',
-  GEBERIT: '#003087',
-}
-
-export interface PurchaseTrackerLine {
-  id: string
-  poId: string
-  poNumber: string
-  vendorName: string | null
-  projectId: string | null
-  createdAt?: string
-  locationNote?: string | null
-  customer: {
-    id: string
-    name: string
-    siteAddress: string | null
-  } | null
-  product: {
-    id: string
-    sku: string
-    name: string
-    brand: string
-    imageUrl: string | null
-    seriesName: string | null
-    finishName: string | null
-    articleNumber: string | null
-    mrp: number
-    unit: string
-    tier: string
-  }
-  qtyOrdered: number
-  qtyTransferredIn: number
-  qtyTransferredOut: number
-  qtyReceived: number
-  stages: HeaderCounts
-  followUpStatus?: string | null
-  currentLocation: string | null      // derived from latest StageMovement.location
-  lastActivityAt: string | null       // ISO string of latest StageMovement.movedAt
-}
+// ─── Urgency ───────────────────────────────────────────────────────────────────
 
 export type UrgencyLevel = 'critical' | 'warning' | 'attention' | 'normal'
 
@@ -298,39 +341,7 @@ export function getLineUrgency(line: PurchaseTrackerLine): UrgencyLevel {
   return 'normal'
 }
 
-export interface PurchaseLinesResponse {
-  lines: PurchaseTrackerLine[]
-  headerCounts: HeaderCounts
-  brandCounts: Record<BrandTab, number>
-}
-
-export interface CustomerOption {
-  id: string
-  name: string
-  lineId?: string
-}
-
-export function createEmptyHeaderCounts(): HeaderCounts {
-  return {
-    UNALLOCATED: 0,
-    PENDING_CO: 0,
-    PENDING_DIST: 0,
-    GODOWN: 0,
-    IN_BOX: 0,
-    DISPATCHED: 0,
-    NOT_DISPLAYED: 0,
-  }
-}
-
-export function createEmptyBrandCounts(): Record<BrandTab, number> {
-  return {
-    ALL: 0,
-    GROHE: 0,
-    HANSGROHE: 0,
-    VITRA: 0,
-    GEBERIT: 0,
-  }
-}
+// ─── Brand utilities ───────────────────────────────────────────────────────────
 
 export function normalizeBrandTab(value: string | null | undefined): BrandTab {
   if (!value) return 'ALL'
@@ -359,6 +370,8 @@ export function matchesBrandTab(brand: string, tab: BrandTab): boolean {
   const brands = getBrandsForTab(tab)
   return brands === null ? true : brands.includes(brand)
 }
+
+// ─── Quantity calculations ─────────────────────────────────────────────────────
 
 export function effectiveCeiling(line: {
   qtyOrdered: number
@@ -410,6 +423,28 @@ export function addCounts(target: HeaderCounts, source: HeaderCounts): HeaderCou
   }
 }
 
+export function createEmptyHeaderCounts(): HeaderCounts {
+  return {
+    UNALLOCATED: 0,
+    PENDING_CO: 0,
+    PENDING_DIST: 0,
+    GODOWN: 0,
+    IN_BOX: 0,
+    DISPATCHED: 0,
+    NOT_DISPLAYED: 0,
+  }
+}
+
+export function createEmptyBrandCounts(): Record<BrandTab, number> {
+  return {
+    ALL: 0,
+    GROHE: 0,
+    HANSGROHE: 0,
+    VITRA: 0,
+    GEBERIT: 0,
+  }
+}
+
 export function computeHeaderCounts(lines: PurchaseTrackerLine[]): HeaderCounts {
   return lines.reduce(
     (acc, line) => addCounts(acc, line.stages),
@@ -453,18 +488,10 @@ export function buildStageTotals(lines: Array<{
   qtyDispatched: number
   qtyNotDisplayed: number
 }>): HeaderCounts {
-  return lines.reduce((acc, line) => {
-    const next = countsFromDbLine(line)
-    return {
-      UNALLOCATED: acc.UNALLOCATED + next.UNALLOCATED,
-      PENDING_CO: acc.PENDING_CO + next.PENDING_CO,
-      PENDING_DIST: acc.PENDING_DIST + next.PENDING_DIST,
-      GODOWN: acc.GODOWN + next.GODOWN,
-      IN_BOX: acc.IN_BOX + next.IN_BOX,
-      DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
-      NOT_DISPLAYED: acc.NOT_DISPLAYED + next.NOT_DISPLAYED,
-    }
-  }, createEmptyHeaderCounts())
+  return lines.reduce(
+    (acc, line) => addCounts(acc, countsFromDbLine(line)),
+    createEmptyHeaderCounts(),
+  )
 }
 
 export interface StageSums {
@@ -494,6 +521,8 @@ export function computeStageTotalsResult(sums: StageSums) {
     notDisplayed: sums.notDisplayed,
   }
 }
+
+// ─── Stage helpers ─────────────────────────────────────────────────────────────
 
 export function formatRelativeTime(date: Date): string {
   const diffMs = Date.now() - date.getTime()

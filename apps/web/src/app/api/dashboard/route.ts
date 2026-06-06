@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { followUps as mockFollowUps } from '@/lib/mock/followup-data'
+import { followUps as mockFollowUps, countOpenQuotationFollowUps } from '@/lib/mock/followup-data'
 import { activityData, topCustomers as mockTopCustomers, revenueData } from '@/lib/mock/dashboard-data'
 import { allowDevFallback } from '@/lib/runtime-mode'
 
@@ -12,6 +12,7 @@ export interface DashboardKPIs {
   overdueFollowUps: number
   openQuotationsCount: number
   openQuotationsPipelineValue: number
+  openQuotationsAwaitingFollowUp: number
   poLinesInTransit: number
   outstandingPayments: number
   collectedThisMonth: number
@@ -301,6 +302,7 @@ export async function GET() {
           overdueFollowUps,
           openQuotationsCount: 18,
           openQuotationsPipelineValue: 4820000,
+          openQuotationsAwaitingFollowUp: countOpenQuotationFollowUps(),
           poLinesInTransit: 12,
           outstandingPayments: 688000,
           collectedThisMonth: 2847500,
@@ -346,6 +348,9 @@ export async function GET() {
         overdueFollowUps: followUpCounts.overdue,
         openQuotationsCount: openQuotationData.length,
         openQuotationsPipelineValue,
+        openQuotationsAwaitingFollowUp: await prisma.followUp.count({
+          where: { type: 'QUOTATION', status: { notIn: ['WON', 'LOST'] } },
+        }),
         poLinesInTransit,
         outstandingPayments,
         collectedThisMonth,

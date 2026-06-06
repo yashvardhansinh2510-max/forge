@@ -19,6 +19,7 @@ export type FollowUpResponseItem = {
 export type FollowUpItem = {
   id: string
   type: string
+  source?: string | null
   customerName: string
   customerPhone: string
   customerType: string
@@ -29,6 +30,7 @@ export type FollowUpItem = {
   quotationId: string | null
   quotationNumber: string | null
   quotationValue: number | null
+  revisionNumber?: number | null
   status: string
   nextFollowUpDate: string
   lastContactedAt: string | null
@@ -97,6 +99,7 @@ export async function GET(_req: NextRequest) {
       const followUps: FollowUpItem[] = mockFollowUps.map((f) => ({
         id: f.id,
         type: f.type.toUpperCase(),
+        source: f.source ?? null,
         customerName: f.customerName,
         customerPhone: f.customerPhone,
         customerType: f.customerType.toUpperCase(),
@@ -107,6 +110,7 @@ export async function GET(_req: NextRequest) {
         quotationId: f.quotationId ?? null,
         quotationNumber: f.quotationNumber ?? null,
         quotationValue: f.quotationValue ?? null,
+        revisionNumber: f.revisionNumber ?? null,
         status: f.status.toUpperCase(),
         nextFollowUpDate: f.nextFollowUpDate.toISOString(),
         lastContactedAt: f.lastContactedAt?.toISOString() ?? null,

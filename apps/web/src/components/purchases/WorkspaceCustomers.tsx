@@ -3,12 +3,14 @@
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import {
-  effectiveCeiling,
   getCustomerMetrics,
   getLineDispatchStatuses,
+  getLinePrimaryStatus,
   DISPATCH_STATUS_BG,
   DISPATCH_STATUS_COLOR,
   DISPATCH_STATUS_LABEL,
+  DISPATCH_STATUS_TO_STAGE,
+  STAGE_LABEL,
   type BrandTab,
   type DispatchStatus,
   type HeaderCounts,
@@ -38,43 +40,38 @@ function ProductThumb({ line, size = 12 }: { line: PurchaseTrackerLine; size?: n
   )
 }
 
-async function exportCustomerStock(customers: CustomerBucket[]) {
+async function exportSingleCustomer(customer: CustomerBucket) {
   const ExcelJS = (await import('exceljs')).default
   const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet('Customer Stock')
+  const ws = wb.addWorksheet(customer.name.slice(0, 31))
 
   ws.columns = [
-    { header: 'Customer',   key: 'customer',    width: 28 },
-    { header: 'Site',       key: 'site',        width: 26 },
-    { header: 'Product',    key: 'product',     width: 42 },
-    { header: 'SKU',        key: 'sku',         width: 24 },
-    { header: 'Brand',      key: 'brand',       width: 12 },
-    { header: 'Ordered',    key: 'ordered',     width: 10 },
-    { header: 'Pend. CO',   key: 'pendingCo',   width: 10 },
-    { header: 'Pend. Dist', key: 'pendingDist', width: 11 },
-    { header: 'At Godown',  key: 'godown',      width: 11 },
-    { header: 'In Box',     key: 'inBox',       width: 9  },
-    { header: 'Dispatched', key: 'dispatched',  width: 12 },
-    { header: 'Location',   key: 'location',    width: 22 },
+    { header: 'Customer',          key: 'customer',    width: 28 },
+    { header: 'SKU',               key: 'sku',         width: 24 },
+    { header: 'Product',           key: 'product',     width: 42 },
+    { header: 'Brand',             key: 'brand',       width: 12 },
+    { header: 'Stage',             key: 'stage',       width: 20 },
+    { header: 'Qty',               key: 'qty',         width: 8  },
+    { header: 'Dispatch Status',   key: 'dispatch',    width: 18 },
+    { header: 'Location',          key: 'location',    width: 22 },
   ]
 
-  for (const cust of customers) {
-    for (const line of cust.lines) {
-      ws.addRow({
-        customer:   cust.name,
-        site:       cust.siteAddress ?? '',
-        product:    line.product.name,
-        sku:        line.product.sku,
-        brand:      line.product.brand,
-        ordered:    line.qtyOrdered,
-        pendingCo:  line.stages.PENDING_CO,
-        pendingDist:line.stages.PENDING_DIST,
-        godown:     line.stages.GODOWN,
-        inBox:      line.stages.IN_BOX,
-        dispatched: line.stages.DISPATCHED,
-        location:   line.locationNote ?? '',
-      })
-    }
+  for (const line of customer.lines) {
+    const primary = getLinePrimaryStatus(line)
+    const stageLabel = STAGE_LABEL[DISPATCH_STATUS_TO_STAGE[primary]]
+    const { qty } = getLineDispatchStatuses(line)[0] ?? { qty: 0 }
+    const dispatchStatus = DISPATCH_STATUS_LABEL[primary]
+
+    ws.addRow({
+      customer: customer.name,
+      sku:      line.product.sku,
+      product:  line.product.name,
+      brand:    line.product.brand,
+      stage:    stageLabel,
+      qty,
+      dispatch: dispatchStatus,
+      location: line.locationNote ?? line.currentLocation ?? '',
+    })
   }
 
   const headerRow = ws.getRow(1)
@@ -86,7 +83,7 @@ async function exportCustomerStock(customers: CustomerBucket[]) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `customer-stock-${new Date().toISOString().slice(0, 10)}.xlsx`
+  a.download = `Export ${customer.name}.xlsx`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -211,6 +208,7 @@ function CustomerDetail({
   const [dispatching, setDispatching] = useState(false)
   const [dispatchErr, setDispatchErr] = useState('')
   const [showDelivered, setShowDelivered] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const { lines } = customer
 
   const readyLines = lines.filter((l) => l.stages.IN_BOX > 0)
@@ -260,15 +258,28 @@ function CustomerDetail({
             <p className="mt-1 text-sm text-[var(--text-muted)]">{customer.siteAddress}</p>
           )}
         </div>
-        {onMoveMaterial && (
+        <div className="flex shrink-0 flex-col gap-2">
           <button
             type="button"
-            onClick={() => onMoveMaterial(lines[0]?.product.id ?? '', lines[0]?.id ?? '')}
-            className="shrink-0 rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
+            onClick={() => {
+              setExporting(true)
+              void exportSingleCustomer(customer).finally(() => setExporting(false))
+            }}
+            disabled={exporting}
+            className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-1.5 text-xs font-semibold text-[#15803d] transition hover:bg-[#dcfce7] disabled:opacity-40"
           >
-            Move Material →
+            {exporting ? 'Exporting…' : `↓ Export ${customer.name}.xlsx`}
           </button>
-        )}
+          {onMoveMaterial && (
+            <button
+              type="button"
+              onClick={() => onMoveMaterial(lines[0]?.product.id ?? '', lines[0]?.id ?? '')}
+              className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
+            >
+              Move Material →
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Metric chips */}
@@ -530,8 +541,27 @@ function CustomerCard({
   onClick: () => void
 }) {
   const metrics = getCustomerMetrics(customer.lines)
-  const dispatched = customer.lines.reduce((s, l) => s + l.stages.DISPATCHED + l.stages.NOT_DISPLAYED, 0)
-  const effective = customer.lines.reduce((s, l) => s + effectiveCeiling(l), 0)
+  const dispatched = metrics.dispatched
+  const effective = metrics.ordered
+
+  // Stage counts using warehouse names
+  const stageQtys = customer.lines.reduce(
+    (acc, l) => {
+      acc.oic  += l.stages.PENDING_CO
+      acc.cb   += l.stages.PENDING_DIST
+      acc.ib   += l.stages.GODOWN + l.stages.IN_BOX
+      acc.disp += l.stages.DISPATCHED + l.stages.NOT_DISPLAYED
+      return acc
+    },
+    { oic: 0, cb: 0, ib: 0, disp: 0 },
+  )
+
+  const stageSummary: { label: string; value: number; color: string; bg: string }[] = [
+    { label: 'ORDER IN COMPANY', value: stageQtys.oic,  color: '#d97706', bg: '#fffbeb' },
+    { label: 'COMPANY BILLING',  value: stageQtys.cb,   color: '#f97316', bg: '#fff7ed' },
+    { label: 'IN BOX',       value: stageQtys.ib,   color: '#2563eb', bg: '#eff6ff' },
+    { label: 'DISPATCHED',   value: stageQtys.disp, color: '#15803d', bg: '#f0fdf4' },
+  ].filter((s) => s.value > 0)
 
   return (
     <button
@@ -554,28 +584,30 @@ function CustomerCard({
             <p className="mt-0.5 truncate text-xs text-[var(--text-muted)]">{customer.siteAddress}</p>
           )}
 
-          {/* 5-metric row */}
-          <div className="mt-2 grid grid-cols-5 gap-1 text-center">
-            {([
-              { label: 'ORD', value: metrics.ordered },
-              { label: 'RCVD', value: metrics.received },
-              { label: 'PACK', value: metrics.packed },
-              { label: 'SENT', value: dispatched },
-              { label: 'PEND', value: metrics.pending },
-            ] as const).map((m) => (
-              <div key={m.label}>
-                <p className="text-[9px] font-semibold text-[var(--text-muted)]">{m.label}</p>
-                <p
-                  className="text-xs font-bold text-[var(--text-primary)]"
-                  style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}
+          {/* Warehouse stage summary — instant at-a-glance */}
+          {stageSummary.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {stageSummary.map((s) => (
+                <span
+                  key={s.label}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{ background: s.bg, color: s.color }}
                 >
-                  {m.value}
-                </p>
-              </div>
-            ))}
-          </div>
+                  {s.label}
+                  <span
+                    className="rounded-full px-1 py-0.5 text-[9px] font-bold text-white"
+                    style={{ background: s.color }}
+                  >
+                    {s.value}
+                  </span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-[10px] text-[var(--text-muted)]">{customer.lines.length} line{customer.lines.length !== 1 ? 's' : ''} — no active stock</p>
+          )}
 
-          {/* Ready pill + progress */}
+          {/* Progress bar */}
           <div className="mt-2 flex items-center gap-2">
             {metrics.ready > 0 && (
               <span className="rounded-full bg-[#f0fdf4] px-2 py-0.5 text-[10px] font-semibold text-[#15803d]">
@@ -606,7 +638,6 @@ function CustomerCard({
 export default function WorkspaceCustomers({ lines, activeBrand: _activeBrand, onMoved, onSelectLine, onMoveMaterial }: Props) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [exporting, setExporting] = useState(false)
 
   const customers = lines.reduce<Record<string, CustomerBucket>>((acc, line) => {
     if (!line.customer) return acc
@@ -628,11 +659,11 @@ export default function WorkspaceCustomers({ lines, activeBrand: _activeBrand, o
     })
     .sort((a, b) => {
       // Ready customers first, then by attention, then alphabetical
-      const aReady = a.lines.reduce((s, l) => s + l.stages.IN_BOX, 0)
-      const bReady = b.lines.reduce((s, l) => s + l.stages.IN_BOX, 0)
-      if (aReady !== bReady) return bReady - aReady
-      const aAttn = getCustomerMetrics(a.lines).hasAttention ? 1 : 0
-      const bAttn = getCustomerMetrics(b.lines).hasAttention ? 1 : 0
+      const am = getCustomerMetrics(a.lines)
+      const bm = getCustomerMetrics(b.lines)
+      if (am.ready !== bm.ready) return bm.ready - am.ready
+      const aAttn = am.hasAttention ? 1 : 0
+      const bAttn = bm.hasAttention ? 1 : 0
       if (aAttn !== bAttn) return bAttn - aAttn
       return a.name.localeCompare(b.name)
     })
@@ -657,24 +688,13 @@ export default function WorkspaceCustomers({ lines, activeBrand: _activeBrand, o
     <div className="grid h-full grid-cols-[300px_minmax(0,1fr)]">
       {/* Customer list */}
       <aside className="overflow-y-auto border-r border-[var(--border)] bg-white">
-        <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-white p-3 space-y-2">
+        <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-white p-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search customer…"
             className="w-full rounded-xl border border-[var(--border)] bg-[var(--n-50)] px-3 py-2 text-sm outline-none transition focus:border-[#93c5fd]"
           />
-          <button
-            type="button"
-            onClick={() => {
-              setExporting(true)
-              void exportCustomerStock(customerList).finally(() => setExporting(false))
-            }}
-            disabled={exporting}
-            className="w-full rounded-xl border border-[var(--border)] bg-white py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] disabled:opacity-40"
-          >
-            {exporting ? 'Exporting…' : '↓ Export all customers .xlsx'}
-          </button>
         </div>
         <div>
           {customerList.map((c) => (

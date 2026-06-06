@@ -30,6 +30,7 @@ function mapApiFollowUp(item: FollowUpItem): FollowUp {
   return {
     id: item.id,
     type: item.type.toLowerCase().replace('_', '_') as FollowUp['type'],
+    source: (item.source as FollowUp['source']) ?? undefined,
     customerName: item.customerName,
     customerPhone: item.customerPhone,
     customerType: item.customerType.toLowerCase() as CustomerType,
@@ -40,6 +41,7 @@ function mapApiFollowUp(item: FollowUpItem): FollowUp {
     quotationId: item.quotationId ?? undefined,
     quotationNumber: item.quotationNumber ?? undefined,
     quotationValue: item.quotationValue ?? undefined,
+    revisionNumber: item.revisionNumber ?? undefined,
     status: item.status.toLowerCase() as FollowUpStatus,
     nextFollowUpDate: new Date(item.nextFollowUpDate),
     lastContactedAt: item.lastContactedAt ? new Date(item.lastContactedAt) : undefined,
@@ -63,7 +65,7 @@ function mapApiFollowUp(item: FollowUpItem): FollowUp {
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
 const STATUS_FILTERS = [
-  'all', 'pending', 'contacted', 'interested', 'negotiating', 'won', 'lost', 'overdue',
+  'all', 'quotation_sent', 'pending', 'contacted', 'interested', 'negotiating', 'won', 'lost', 'overdue',
 ] as const
 
 const TYPE_FILTERS = ['all', 'walk_in', 'quotation'] as const
@@ -248,7 +250,7 @@ export function FollowUpsClient() {
 
   return (
     <PageContainer
-      title="Follow-ups"
+      title="Follow-Ups"
       subtitle={`${active} active · ${overdue} overdue`}
       actions={
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

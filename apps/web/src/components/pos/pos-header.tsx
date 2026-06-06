@@ -231,6 +231,32 @@ export function POSHeader() {
   const [saving, setSaving]                       = React.useState(false)
   const [confirmReset, setConfirmReset]           = React.useState(false)
 
+  // ── Follow-up sync (fire-and-forget) ─────────────────────────────────────
+  async function syncFollowUp(quotationId: string, quotationNumber: string, revisionNumber: number) {
+    if (!project.clientName.trim()) return
+    const brands = [...new Set(
+      rooms.flatMap((r) => r.items.map((i) => i.product.brand)).filter(Boolean),
+    )]
+    try {
+      await fetch('/api/follow-ups/from-quotation', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quotationId,
+          quotationNumber,
+          quotationValue:   Math.round(totals.totalOffer * 1.28),
+          revisionNumber,
+          customerName:     project.clientName,
+          customerPhone:    project.clientPhone || '',
+          projectName:      project.name || undefined,
+          brandsInterested: brands,
+        }),
+      })
+    } catch {
+      // Non-critical — never surface to user
+    }
+  }
+
   // ── Save (creates quotation or new revision) ──────────────────────────────
   async function handleSave() {
     if (saving) return
@@ -292,18 +318,20 @@ export function POSHeader() {
           quotationId: string; quotationNumber: string
           revisionId: string; revisionNumber: number; status: string
         }
-        setQuotationContext({
+        const newCtx = {
           quotationId:     data.quotationId,
           revisionId:      data.revisionId,
           quotationNumber: data.quotationNumber,
           revisionNumber:  data.revisionNumber,
           status:          data.status,
           lastSavedAt:     new Date().toISOString(),
-        })
+        }
+        setQuotationContext(newCtx)
         toast.success(`Rev ${data.revisionNumber} saved — ${data.quotationNumber}`, {
           description: `Revision ${data.revisionNumber} created`,
           action: { label: 'View list', onClick: () => router.push('/quotations') },
         })
+        void syncFollowUp(newCtx.quotationId, newCtx.quotationNumber, newCtx.revisionNumber)
         return
       }
 
@@ -318,18 +346,20 @@ export function POSHeader() {
         throw new Error(err.message ?? 'Failed to save quotation')
       }
       const data = await res.json() as { id: string; quotationNumber: string; revisionId: string }
-      setQuotationContext({
+      const newCtx = {
         quotationId:     data.id,
         revisionId:      data.revisionId,
         quotationNumber: data.quotationNumber,
         revisionNumber:  0,
         status:          'DRAFT',
         lastSavedAt:     new Date().toISOString(),
-      })
+      }
+      setQuotationContext(newCtx)
       toast.success(`Saved as ${data.quotationNumber}`, {
         description: project.clientName ? `Saved for ${project.clientName}` : 'Saved to quotations',
         action: { label: 'View list', onClick: () => router.push('/quotations') },
       })
+      void syncFollowUp(newCtx.quotationId, newCtx.quotationNumber, newCtx.revisionNumber)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save quotation')
     } finally {
@@ -395,6 +425,12 @@ export function POSHeader() {
       toast.success(`${data.poNumber} created — ${data.lineItemCount} lines`, {
         description: `Linked to ${quotationContext.quotationNumber} · Items now appear in Purchases`,
       })
+      // Mark follow-up as converted
+      void fetch('/api/follow-ups/from-quotation', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'convert', quotationId: quotationContext.quotationId }),
+      }).catch(() => { /* non-critical */ })
       router.push('/purchases')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not create PO')

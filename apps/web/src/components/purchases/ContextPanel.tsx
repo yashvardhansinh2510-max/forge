@@ -16,16 +16,13 @@ import {
 } from '@/lib/purchases-tracker'
 import UniversalTransfer from '@/components/purchases/UniversalTransfer'
 
-// ─── Legal forward transitions ─────────────────────────────────────────────────
-const LEGAL: Record<PurchaseStage, PurchaseStage[]> = {
-  UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
-  PENDING_CO: ['PENDING_DIST', 'GODOWN'],
-  PENDING_DIST: ['GODOWN'],
-  GODOWN: ['IN_BOX'],
-  IN_BOX: ['DISPATCHED'],
-  DISPATCHED: ['NOT_DISPLAYED'],
-  NOT_DISPLAYED: [],
-}
+// User-facing target stages — any stock can be moved to any of these.
+const MOVE_TARGET_STAGES: { stage: PurchaseStage; label: string }[] = [
+  { stage: 'PENDING_CO',   label: STAGE_LABEL.PENDING_CO },
+  { stage: 'PENDING_DIST', label: STAGE_LABEL.PENDING_DIST },
+  { stage: 'IN_BOX',       label: STAGE_LABEL.IN_BOX },
+  { stage: 'DISPATCHED',   label: STAGE_LABEL.DISPATCHED },
+]
 
 // ─── Movement history type ──────────────────────────────────────────────────────
 interface Movement {
@@ -96,7 +93,7 @@ function MoveSection({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
-  const activeStages = STAGE_ORDER.filter((s) => line.stages[s] > 0 && LEGAL[s].length > 0)
+  const activeStages = STAGE_ORDER.filter((s) => line.stages[s] > 0)
 
   useEffect(() => {
     setFromStage(activeStages[0] ?? null)
@@ -104,24 +101,22 @@ function MoveSection({
     setQty(1)
     setLocationNote('')
     setErr('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [line.id])
 
   useEffect(() => {
     if (fromStage) {
-      setToStage(LEGAL[fromStage][0] ?? '')
       setQty(1)
       setLocationNote('')
     }
   }, [fromStage])
 
   if (activeStages.length === 0) {
-    return <p className="text-xs text-[var(--text-muted)]">No moveable stock on this line.</p>
+    return <p className="text-xs text-[var(--text-muted)]">No stock on this line.</p>
   }
 
-  const targets = fromStage ? LEGAL[fromStage] : []
   const available = fromStage ? line.stages[fromStage] : 0
-  // Show location input when moving INTO godown or packing into box
-  const needsLocation = toStage === 'GODOWN' || toStage === 'IN_BOX'
+  const needsLocation = toStage === 'IN_BOX'
 
   async function doMove() {
     if (!fromStage || !toStage) return
@@ -159,45 +154,44 @@ function MoveSection({
   }
 
   return (
-    <div className="space-y-3">
-      {/* From stage selector */}
-      <div className="flex flex-wrap gap-1.5">
-        {activeStages.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setFromStage(s)}
-            className={[
-              'rounded-lg border px-2.5 py-1 text-xs font-semibold transition',
-              fromStage === s
-                ? 'border-[#2563eb] bg-[#eff6ff] text-[#2563eb]'
-                : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[#93c5fd]',
-            ].join(' ')}
-          >
-            {STAGE_FRIENDLY_NAME[s] ?? STAGE_LABEL[s]} ({line.stages[s]})
-          </button>
-        ))}
+    <div className="space-y-4">
+      {/* From stage */}
+      <div>
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">From</p>
+        <div className="flex flex-wrap gap-1.5">
+          {activeStages.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setFromStage(s)}
+              className={[
+                'rounded-lg border px-2.5 py-1 text-xs font-semibold transition',
+                fromStage === s
+                  ? 'border-[#2563eb] bg-[#eff6ff] text-[#2563eb]'
+                  : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[#93c5fd]',
+              ].join(' ')}
+            >
+              {STAGE_FRIENDLY_NAME[s] ?? STAGE_LABEL[s]} ({line.stages[s]})
+            </button>
+          ))}
+        </div>
       </div>
 
       {fromStage && (
-        <div className="space-y-2.5">
-          {/* To stage */}
-          <div className="flex flex-wrap gap-1.5">
-            {targets.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setToStage(t)}
-                className={[
-                  'flex-1 rounded-xl border-2 py-2 text-xs font-bold transition',
-                  toStage === t
-                    ? 'border-[#2563eb] bg-[#2563eb] text-white'
-                    : 'border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[#93c5fd]',
-                ].join(' ')}
-              >
-                → {STAGE_FRIENDLY_NAME[t] ?? STAGE_LABEL[t]}
-              </button>
-            ))}
+        <div className="space-y-3">
+          {/* To stage — dropdown with all 4 user-facing stages */}
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Move to stage</p>
+            <select
+              value={toStage}
+              onChange={(e) => setToStage(e.target.value as PurchaseStage)}
+              className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--text-primary)] outline-none focus:border-[#60a5fa]"
+            >
+              <option value="">Select stage…</option>
+              {MOVE_TARGET_STAGES.filter((t) => t.stage !== fromStage).map((t) => (
+                <option key={t.stage} value={t.stage}>{t.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Qty */}
@@ -226,17 +220,15 @@ function MoveSection({
             <span className="text-xs text-[var(--text-muted)]">of {available}</span>
           </div>
 
-          {/* Location note — shown when moving goods INTO godown or packing into box */}
+          {/* Location note for IN BOX */}
           {needsLocation && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--text-muted)]">
-                {toStage === 'GODOWN' ? 'Godown location (shelf / bay)' : 'Box number / location'}
-              </label>
+              <label className="mb-1 block text-xs font-medium text-[var(--text-muted)]">Box / shelf location</label>
               <input
                 type="text"
                 value={locationNote}
                 onChange={(e) => setLocationNote(e.target.value)}
-                placeholder={toStage === 'GODOWN' ? 'e.g. Rack B3, Bay 4' : 'e.g. Box 12'}
+                placeholder="e.g. Box 12, Rack B3"
                 className="w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[#60a5fa]"
               />
             </div>
@@ -250,7 +242,7 @@ function MoveSection({
             disabled={saving || !toStage}
             className="w-full rounded-xl bg-[#2563eb] py-2.5 text-sm font-bold text-white transition hover:bg-[#1d4ed8] disabled:opacity-40"
           >
-            {saving ? 'Moving…' : `Move ${qty} → ${toStage ? (STAGE_FRIENDLY_NAME[toStage] ?? STAGE_LABEL[toStage]) : '…'}`}
+            {saving ? 'Moving…' : toStage ? `Move ${qty} → ${MOVE_TARGET_STAGES.find((t) => t.stage === toStage)?.label ?? toStage}` : 'Select a stage'}
           </button>
         </div>
       )}
@@ -320,18 +312,8 @@ function resolveDefaultTab(
   requested: 'move' | 'transfer' | 'history',
 ): 'move' | 'transfer' | 'history' {
   if (requested !== 'move') return requested
-  // If no moveable stock exists, skip to history — "Move to Stage" would be empty
-  const LEGAL: Record<PurchaseStage, PurchaseStage[]> = {
-    UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
-    PENDING_CO: ['PENDING_DIST', 'GODOWN'],
-    PENDING_DIST: ['GODOWN'],
-    GODOWN: ['IN_BOX'],
-    IN_BOX: ['DISPATCHED'],
-    DISPATCHED: ['NOT_DISPLAYED'],
-    NOT_DISPLAYED: [],
-  }
-  const hasMoveable = STAGE_ORDER.some((s) => line.stages[s] > 0 && LEGAL[s].length > 0)
-  return hasMoveable ? 'move' : 'history'
+  const hasStock = STAGE_ORDER.some((s) => line.stages[s] > 0)
+  return hasStock ? 'move' : 'history'
 }
 
 export default function ContextPanel({ line, allLines: _allLines, activeBrand, defaultTab = 'move', onClose, onMoved }: Props) {

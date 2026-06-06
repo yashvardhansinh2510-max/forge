@@ -95,7 +95,7 @@ function BlockedReason({ line }: { line: PurchaseTrackerLine }) {
   if (line.stages.PENDING_DIST > 0) {
     return (
       <span className="rounded-md bg-[#fff7ed] px-2 py-0.5 text-[11px] font-semibold text-[#c2410c]">
-        With distributor · {line.stages.PENDING_DIST} units
+        Company Billing · {line.stages.PENDING_DIST} units
       </span>
     )
   }

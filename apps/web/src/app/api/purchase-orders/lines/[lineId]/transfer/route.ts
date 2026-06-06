@@ -11,6 +11,8 @@ import {
   BRAND_TABS,
   normalizeBrandTab,
   createEmptyHeaderCounts,
+  stageToDbField,
+  type PurchaseStage,
 } from '@/lib/purchases-tracker'
 import { getStageTotalsForScope } from '@/lib/server/purchase-stage-totals'
 import { generatePONumber } from '@/lib/poNumberGenerator'
@@ -23,34 +25,9 @@ const TRANSFERABLE_STAGES = [
   'IN_BOX',
   'DISPATCHED',
   'NOT_DISPLAYED',
-] as const
+] as const satisfies ReadonlyArray<Exclude<PurchaseStage, 'UNALLOCATED'>>
 
 type TransferStage = typeof TRANSFERABLE_STAGES[number]
-
-type LineFields = {
-  qtyOrdered: number
-  qtyPendingCo: number
-  qtyPendingDist: number
-  qtyAtGodown: number
-  qtyInBox: number
-  qtyDispatched: number
-  qtyNotDisplayed: number
-}
-
-function stageToDbField(stage: TransferStage): keyof Omit<LineFields, 'qtyOrdered'> {
-  switch (stage) {
-    case 'PENDING_CO':    return 'qtyPendingCo'
-    case 'PENDING_DIST':  return 'qtyPendingDist'
-    case 'GODOWN':        return 'qtyAtGodown'
-    case 'IN_BOX':        return 'qtyInBox'
-    case 'DISPATCHED':    return 'qtyDispatched'
-    case 'NOT_DISPLAYED': return 'qtyNotDisplayed'
-  }
-}
-
-function getQtyAtStage(line: LineFields, stage: TransferStage): number {
-  return line[stageToDbField(stage)]
-}
 
 const TransferSchema = z.discriminatedUnion('mode', [
   // Legacy: source and target line IDs both known
@@ -174,7 +151,8 @@ export async function POST(
       throw new AppError('MISMATCH', `Product mismatch in transfer`, 422)
     }
 
-    const availableQty = getQtyAtStage(sourceLine, stage)
+    const field = stageToDbField(stage)
+    const availableQty = sourceLine[field] as number
     if (qty > availableQty) {
       throw new AppError(
         'INSUFFICIENT_QTY',
@@ -187,8 +165,6 @@ export async function POST(
     const sourceCustomerName = sourceLine.po.project?.clientName ?? sourceLine.po.customerName ?? 'Unknown'
     const targetCustomerName = targetLine.po.project?.clientName ?? targetLine.po.customerName ?? 'Unknown'
     const auditNote = `TRANSFER: ${qty} units from ${sourceCustomerName} to ${targetCustomerName}. Reason: ${reason}`
-
-    const field = stageToDbField(stage)
 
     await prisma.$transaction([
       prisma.pOLineItem.update({

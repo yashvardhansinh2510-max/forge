@@ -17,6 +17,7 @@ import {
   FileText,
   ShoppingBag,
   AlertCircle,
+  Bell,
 } from 'lucide-react'
 import { formatINR, formatPercentChange, type KPIItem, type KPIColor } from '@/lib/mock/dashboard-data'
 
@@ -32,6 +33,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   FileText,
   ShoppingBag,
   AlertCircle,
+  Bell,
 }
 
 // ─── Color Palette ────────────────────────────────────────────────────────────

@@ -3,13 +3,14 @@
 export type FollowUpType = 'walk_in' | 'quotation'
 
 export type FollowUpStatus =
-  | 'pending'      // New, not yet contacted
-  | 'contacted'    // Called / WhatsApp'd, waiting for response
-  | 'interested'   // Customer confirmed interest
-  | 'negotiating'  // Price discussion ongoing
-  | 'won'          // Converted — order confirmed
-  | 'lost'         // Customer declined / went elsewhere
-  | 'overdue'      // nextFollowUpDate is in the past and not closed
+  | 'quotation_sent' // Auto-created from POS save — awaiting first contact
+  | 'pending'        // New, not yet contacted
+  | 'contacted'      // Called / WhatsApp'd, waiting for response
+  | 'interested'     // Customer confirmed interest
+  | 'negotiating'    // Price discussion ongoing
+  | 'won'            // Converted — order confirmed
+  | 'lost'           // Customer declined / went elsewhere
+  | 'overdue'        // nextFollowUpDate is in the past and not closed
 
 export type CustomerType = 'architect' | 'interior_designer' | 'builder' | 'retail' | 'other'
 export type ResponseMethod = 'call' | 'whatsapp' | 'email' | 'visit'
@@ -42,6 +43,10 @@ export interface FollowUp {
   quotationId?: string
   quotationNumber?: string
   quotationValue?: number
+  revisionNumber?: number
+
+  // Source
+  source?: 'pos' | 'manual'
 
   // Status & scheduling
   status: FollowUpStatus
@@ -66,13 +71,14 @@ export const FOLLOWUP_STATUS_CONFIG: Record<
   FollowUpStatus,
   { label: string; bg: string; text: string; dot: BadgeDot }
 > = {
-  pending:     { label: 'Pending',     bg: 'rgba(142,142,147,0.10)', text: '#636366', dot: 'neutral'  },
-  contacted:   { label: 'Contacted',   bg: 'rgba(0,113,227,0.08)',   text: '#0071E3', dot: 'accent'   },
-  interested:  { label: 'Interested',  bg: 'rgba(8,145,178,0.08)',   text: '#0891B2', dot: 'accent'   },
-  negotiating: { label: 'Negotiating', bg: 'rgba(154,103,0,0.08)',   text: '#9A6700', dot: 'caution'  },
-  won:         { label: 'Won',         bg: 'rgba(26,127,55,0.08)',   text: '#1A7F37', dot: 'positive' },
-  lost:        { label: 'Lost',        bg: 'rgba(207,34,46,0.08)',   text: '#CF222E', dot: 'negative' },
-  overdue:     { label: 'Overdue',     bg: 'rgba(207,34,46,0.08)',   text: '#CF222E', dot: 'negative' },
+  quotation_sent: { label: 'Quotation Sent', bg: 'rgba(124,58,237,0.08)',  text: '#7C3AED', dot: 'accent'   },
+  pending:        { label: 'Pending',        bg: 'rgba(142,142,147,0.10)', text: '#636366', dot: 'neutral'  },
+  contacted:      { label: 'Contacted',      bg: 'rgba(0,113,227,0.08)',   text: '#0071E3', dot: 'accent'   },
+  interested:     { label: 'Interested',     bg: 'rgba(8,145,178,0.08)',   text: '#0891B2', dot: 'accent'   },
+  negotiating:    { label: 'Negotiating',    bg: 'rgba(154,103,0,0.08)',   text: '#9A6700', dot: 'caution'  },
+  won:            { label: 'Won',            bg: 'rgba(26,127,55,0.08)',   text: '#1A7F37', dot: 'positive' },
+  lost:           { label: 'Lost',           bg: 'rgba(207,34,46,0.08)',   text: '#CF222E', dot: 'negative' },
+  overdue:        { label: 'Overdue',        bg: 'rgba(207,34,46,0.08)',   text: '#CF222E', dot: 'negative' },
 }
 
 export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
@@ -549,4 +555,87 @@ export function createWalkInFollowUp(params: Omit<FollowUp, 'id' | 'createdAt' |
   }
   followUps.unshift(fu)
   return fu
+}
+
+/**
+ * Upsert a follow-up from a POS quotation save.
+ * - Creates new if no follow-up exists for this quotationId.
+ * - Updates value/revision/timestamp if one already exists (and is not won/lost).
+ * - Never creates duplicates.
+ */
+export function upsertFollowUpFromQuotation(params: {
+  quotationId: string
+  quotationNumber: string
+  quotationValue: number
+  revisionNumber: number
+  customerName: string
+  customerPhone: string
+  projectName?: string
+  brandsInterested?: string[]
+  assignedTo?: string
+}): FollowUp {
+  const existing = followUps.find((f) => f.quotationId === params.quotationId)
+
+  if (existing) {
+    // Already closed (won/lost) — don't modify
+    if (existing.status === 'won' || existing.status === 'lost') return existing
+
+    const idx = followUps.indexOf(existing)
+    followUps[idx] = {
+      ...existing,
+      quotationValue:  params.quotationValue,
+      revisionNumber:  params.revisionNumber,
+      quotationNumber: params.quotationNumber,
+      updatedAt:       new Date(),
+    }
+    return followUps[idx]!
+  }
+
+  const fu: FollowUp = {
+    id:              `fu${Date.now()}`,
+    type:            'quotation',
+    source:          'pos',
+    customerName:    params.customerName || 'Unknown Customer',
+    customerPhone:   params.customerPhone || '',
+    customerType:    'builder',
+    brandsInterested: params.brandsInterested ?? [],
+    productsNoted:   '',
+    projectName:     params.projectName,
+    quotationId:     params.quotationId,
+    quotationNumber: params.quotationNumber,
+    quotationValue:  params.quotationValue,
+    revisionNumber:  params.revisionNumber,
+    status:          'quotation_sent',
+    nextFollowUpDate: new Date(Date.now() + 3 * 86_400_000),
+    notes:           '',
+    responses:       [],
+    assignedTo:      params.assignedTo ?? 'Suresh Iyer',
+    createdAt:       new Date(),
+    updatedAt:       new Date(),
+  }
+  followUps.unshift(fu)
+  return fu
+}
+
+/**
+ * Mark a quotation follow-up as converted (order placed).
+ * Finds by quotationId and sets status to 'won'.
+ */
+export function convertFollowUpByQuotationId(quotationId: string): FollowUp | undefined {
+  const idx = followUps.findIndex((f) => f.quotationId === quotationId)
+  if (idx === -1) return undefined
+
+  followUps[idx] = {
+    ...followUps[idx]!,
+    status:    'won',
+    updatedAt: new Date(),
+  }
+  return followUps[idx]
+}
+
+/** Count active quotation follow-ups (not won/lost, type === quotation). */
+export function countOpenQuotationFollowUps(): number {
+  return followUps.filter(
+    (f) => f.type === 'quotation' && f.status !== 'won' && f.status !== 'lost',
+  ).length
 }

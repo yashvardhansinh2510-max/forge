@@ -99,6 +99,10 @@ export interface LineItem {
   gstRate: number    // 5 | 12 | 18 | 28
   section?: string   // room grouping for PDF, e.g. "BATHROOM 1,2"
   imageUrl?: string  // product thumbnail URL for PDF
+  isCustom?: boolean // true = custom product; when discount=0, unitPrice IS the offer rate (no MRP)
+  finishCode?: string
+  finishSku?: string
+  finishColor?: string
 }
 
 export interface Quotation {

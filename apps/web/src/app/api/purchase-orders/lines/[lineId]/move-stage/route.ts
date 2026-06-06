@@ -11,6 +11,8 @@ import {
   BRAND_TABS,
   normalizeBrandTab,
   createEmptyHeaderCounts,
+  countsFromDbLine,
+  stageToDbField,
 } from '@/lib/purchases-tracker'
 import { getStageTotalsForScope } from '@/lib/server/purchase-stage-totals'
 
@@ -21,48 +23,17 @@ const TO_STAGES = ['PENDING_CO', 'PENDING_DIST', 'GODOWN', 'IN_BOX', 'DISPATCHED
 type MoveFromStage = typeof FROM_STAGES[number]
 type MoveToStage = typeof TO_STAGES[number]
 
-// Must match stageConfig.ts LEGAL_TRANSITIONS (client-side source of truth for UI)
+// Any-to-any: warehouse staff can move stock to any stage.
+// The UI presents the 4 user-facing choices; the server just validates qty.
+const ALL_TO_STAGES = ['PENDING_CO', 'PENDING_DIST', 'GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED'] as const satisfies MoveToStage[]
 const LEGAL_TRANSITIONS: Record<MoveFromStage, MoveToStage[]> = {
-  UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
-  PENDING_CO:  ['PENDING_DIST', 'GODOWN'],
-  PENDING_DIST: ['GODOWN'],
-  GODOWN:      ['IN_BOX', 'DISPATCHED'],
-  IN_BOX:      ['DISPATCHED'],
-  DISPATCHED:  ['NOT_DISPLAYED'],
-  NOT_DISPLAYED: [],
-}
-
-type LineFields = {
-  qtyOrdered: number
-  qtyTransferredIn: number
-  qtyTransferredOut: number
-  qtyPendingCo: number
-  qtyPendingDist: number
-  qtyAtGodown: number
-  qtyInBox: number
-  qtyDispatched: number
-  qtyNotDisplayed: number
-}
-
-function stageToDbField(stage: MoveToStage | Exclude<MoveFromStage, 'UNALLOCATED'>): keyof Omit<LineFields, 'qtyOrdered' | 'qtyTransferredIn' | 'qtyTransferredOut'> {
-  switch (stage) {
-    case 'PENDING_CO':   return 'qtyPendingCo'
-    case 'PENDING_DIST': return 'qtyPendingDist'
-    case 'GODOWN':       return 'qtyAtGodown'
-    case 'IN_BOX':       return 'qtyInBox'
-    case 'DISPATCHED':   return 'qtyDispatched'
-    case 'NOT_DISPLAYED': return 'qtyNotDisplayed'
-  }
-}
-
-function getCurrentQtyAtStage(line: LineFields, stage: MoveFromStage): number {
-  if (stage === 'UNALLOCATED') {
-    const staged = line.qtyPendingCo + line.qtyPendingDist + line.qtyAtGodown +
-      line.qtyInBox + line.qtyDispatched + line.qtyNotDisplayed
-    const ceiling = Math.max(0, line.qtyOrdered + line.qtyTransferredIn - line.qtyTransferredOut)
-    return Math.max(0, ceiling - staged)
-  }
-  return line[stageToDbField(stage)]
+  UNALLOCATED:   ALL_TO_STAGES,
+  PENDING_CO:    ALL_TO_STAGES,
+  PENDING_DIST:  ALL_TO_STAGES,
+  GODOWN:        ALL_TO_STAGES,
+  IN_BOX:        ALL_TO_STAGES,
+  DISPATCHED:    ALL_TO_STAGES,
+  NOT_DISPLAYED: ALL_TO_STAGES,
 }
 
 const MoveStageSchema = z.object({
@@ -114,7 +85,7 @@ export async function PATCH(
       throw new AppError('NOT_FOUND', `POLineItem '${lineId}' not found`, 404)
     }
 
-    const availableQty = getCurrentQtyAtStage(line, fromStage)
+    const availableQty = countsFromDbLine(line)[fromStage]
     if (qty > availableQty) {
       throw new AppError(
         'INSUFFICIENT_QTY',

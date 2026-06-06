@@ -20,20 +20,23 @@ import ContextPanel from '@/components/purchases/ContextPanel'
 import WorkspaceTrackStock from '@/components/purchases/WorkspaceTrackStock'
 import WorkspaceCustomers from '@/components/purchases/WorkspaceCustomers'
 import WorkspaceDispatch from '@/components/purchases/WorkspaceDispatch'
+import WorkspaceDispatchRecord from '@/components/purchases/WorkspaceDispatchRecord'
 import MoveMaterialModal from '@/components/purchases/MoveMaterialModal'
 
-export type Workspace = 'today' | 'stock' | 'customers'
+export type Workspace = 'today' | 'stock' | 'customers' | 'dispatch'
 
 const WORKSPACE_ITEMS: { id: Workspace; label: string; icon: string }[] = [
-  { id: 'today', label: 'Today', icon: '▷' },
-  { id: 'stock', label: 'Stock', icon: '◈' },
-  { id: 'customers', label: 'Customers', icon: '◎' },
+  { id: 'today',    label: 'Today',           icon: '▷' },
+  { id: 'stock',    label: 'Stock',           icon: '◈' },
+  { id: 'customers',label: 'Customers',       icon: '◎' },
+  { id: 'dispatch', label: 'Dispatch Record', icon: '✓' },
 ]
 
 const WORKSPACE_LABEL: Record<Workspace, string> = {
-  today: 'Today',
-  stock: 'Stock',
+  today:     'Today',
+  stock:     'Stock',
   customers: 'Customers',
+  dispatch:  'Dispatch Record',
 }
 
 const fetcher = async (url: string): Promise<PurchaseLinesResponse> => {
@@ -308,6 +311,9 @@ export default function PurchasesWorkspace() {
               onSelectLine={handleSelectLine}
               onMoveMaterial={openMoveMaterial}
             />
+          )}
+          {workspace === 'dispatch' && (
+            <WorkspaceDispatchRecord />
           )}
         </main>
 

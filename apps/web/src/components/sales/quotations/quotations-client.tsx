@@ -12,7 +12,6 @@ import { QuotationBuilder } from './quotation-builder'
 import useSWR from 'swr'
 import { type Quotation, type LineItem } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
-import { getFollowUpByQuotationNumber, createFollowUpForQuotation } from '@/lib/mock/followup-data'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -241,29 +240,28 @@ export function QuotationsClient() {
 
   const quotations = apiQuotations.map((q) => apiToQuotation(q))
 
-  // Auto-create follow-ups for sent/viewed quotations
+  // Upsert follow-ups for sent/viewed quotations via API (idempotent)
   const processedRef = React.useRef<Set<string>>(new Set())
   React.useEffect(() => {
     quotations.forEach((q) => {
       if (!q.id || processedRef.current.has(q.id)) return
       if (q.status === 'sent' || q.status === 'viewed') {
-        const existing = getFollowUpByQuotationNumber(q.number)
-        if (!existing) {
-          processedRef.current.add(q.id)
-          createFollowUpForQuotation({
+        processedRef.current.add(q.id)
+        void fetch('/api/follow-ups/from-quotation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             quotationId: q.id,
             quotationNumber: q.number,
             quotationValue: q.grandTotal ?? 0,
+            revisionNumber: 0,
             customerName: q.customerName,
             customerPhone: '',
+            projectName: q.projectName ?? undefined,
             brandsInterested: [],
-            projectName: q.projectName,
             assignedTo: 'Suresh Iyer',
-          })
-          toast.success(`Follow-up created for ${q.customerName}`)
-        } else {
-          processedRef.current.add(q.id)
-        }
+          }),
+        })
       }
     })
   }, [quotations])

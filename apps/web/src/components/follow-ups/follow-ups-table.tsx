@@ -10,9 +10,9 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Phone, MessageCircle, Mail, MapPin } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Phone, MessageCircle, Mail, MapPin, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { format, formatDistanceToNow, isPast } from 'date-fns'
+import { format, formatDistanceToNow, isPast, differenceInDays } from 'date-fns'
 import { Badge } from '@/components/shared/badge'
 import { formatINR } from '@/lib/mock/dashboard-data'
 import {
@@ -159,24 +159,59 @@ export function FollowUpsTable({ data, onRowClick }: FollowUpsTableProps) {
       },
     },
     {
+      id: 'source',
+      header: 'Source',
+      size: 90,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const f = row.original
+        if (f.source === 'pos') {
+          return (
+            <span
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 7px', borderRadius: 5,
+                background: 'rgba(124,58,237,0.08)',
+                fontSize: 10, fontWeight: 700, color: '#7C3AED',
+              }}
+            >
+              <Zap size={9} />
+              POS
+            </span>
+          )
+        }
+        return (
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Manual</span>
+        )
+      },
+    },
+    {
       id: 'type',
-      header: 'Type / Ref',
-      size: 150,
+      header: 'Quotation / Type',
+      size: 160,
       cell: ({ row }) => {
         const f = row.original
         if (f.type === 'quotation' && f.quotationNumber) {
           return (
-            <span
-              style={{
-                fontSize: 12,
-                fontFamily: 'var(--font-ui)',
-                fontVariantNumeric: 'tabular-nums',
-                color: 'var(--accent)',
-                fontWeight: 600,
-              }}
-            >
-              {f.quotationNumber}
-            </span>
+            <div>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-ui)',
+                  fontVariantNumeric: 'tabular-nums',
+                  color: 'var(--accent)',
+                  fontWeight: 600,
+                }}
+              >
+                {f.quotationNumber}
+              </span>
+              {f.revisionNumber !== undefined && (
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                  Rev {f.revisionNumber}
+                </span>
+              )}
+            </div>
           )
         }
         return (
@@ -198,6 +233,36 @@ export function FollowUpsTable({ data, onRowClick }: FollowUpsTableProps) {
       },
     },
     {
+      id: 'daysSinceActivity',
+      header: 'Days Idle',
+      size: 90,
+      sortingFn: (a, b) => {
+        const daysA = differenceInDays(new Date(), a.original.updatedAt)
+        const daysB = differenceInDays(new Date(), b.original.updatedAt)
+        return daysA - daysB
+      },
+      cell: ({ row }) => {
+        const f = row.original
+        const days = differenceInDays(new Date(), f.updatedAt)
+        const isHot = days <= 1
+        const isWarm = days <= 3
+        const isCold = days >= 7
+        return (
+          <span
+            style={{
+              fontSize: 12,
+              fontFamily: 'var(--font-ui)',
+              fontVariantNumeric: 'tabular-nums',
+              fontWeight: 600,
+              color: isHot ? '#16a34a' : isWarm ? 'var(--text-secondary)' : isCold ? '#DC2626' : 'var(--text-secondary)',
+            }}
+          >
+            {days === 0 ? 'Today' : `${days}d`}
+          </span>
+        )
+      },
+    },
+    {
       id: 'brands',
       header: 'Brands',
       size: 180,
@@ -212,7 +277,7 @@ export function FollowUpsTable({ data, onRowClick }: FollowUpsTableProps) {
     },
     {
       accessorKey: 'nextFollowUpDate',
-      header: 'Next Follow-up',
+      header: 'Next Follow-Up',
       size: 120,
       cell: ({ getValue }) => <NextDateCell date={getValue() as Date} />,
       sortingFn: 'datetime',
@@ -376,7 +441,7 @@ export function FollowUpsTable({ data, onRowClick }: FollowUpsTableProps) {
             {table.getRowModel().rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={11}
                   style={{ padding: 48, textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}
                 >
                   No follow-ups match the current filters

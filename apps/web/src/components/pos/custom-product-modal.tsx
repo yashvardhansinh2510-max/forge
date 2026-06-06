@@ -197,11 +197,12 @@ export function CustomProductModal() {
     const e: Partial<Record<keyof FormState, string>> = {}
     if (!form.name.trim()) e.name = 'Required'
     if (!form.code.trim()) e.code = 'Required'
-    const mrpNum = parseFloat(form.mrp)
-    if (!form.mrp || isNaN(mrpNum) || mrpNum <= 0) e.mrp = 'Enter a valid MRP'
+    const mrpNum = parseFloat(form.mrp) || 0
+    // MRP is optional for custom products — leave blank when there is no manufacturer price
+    if (form.mrp && (isNaN(parseFloat(form.mrp)) || parseFloat(form.mrp) < 0)) e.mrp = 'Enter a valid MRP (or leave blank)'
     const offerNum = parseFloat(form.offerPrice)
     if (!form.offerPrice || isNaN(offerNum) || offerNum <= 0) e.offerPrice = 'Enter a valid offer price'
-    else if (offerNum > mrpNum) e.offerPrice = 'Cannot exceed MRP'
+    else if (mrpNum > 0 && offerNum > mrpNum) e.offerPrice = 'Cannot exceed MRP'
     const qtyNum = parseInt(form.qty, 10)
     if (!form.qty || isNaN(qtyNum) || qtyNum < 1) e.qty = 'Min 1'
     if (form.finishPreset === 'OTHER' && !form.finishCustomName.trim()) e.finishCustomName = 'Enter finish name'
@@ -212,10 +213,14 @@ export function CustomProductModal() {
   function handleAdd() {
     if (!validate() || !activeRoom) return
 
-    const mrp      = parseFloat(form.mrp)
+    const mrp      = parseFloat(form.mrp) || 0
     const offer    = parseFloat(form.offerPrice)
     const qty      = parseInt(form.qty, 10)
-    const discount = mrp > 0 ? Math.round(Math.max(0, Math.min(60, (1 - offer / mrp) * 100)) * 100) / 100 : 0
+
+    // When no MRP: store offer price as mrp so unitMRP() returns it correctly.
+    // discount=0 signals "rate-only" in PDF (no MRP to compare against).
+    const effectiveMrp = mrp > 0 ? mrp : offer
+    const discount     = mrp > 0 ? Math.round(Math.max(0, Math.min(60, (1 - offer / mrp) * 100)) * 100) / 100 : 0
 
     const finishMeta = COMMON_FINISHES.find((f) => f.code === form.finishPreset) ?? COMMON_FINISHES[0]!
     const finishName = form.finishPreset === 'OTHER' ? form.finishCustomName.trim() : finishMeta.name
@@ -242,7 +247,7 @@ export function CustomProductModal() {
       category: form.category,
       subCategory: form.category,
       subcategoryLabel: form.category,
-      mrp,
+      mrp: effectiveMrp,
       gstRate: parseFloat(form.gstRate) || 18,
       unit: form.unit.trim() || 'Nos',
       tier: 'premium',

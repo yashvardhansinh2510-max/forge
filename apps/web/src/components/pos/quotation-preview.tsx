@@ -214,11 +214,12 @@ export function QuotationPreview({ project, rooms, onClose, quotationNumber: sav
     // Convert POS rooms → LineItems in Buildcon format
     const lineItems = rooms.flatMap((room) =>
       room.items.map((item) => {
-        const effectiveDiscount = Math.max(
-          project.globalDiscount,
-          room.roomDiscount ?? 0,
-          item.itemDiscount ?? 0,
-        )
+        // Rate-only custom items (no MRP, discount=0) must not have global/room discount applied —
+        // the stored unitPrice IS the final rate with no further reduction.
+        const isRateOnly = (item.product.isCustom ?? false) && item.itemDiscount === 0
+        const effectiveDiscount = isRateOnly
+          ? 0
+          : Math.max(project.globalDiscount, room.roomDiscount ?? 0, item.itemDiscount ?? 0)
         // Resolve image: finish-specific → base imageUrl → SVG data URI placeholder.
         // Puppeteer runs in about:blank context, so relative paths must be absolutified.
         const rawImage =
@@ -244,6 +245,7 @@ export function QuotationPreview({ project, rooms, onClose, quotationNumber: sav
           gstRate:       item.product.gstRate,
           section:       room.name,
           imageUrl:      resolvedImage,
+          isCustom:      item.product.isCustom ?? false,
         }
       })
     )

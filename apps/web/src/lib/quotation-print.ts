@@ -121,7 +121,7 @@ function pdfImageSrc(imageUrl: string | undefined, baseUrl: string, brand: strin
   return `data:image/svg+xml;base64,${btoa(svg)}`
 }
 
-function buildconHeader(baseUrl: string): string {
+function buildconHeader(baseUrl: string, extraBrandImgStyle = ''): string {
   const row1 = [
     { src: `${baseUrl}/brands-ref/brand-grohe.png`,     alt: 'GROHE'      },
     { src: `${baseUrl}/brands-ref/brand-hansgrohe.png`, alt: 'hansgrohe'  },
@@ -139,7 +139,7 @@ function buildconHeader(baseUrl: string): string {
 
   const makeRow = (brands: { src: string; alt: string }[]) =>
     `<div class="brand-row">${brands.map(b =>
-      `<img src="${b.src}" alt="${b.alt}" class="brand-img" />`
+      `<img src="${b.src}" alt="${b.alt}" class="brand-img" style="${extraBrandImgStyle}" />`
     ).join('')}</div>`
 
   return `
@@ -160,27 +160,53 @@ function coverPage(
   grandOffer: number,
   brand: string,
   baseUrl: string,
+  isNoDiscount: boolean,
 ): string {
   const notes = data.projectNotes?.trim()
   const dateStr = format(data.createdAt, 'dd-MM-yyyy')
 
+  // Compact mode when many rooms: tighter row padding + reduced spacing to prevent overflow.
+  const compact = sections.length > 6
+
+  // Case A: when MRP == Offer Rate, show only OFFER RATE column (hide MRP column).
+  const priceColLabel = isNoDiscount ? 'OFFER RATE' : 'MRP'
   const summaryRows = sections.map((s, i) => `
     <tr>
-      <td class="center bold">${i + 1}</td>
-      <td class="bold">${s.name.toUpperCase()}</td>
-      <td class="right bold">${fmt(s.mrpTotal)}</td>
+      <td class="center bold" style="${compact ? 'padding:2px 4px;' : ''}">${i + 1}</td>
+      <td class="bold" style="${compact ? 'padding:2px 4px;' : ''}">${s.name.toUpperCase()}</td>
+      <td class="right bold" style="${compact ? 'padding:2px 4px;' : ''}">${fmt(isNoDiscount ? s.offerTotal : s.mrpTotal)}</td>
     </tr>`).join('')
 
+  // In Case A: only show SPECIAL OFFER RATE row (MRP TOTAL row is redundant since MRP==Offer).
+  // In normal mode: show gold TOTAL (MRP grand total) + yellow SPECIAL OFFER RATE.
+  const totalRows = isNoDiscount
+    ? `<tr class="offer-row">
+        <td colspan="2" class="center bold" style="font-size:12pt;">SPECIAL OFFER RATE</td>
+        <td class="right bold" style="font-size:13pt;">${fmt(grandOffer)}</td>
+      </tr>`
+    : `<tr>
+        <td colspan="2" class="gold center bold" style="font-size:11pt;">TOTAL</td>
+        <td class="gold right bold" style="font-size:11pt;">${fmt(grandMrp)}</td>
+      </tr>
+      <tr class="offer-row">
+        <td colspan="2" class="center bold" style="font-size:12pt;">SPECIAL OFFER RATE</td>
+        <td class="right bold" style="font-size:13pt;">${fmt(grandOffer)}</td>
+      </tr>`
+
+  const noteMargin = compact ? 'margin-top:5px;' : 'margin-top:10px;'
+  const noteLineH  = compact ? 'line-height:1.45;' : 'line-height:1.65;'
+  const brandsStyle = compact ? 'height:16px;' : ''
+
   return `
-    ${buildconHeader(baseUrl)}
+    ${buildconHeader(baseUrl, brandsStyle)}
 
     <div class="sub-title">SUB: Quotation</div>
-    <div class="intro">
+    <div class="intro" style="${compact ? 'margin-bottom:6px;' : ''}">
        Dear sir thanks you for positive approach to our products. We are glad to give you our <br>
       best competitive rate, as per your requirement.
     </div>
 
-    <table style="margin-bottom:10px;">
+    <table style="margin-bottom:${compact ? '6px' : '10px'};">
       <tr>
         <td class="info-label">NAME :</td>
         <td class="info-value">${data.customerName}</td>
@@ -195,30 +221,23 @@ function coverPage(
       </tr>
     </table>
 
-    <table style="margin-bottom:12px;">
+    <table style="margin-bottom:${compact ? '8px' : '12px'};">
       <tr><td colspan="3" class="gold brand-hdr">${brand.toUpperCase()}</td></tr>
       <tr>
         <th class="gold col-hdr" style="width:50px;">SL,NO.</th>
         <th class="gold col-hdr">BATHROOM</th>
-        <th class="gold col-hdr" style="width:130px;">MRP</th>
+        <th class="gold col-hdr" style="width:130px;">${priceColLabel}</th>
       </tr>
       ${summaryRows}
-      <tr>
-        <td colspan="2" class="gold center bold" style="font-size:11pt;">TOTAL</td>
-        <td class="gold right bold" style="font-size:11pt;">${fmt(grandMrp)}</td>
-      </tr>
-      <tr class="offer-row">
-        <td colspan="2" class="center bold" style="font-size:12pt;">SPECIAL OFFER RATE</td>
-        <td class="right bold" style="font-size:13pt;">${fmt(grandOffer)}</td>
-      </tr>
+      ${totalRows}
     </table>
 
-    ${notes ? `<div class="note-block" style="margin-bottom:10px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:3px; background:#fafbfc;">
-      <p class="note-title" style="margin-bottom:4px;">PROJECT NOTES</p>
+    ${notes ? `<div class="note-block" style="margin-bottom:${compact ? '6px' : '10px'}; padding:${compact ? '4px 8px' : '6px 10px'}; border:1px solid #e2e8f0; border-radius:3px; background:#fafbfc;">
+      <p class="note-title" style="margin-bottom:3px;">PROJECT NOTES</p>
       <p style="white-space:pre-wrap;">${notes}</p>
     </div>` : ''}
 
-    <div class="note-block">
+    <div class="note-block" style="${noteMargin} ${noteLineH}">
       <p class="note-title">NOTE</p>
       <p>1. All rate for${brand} are as per current MRP. </p>
       <p>2. Company -${brand} and other Company ,can revise MRP without  notice.</p>
@@ -227,17 +246,17 @@ function coverPage(
       <p>5. For items with escalated MRP, confirm order with 100 % payments, prior to cut off time line.</p>
       <p>6. Delivery as per company schedule. Freight extra  as per actual.</p>
       <p class="bold">7. RATE VALID FOR THIS MONTH</p>
-      <p style="margin-top:6px;">Hope all details submitted are as per your requirements. Please call or mail for any alteration or clarifications.</p>
+      <p style="margin-top:${compact ? '3px' : '6px'};">Hope all details submitted are as per your requirements. Please call or mail for any alteration or clarifications.</p>
     </div>
 
-    <div class="regards-block">
+    <div class="regards-block" style="margin-top:${compact ? '4px' : '8px'};">
       <p>Regards,</p>
       <p><strong>Buildcon House</strong></p>
       <p>MO : +91 9909906652</p>
       <p>MAIL : buildconhouse10@gmail.com</p>
     </div>
 
-    <table style="margin-top:8px; width:auto;" class="toll-table">
+    <table style="margin-top:${compact ? '4px' : '8px'}; width:auto;" class="toll-table">
       <tr><td colspan="2" class="gold bold center" style="font-size:9pt;">TOLL FREE NUMBER</td></tr>
       <tr><td>GEBERIT</td><td>18001024323</td></tr>
       <tr><td>GROHE</td><td>18001024475</td></tr>
@@ -251,30 +270,84 @@ function coverPage(
 function sectionDetailPage(
   section: SectionData,
   baseUrl: string,
+  isNoDiscount: boolean,
 ): string {
   const sumOfferRates = section.items.reduce(
     (s, i) => s + i.unitPrice * (1 - i.discount / 100),
     0,
   )
 
+  if (isNoDiscount) {
+    // Case A: MRP == Offer Rate globally — show only RATE and TOTAL (7 columns).
+    const rows = section.items.map((item, idx) => {
+      const rate  = item.unitPrice  // discount is 0, so rate = unitPrice
+      const total = rate * item.qty
+      const imgCell = `<img src="${pdfImageSrc(item.imageUrl, baseUrl, item.brand ?? '')}" class="detail-img" alt="${item.productName}" />`
+      return `
+        <tr>
+          <td class="center" style="width:28px;">${idx + 1}</td>
+          <td class="center" style="width:65px; font-size:8pt;">${(item.articleNumber ?? item.sku) || item.sku}</td>
+          <td style="font-size:8.5pt;">${item.productName}</td>
+          <td class="center" style="width:78px;">${imgCell}</td>
+          <td class="center" style="width:28px;">${item.qty}</td>
+          <td class="right" style="width:90px;">₹ ${fmtUnit(rate)}</td>
+          <td class="right" style="width:90px;">₹ ${fmtN(total)}</td>
+        </tr>`
+    }).join('')
+
+    return `
+      <div class="page-break">
+        <table>
+          <tr><td colspan="7" class="gold bold" style="font-size:11pt; padding:5px 8px;">${section.name.toUpperCase()}</td></tr>
+          <tr>
+            <th class="col-hdr" style="font-size:8pt;">Sr.<br>No.</th>
+            <th class="col-hdr" style="font-size:8pt;">Article<br>No.</th>
+            <th class="col-hdr" style="font-size:8pt;">Product Description</th>
+            <th class="col-hdr" style="font-size:8pt;">Product Image</th>
+            <th class="col-hdr" style="font-size:8pt;">QTY</th>
+            <th class="col-hdr" style="font-size:8pt;">OFFER RATE</th>
+            <th class="col-hdr" style="font-size:8pt;">TOTAL</th>
+          </tr>
+          ${rows}
+          <tr class="detail-total">
+            <td colspan="4" class="center bold" style="font-size:10pt;">TOTAL</td>
+            <td class="center bold">${section.totalQty}</td>
+            <td class="right bold">₹ ${fmtUnit(sumOfferRates)}</td>
+            <td class="right bold">₹ ${fmtN(section.offerTotal)}</td>
+          </tr>
+        </table>
+      </div>`
+  }
+
+  // Normal mode (9 columns) — with Case C: custom rate-only items show '—' for MRP cells.
   const rows = section.items.map((item, idx) => {
     const offerRate  = item.unitPrice * (1 - item.discount / 100)
     const mrpTotal   = item.unitPrice * item.qty
     const offerTotal = offerRate * item.qty
-    const imgCell = `<img src="${pdfImageSrc(item.imageUrl, baseUrl, item.brand ?? '')}" class="detail-img" alt="${item.productName}" />`
+    const imgCell    = `<img src="${pdfImageSrc(item.imageUrl, baseUrl, item.brand ?? '')}" class="detail-img" alt="${item.productName}" />`
+
+    // Case C: isCustom with 0% discount = rate-only product (no MRP exists).
+    const isRateOnly = item.isCustom && item.discount === 0
+    const mrpCell      = isRateOnly ? '—' : `₹ ${fmtUnit(item.unitPrice)}`
+    const mrpTotalCell = isRateOnly ? '—' : `₹ ${fmtN(mrpTotal)}`
+
     return `
       <tr>
         <td class="center" style="width:28px;">${idx + 1}</td>
         <td class="center" style="width:65px; font-size:8pt;">${(item.articleNumber ?? item.sku) || item.sku}</td>
         <td style="font-size:8.5pt;">${item.productName}</td>
         <td class="center" style="width:78px;">${imgCell}</td>
-        <td class="right" style="width:65px;">₹ ${fmtUnit(item.unitPrice)}</td>
+        <td class="right" style="width:65px;">${mrpCell}</td>
         <td class="center" style="width:28px;">${item.qty}</td>
-        <td class="right" style="width:80px;">₹ ${fmtN(mrpTotal)}</td>
+        <td class="right" style="width:80px;">${mrpTotalCell}</td>
         <td class="right" style="width:72px;">₹ ${fmtUnit(offerRate)}</td>
         <td class="right" style="width:80px;">₹ ${fmtN(offerTotal)}</td>
       </tr>`
   }).join('')
+
+  // Section total row: if all items in this section are rate-only, MRP TOTAL shows '—'.
+  const allRateOnly     = section.items.every((i) => i.isCustom && i.discount === 0)
+  const sectionMrpTotal = allRateOnly ? '—' : `₹ ${fmtN(section.mrpTotal)}`
 
   return `
     <div class="page-break">
@@ -296,7 +369,7 @@ function sectionDetailPage(
           <td colspan="4" class="center bold" style="font-size:10pt;">TOTAL</td>
           <td></td>
           <td class="center bold">${section.totalQty}</td>
-          <td class="right bold">₹ ${fmtN(section.mrpTotal)}</td>
+          <td class="right bold">${sectionMrpTotal}</td>
           <td class="right bold">₹ ${fmtUnit(sumOfferRates)}</td>
           <td class="right bold">₹ ${fmtN(section.offerTotal)}</td>
         </tr>
@@ -323,8 +396,11 @@ export function generateQuotationPrintHTML(data: PrintData, baseUrl?: string): s
   const grandOffer = sections.reduce((s, sec) => s + sec.offerTotal, 0)
   const brand      = deriveBrand(data.lineItems)
 
-  const cover   = coverPage(data, sections, grandMrp, grandOffer, brand, resolvedBaseUrl)
-  const details = sections.map(s => sectionDetailPage(s, resolvedBaseUrl)).join('')
+  // Case A: if every item has 0% discount, MRP === Offer Rate — hide MRP column everywhere.
+  const isNoDiscount = grandMrp > 0 && Math.abs(grandMrp - grandOffer) < 0.01
+
+  const cover   = coverPage(data, sections, grandMrp, grandOffer, brand, resolvedBaseUrl, isNoDiscount)
+  const details = sections.map(s => sectionDetailPage(s, resolvedBaseUrl, isNoDiscount)).join('')
 
   return `<!DOCTYPE html>
 <html lang="en">
