@@ -176,7 +176,7 @@ export default function PurchasesWorkspace() {
             Move Material →
           </button>
           <Link
-            href="/purchases/new"
+            href="/sales/quotations"
             className="rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
           >
             + New PO

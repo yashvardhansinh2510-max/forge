@@ -77,27 +77,57 @@ export async function POST(req: NextRequest) {
 
     const poNumber = await generatePONumber()
 
-    const po = await prisma.purchaseOrder.create({
-      data: {
-        poNumber,
-        mode:         'BULK_COMPANY',
-        status:       'DRAFT',
-        createdById:  user.id,
-        customerName: body.customerName ?? null,
-        lineItems: {
-          create: body.lineItems.map((line, i) => ({
-            productId:       productIds[i]!,
-            qtyOrdered:      line.qty,
-            clientOfferRate: line.clientOfferRate,
-            status:          'PENDING',
-          })),
+    const mrpTotal   = body.lineItems.reduce((s, l) => s + l.mrp * l.qty, 0)
+    const offerTotal = body.lineItems.reduce((s, l) => s + l.clientOfferRate * l.qty, 0)
+
+    const [po] = await prisma.$transaction([
+      prisma.purchaseOrder.create({
+        data: {
+          poNumber,
+          mode:         'BULK_COMPANY',
+          status:       'DRAFT',
+          createdById:  user.id,
+          customerName: body.customerName ?? null,
+          lineItems: {
+            create: body.lineItems.map((line, i) => ({
+              productId:       productIds[i]!,
+              qtyOrdered:      line.qty,
+              // Items start at PENDING_CO (order placed with manufacturer)
+              qtyPendingCo:    line.qty,
+              clientOfferRate: line.clientOfferRate,
+              status:          'PENDING',
+            })),
+          },
         },
-      },
-      select: {
-        poNumber: true,
-        _count:   { select: { lineItems: true } },
-      },
-    })
+        select: {
+          id:       true,
+          poNumber: true,
+          _count:   { select: { lineItems: true } },
+        },
+      }),
+      // SalesOrder makes this PO visible in Payments module with full outstanding tracking
+      prisma.salesOrder.create({
+        data: {
+          number:       poNumber,
+          customerId:   (body.customerName ?? 'unknown').trim().toLowerCase(),
+          customerName: body.customerName ?? 'Unknown Customer',
+          status:       'CONFIRMED',
+          projectName:  body.projectName ?? null,
+          mrpTotal,
+          offerTotal,
+          lineItems: {
+            create: body.lineItems.map((line) => ({
+              sku:       line.sku,
+              name:      line.productName,
+              brand:     BRAND_MAP[line.brand.toLowerCase()] ?? 'OTHER',
+              qty:       line.qty,
+              mrp:       line.mrp,
+              offerRate: line.clientOfferRate,
+            })),
+          },
+        },
+      }),
+    ])
 
     return NextResponse.json(
       { poNumber: po.poNumber, lineItemCount: po._count.lineItems },

@@ -612,6 +612,8 @@ model FollowUp {
   quotationId      String?
   quotationNumber  String?
   quotationValue   Float?
+  revisionNumber   Int?
+  source           String?
   status           FollowUpStatus       @default(PENDING)
   nextFollowUpDate DateTime
   lastContactedAt  DateTime?

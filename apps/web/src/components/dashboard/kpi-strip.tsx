@@ -49,14 +49,14 @@ function buildKpiItems(data: DashboardKPIs | undefined): KPIItem[] {
     {
       id: 'quot_followup',
       label: 'Quotations Awaiting Follow-Up',
-      value: data.openQuotationsAwaitingFollowUp,
+      value: data.openQuotationsAwaitingFollowUp ?? 0,
       previousValue: 0,
       format: 'number',
       subLabel: 'Saved, no order yet',
       icon: 'Bell',
       color: 'violet',
       href: '/follow-ups',
-      isAlert: data.openQuotationsAwaitingFollowUp > 0,
+      isAlert: (data.openQuotationsAwaitingFollowUp ?? 0) > 0,
     },
     {
       id: 'overdue',

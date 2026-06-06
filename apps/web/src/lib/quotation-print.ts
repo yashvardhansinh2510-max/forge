@@ -312,7 +312,7 @@ function sectionDetailPage(
           <tr class="detail-total">
             <td colspan="4" class="center bold" style="font-size:10pt;">TOTAL</td>
             <td class="center bold">${section.totalQty}</td>
-            <td class="right bold">₹ ${fmtUnit(sumOfferRates)}</td>
+            <td class="right bold">—</td>
             <td class="right bold">₹ ${fmtN(section.offerTotal)}</td>
           </tr>
         </table>
@@ -370,7 +370,7 @@ function sectionDetailPage(
           <td></td>
           <td class="center bold">${section.totalQty}</td>
           <td class="right bold">${sectionMrpTotal}</td>
-          <td class="right bold">₹ ${fmtUnit(sumOfferRates)}</td>
+          <td class="right bold">—</td>
           <td class="right bold">₹ ${fmtN(section.offerTotal)}</td>
         </tr>
       </table>

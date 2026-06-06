@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
         data: {
           quotationValue:  data.quotationValue,
           quotationNumber: data.quotationNumber,
+          revisionNumber:  data.revisionNumber,
           updatedAt:       new Date(),
         },
         include: { responses: true },
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
           quotationId:      data.quotationId,
           quotationNumber:  data.quotationNumber,
           quotationValue:   data.quotationValue,
+          revisionNumber:   data.revisionNumber,
           status:           'PENDING',
           nextFollowUpDate: new Date(Date.now() + 3 * 86_400_000),
           assignedTo:       data.assignedTo ?? null,

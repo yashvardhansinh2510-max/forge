@@ -15,7 +15,11 @@ import { TopCustomers } from './top-customers'
 import { QuickActions } from './quick-actions'
 import type { DashboardData } from '@/app/api/dashboard/route'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json()) as Promise<DashboardData>
+const fetcher = async (url: string): Promise<DashboardData> => {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`Dashboard API error: ${r.status}`)
+  return r.json() as Promise<DashboardData>
+}
 
 // ─── Greeting ─────────────────────────────────────────────────────────────────
 

@@ -234,7 +234,10 @@ export function QuotationPreview({ project, rooms, onClose, quotationNumber: sav
           productId:     item.product.id,
           productName:   item.product.name,
           sku:           item.product.sku,
-          articleNumber: item.product.articleNumber,
+          // Prefer finish.sku (the orderable brand article number for this finish variant,
+          // e.g. "71710670"), then product.articleNumber (base code), then undefined so the
+          // PDF falls back to skuWithFinish.
+          articleNumber: item.finish.sku || item.product.articleNumber || undefined,
           finishName:    item.finish.name || undefined,
           brand:         item.product.brand,
           description:   item.product.description ?? '',

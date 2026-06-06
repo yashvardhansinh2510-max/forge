@@ -24,8 +24,7 @@ const GROUP_META: Record<CommandGroup, { label: string; icon: LucideIcon }> = {
 const CATEGORY_LABELS: Record<string, string> = {
   crm: 'CRM',
   sales: 'Sales',
-  inventory: 'Inventory',
-  manufacturing: 'Mfg',
+  purchases: 'Purchases',
   finance: 'Finance',
   settings: 'Settings',
 }

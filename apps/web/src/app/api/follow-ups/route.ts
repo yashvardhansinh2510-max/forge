@@ -56,6 +56,7 @@ export type FollowUpsListResponse = {
 
 const createFollowUpSchema = z.object({
   type: z.enum(['WALK_IN', 'QUOTATION']).default('WALK_IN'),
+  source: z.string().optional(),
   customerName: z.string().min(1),
   customerPhone: z.string().min(1),
   customerType: z.enum(['ARCHITECT', 'INTERIOR_DESIGNER', 'BUILDER', 'RETAIL', 'OTHER']).default('RETAIL'),
@@ -66,6 +67,7 @@ const createFollowUpSchema = z.object({
   quotationId: z.string().optional(),
   quotationNumber: z.string().optional(),
   quotationValue: z.number().optional(),
+  revisionNumber: z.number().int().optional(),
   status: z.enum(['PENDING', 'CONTACTED', 'INTERESTED', 'NEGOTIATING', 'WON', 'LOST']).default('PENDING'),
   nextFollowUpDate: z.string(),
   notes: z.string().optional(),
@@ -150,6 +152,7 @@ export async function GET(_req: NextRequest) {
     const followUps: FollowUpItem[] = all.map((f) => ({
       id: f.id,
       type: f.type,
+      source: f.source ?? null,
       customerName: f.customerName,
       customerPhone: f.customerPhone,
       customerType: f.customerType,
@@ -160,6 +163,7 @@ export async function GET(_req: NextRequest) {
       quotationId: f.quotationId,
       quotationNumber: f.quotationNumber,
       quotationValue: f.quotationValue,
+      revisionNumber: f.revisionNumber ?? null,
       status: f.status,
       nextFollowUpDate: f.nextFollowUpDate.toISOString(),
       lastContactedAt: f.lastContactedAt?.toISOString() ?? null,
@@ -201,6 +205,7 @@ export async function POST(request: NextRequest) {
     const followUp = await prisma.followUp.create({
       data: {
         type: data.type,
+        source: data.source ?? null,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         customerType: data.customerType,
@@ -211,6 +216,7 @@ export async function POST(request: NextRequest) {
         quotationId: data.quotationId ?? null,
         quotationNumber: data.quotationNumber ?? null,
         quotationValue: data.quotationValue ?? null,
+        revisionNumber: data.revisionNumber ?? null,
         status: data.status,
         nextFollowUpDate: new Date(data.nextFollowUpDate),
         notes: data.notes ?? null,

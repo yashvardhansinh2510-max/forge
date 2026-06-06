@@ -10,7 +10,6 @@ import {
   ClipboardList,
   ShoppingBag,
   MoreHorizontal,
-  BarChart3,
   Settings2,
 } from 'lucide-react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
@@ -31,7 +30,6 @@ const PRIMARY_TABS: NavTab[] = [
 ]
 
 const MORE_ITEMS: NavTab[] = [
-  { label: 'Reports', href: '/reports', icon: BarChart3 },
   { label: 'Settings', href: '/settings', icon: Settings2 },
 ]
 

@@ -19,7 +19,7 @@ export const STAGE_LABEL: Record<PurchaseStage, string> = {
   UNALLOCATED:  'No Customer',
   PENDING_CO:   'ORDER IN COMPANY',
   PENDING_DIST: 'COMPANY BILLING',
-  GODOWN:       'IN BOX',
+  GODOWN:       'AT GODOWN',
   IN_BOX:       'IN BOX',
   DISPATCHED:   'DISPATCHED',
   NOT_DISPLAYED:'Closed',
@@ -29,7 +29,7 @@ export const STAGE_SHORT_LABEL: Record<PurchaseStage, string> = {
   UNALLOCATED:  'No Customer',
   PENDING_CO:   'Order Co.',
   PENDING_DIST: 'Co. Billing',
-  GODOWN:       'In Box',
+  GODOWN:       'At Godown',
   IN_BOX:       'In Box',
   DISPATCHED:   'Dispatched',
   NOT_DISPLAYED:'Closed',
@@ -287,34 +287,6 @@ export function getCustomerMetrics(lines: PurchaseTrackerLine[]): CustomerMetric
     if (u === 'critical' || u === 'warning') hasAttention = true
   }
   return { ordered, received, packed, dispatched, pending, ready: packed, hasAttention }
-}
-
-// ─── Keep old DispatchReadiness for any callers not yet migrated ───────────────
-/** @deprecated Use getLinePrimaryStatus instead. */
-export type DispatchReadiness = 'waiting' | 'in_box' | 'dispatched' | 'archived'
-/** @deprecated */
-export function getDispatchReadiness(line: PurchaseTrackerLine): DispatchReadiness {
-  if (getInBoxQty(line) > 0) return 'in_box'
-  if (line.stages.DISPATCHED > 0 || line.stages.NOT_DISPLAYED > 0) {
-    return line.stages.PENDING_CO === 0 && line.stages.PENDING_DIST === 0
-      ? (line.stages.NOT_DISPLAYED > 0 ? 'archived' : 'dispatched')
-      : 'waiting'
-  }
-  return 'waiting'
-}
-/** @deprecated */
-export const DISPATCH_READINESS_LABEL: Record<DispatchReadiness, string> = {
-  waiting: 'Waiting from Supplier',
-  in_box: 'In Box — Ready',
-  dispatched: 'Dispatched',
-  archived: 'Archived',
-}
-/** @deprecated */
-export const DISPATCH_READINESS_COLOR: Record<DispatchReadiness, string> = {
-  waiting: '#9CA3AF',
-  in_box: '#10B981',
-  dispatched: '#6EE7B7',
-  archived: '#D1D5DB',
 }
 
 // ─── Urgency ───────────────────────────────────────────────────────────────────
