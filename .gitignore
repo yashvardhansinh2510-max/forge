@@ -12,3 +12,5 @@ dist/
 *.env.*
 .worktrees/
 .claude/skills/gstack/
+.ideavo/project
+*.log
