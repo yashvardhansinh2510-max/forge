@@ -1,34 +1,10 @@
 'use client'
 
-import { useUser, useClerk } from '@clerk/nextjs'
+import { ROLE_LABELS, useAuth, type Role } from './auth/auth-context'
 
-export type Role = 'owner' | 'manager' | 'worker'
-
-export const ROLE_LABELS: Record<Role, string> = {
-  owner: 'Owner',
-  manager: 'Manager',
-  worker: 'Worker',
-}
+export { ROLE_LABELS }
+export type { Role }
 
 export function useRole() {
-  // Check if Clerk is configured and user is loaded
-  const { user, isLoaded } = useUser()
-  const clerk = useClerk()
-
-  // If Clerk is not configured or user isn't loaded yet, return default worker role
-  if (!isLoaded || !clerk.client) {
-    return {
-      role: 'worker' as Role,
-      canEdit: false,
-      canViewPayments: false,
-    }
-  }
-
-  const role = ((user?.publicMetadata?.role as string | undefined) ?? 'worker') as Role
-
-  return {
-    role,
-    canEdit: role !== 'worker',
-    canViewPayments: role !== 'worker',
-  }
+  return useAuth()
 }
