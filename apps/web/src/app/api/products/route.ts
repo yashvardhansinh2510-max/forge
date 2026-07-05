@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import type { Prisma, ProductBrand } from '@forge/db'
 
-const VALID_BRANDS = new Set(['GROHE', 'HANSGROHE', 'AXOR', 'VITRA', 'GEBERIT', 'OTHER'])
+const VALID_BRANDS = new Set(['GROHE', 'HANSGROHE', 'AXOR', 'VITRA', 'GEBERIT', 'KAJARIA', 'OTHER'])
 
 export async function GET(request: Request) {
   try {
