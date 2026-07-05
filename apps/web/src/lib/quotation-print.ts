@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import type { LineItem } from '@/lib/mock/sales-data'
+import { SECTION_PALETTE } from '@/lib/product-image'
 
 interface PrintData {
   number: string
@@ -8,6 +9,7 @@ interface PrintData {
   createdBy: string
   createdAt: Date
   lineItems: LineItem[]
+  brandLabel?: string
 }
 
 interface SectionData {
@@ -17,6 +19,10 @@ interface SectionData {
   offerTotal: number
   offerRateSum: number
   totalQty: number
+}
+
+function esc(s: string | null | undefined): string {
+  return (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 /** Indian-formatted currency: ₹ 8,57,640.00 */
@@ -31,7 +37,9 @@ function fmtN(n: number): string {
 
 function groupBySection(lineItems: LineItem[]): SectionData[] {
   const map = new Map<string, LineItem[]>()
-  for (const item of lineItems.filter(li => li.sku)) {
+  // Include catalog items (sku truthy) AND custom items (isCustom flag).
+  // Custom items have no catalog SKU but are valid quotation line items.
+  for (const item of lineItems.filter(li => li.sku || li.isCustom)) {
     const key = item.section?.trim() || 'GENERAL'
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(item)
@@ -67,7 +75,7 @@ const CSS = `
   .info-table td { padding: 5px 10px; font-size: 11pt; }
   .info-label { font-weight: bold; width: 100px; white-space: nowrap; }
   .info-value { font-weight: bold; font-size: 12pt; }
-  .section-header { font-size: 13pt; font-weight: bold; padding: 6px 8px; }
+  .section-header { font-size: 13pt; font-weight: bold; padding: 7px 10px; letter-spacing: 0.03em; }
   .summary-sl { width: 70px; }
   .summary-mrp { width: 150px; }
   .total-label { font-size: 12pt; font-weight: bold; padding: 6px 8px; }
@@ -77,11 +85,24 @@ const CSS = `
   .toll-table td { font-size: 9pt; padding: 3px 8px; }
   .detail-th { background: #F2C50A; font-weight: bold; font-size: 9pt; }
   .detail-img { width: 58px; height: 48px; object-fit: contain; display: block; margin: auto; }
+  .detail-img-placeholder { width: 58px; height: 48px; background: #f0f0f0; border-radius: 3px; display: block; margin: auto; }
   .detail-total-row td { background: #F2C50A; font-weight: bold; font-size: 10pt; }
   @media print {
     .page-break { page-break-before: always; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
+  .brand-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 3px 8px; border-radius: 4px;
+    background: #f3f4f6; border: 1px solid #d1d5db;
+    font-size: 8pt; font-weight: 700; letter-spacing: 0.05em;
+    color: #374151; font-family: Arial Black, Arial, sans-serif;
+  }
+  .brand-pill-oyster  { background: #fff0f0; border-color: #fca5a5; color: #991b1b; }
+  .brand-pill-qutone  { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+  .brand-pill-nexion  { background: #f9fafb; border-color: #6b7280; color: #111827; }
+  .brand-pill-dimore  { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
+  .brand-pill-ittimi  { background: #fdf4ff; border-color: #d8b4fe; color: #6b21a8; }
 `
 
 function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, grandOffer: number, baseUrl: string): string {
@@ -94,13 +115,20 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
     { name: 'GEBERIT', src: `${baseUrl}/brands/geberit.svg` },
     { name: 'VitrA', src: `${baseUrl}/brands/vitra.svg` },
   ]
-  const logoRow2Text = ['Oyster', 'QUTONE', 'Nexion', 'DIMORE', 'ittimi']
+  const brandRow2Html = `<div class="brand-logos-row" style="margin-top:4px;">
+    <span class="brand-pill brand-pill-oyster">Oyster®</span>
+    <span class="brand-pill brand-pill-qutone">QUTONE</span>
+    <span class="brand-pill brand-pill-nexion">✗ Nexion</span>
+    <span class="brand-pill brand-pill-dimore">DIMORE</span>
+    <span class="brand-pill brand-pill-ittimi">ittimi</span>
+  </div>`
 
   const summaryRows = sections.map((s, i) => `
     <tr>
       <td class="center bold">${i + 1}</td>
-      <td class="center bold">${s.name}</td>
+      <td class="bold">${esc(s.name)}</td>
       <td class="right bold">${fmt(s.mrpTotal)}</td>
+      <td class="right bold" style="color:#1B4F8A;">${fmt(s.offerTotal)}</td>
     </tr>`).join('')
 
   return `
@@ -111,7 +139,7 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
         ${logoRow1.map(b => `<img src="${b.src}" alt="${b.name}" class="brand-img" />`).join('')}
       </div>
       <div class="brand-row" style="border-top:1px solid #ccc; padding-top:6px;">
-        ${logoRow2Text.map(b => `<span class="brand-text">${b}</span>`).join('')}
+        ${brandRow2Html}
       </div>
     </div>
 
@@ -122,27 +150,25 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
     </div>
 
     <table class="info-table" style="margin-bottom:12px;">
-      <tr><td class="info-label">NAME :</td><td class="info-value center">${data.customerName}</td></tr>
+      <tr><td class="info-label">NAME :</td><td class="info-value center">${esc(data.customerName)}</td></tr>
       <tr><td class="info-label">DATE :</td><td class="info-value center">${dateStr}</td></tr>
-      <tr><td class="info-label">NUM :</td><td class="info-value center">${data.customerPhone ?? ''}</td></tr>
-      <tr><td class="info-label">REF :</td><td class="info-value center">${data.createdBy}</td></tr>
+      <tr><td class="info-label">NUM :</td><td class="info-value center">${esc(data.customerPhone)}</td></tr>
+      <tr><td class="info-label">REF :</td><td class="info-value center">${esc(data.createdBy)}</td></tr>
     </table>
 
     <table>
-      <tr><td colspan="3" class="gold center section-header">GROHE</td></tr>
+      <tr><td colspan="4" class="gold center section-header">${esc(data.brandLabel?.toUpperCase() || 'GROHE')}</td></tr>
       <tr>
-        <th class="gold center summary-sl">SL,NO.</th>
-        <th class="gold center">BATHROOM</th>
-        <th class="gold center summary-mrp">MRP</th>
+        <th class="gold center summary-sl">SL.</th>
+        <th class="gold center">BATHROOM / AREA</th>
+        <th class="gold center summary-mrp">MRP TOTAL</th>
+        <th class="gold center summary-mrp">SPECIAL OFFER</th>
       </tr>
       ${summaryRows}
       <tr>
         <td colspan="2" class="gold center total-label">TOTAL</td>
         <td class="gold right total-label">${fmt(grandMrp)}</td>
-      </tr>
-      <tr>
-        <td colspan="2" class="gold center" style="font-size:13pt; font-weight:bold; padding:7px 8px;">SPECIAL OFFER RATE</td>
-        <td class="gold right" style="font-size:13pt; font-weight:bold; padding:7px 8px;">₹ ${fmtN(grandOffer)}</td>
+        <td class="gold right total-label">${fmt(grandOffer)}</td>
       </tr>
     </table>
 
@@ -176,52 +202,109 @@ function coverPage(data: PrintData, sections: SectionData[], grandMrp: number, g
   `
 }
 
-function sectionDetailPage(section: SectionData): string {
+function sectionDetailPage(section: SectionData, hasAnyDiscount: boolean, sectionIndex: number): string {
+  const colCount = hasAnyDiscount ? 11 : 8
+  const headerColor = SECTION_PALETTE[sectionIndex % SECTION_PALETTE.length]
+
   const rows = section.items.map((item, idx) => {
     const offerRate = item.unitPrice * (1 - item.discount / 100)
     const mrpTotal = item.unitPrice * item.qty
     const offerTotal = offerRate * item.qty
     const imgCell = item.imageUrl
-      ? `<img src="${item.imageUrl}" class="detail-img" alt="${item.productName}" />`
-      : ''
+      ? `<img src="${esc(item.imageUrl)}" class="detail-img" alt="${esc(item.productName)}" />`
+      : `<div class="detail-img-placeholder"></div>`
+    const articleCell = `
+      <td style="text-align:center;">
+        ${esc(item.sku) || '—'}<br>
+        ${item.selectedColor
+          ? `<span style="font-size:7pt;color:#666;">${esc(item.selectedColor)}</span>`
+          : ''}
+      </td>`
+    const descCell = `<td class="center" style="font-size:8.5pt;">${esc(item.productName)}${item.description ? `<br><span style="font-size:7.5pt;color:#555;">${esc(item.description)}</span>` : ''}</td>`
+    const imgTd = `<td class="center">${imgCell}</td>`
+
+    if (hasAnyDiscount) {
+      const itemHasDiscount = item.discount > 0
+      return `
+        <tr>
+          <td class="center">${idx + 1}</td>
+          ${articleCell}
+          ${descCell}
+          ${imgTd}
+          <td class="right">₹ ${fmtN(item.unitPrice)}</td>
+          <td class="center">${item.qty}</td>
+          <td class="right">₹ ${fmtN(mrpTotal)}</td>
+          <td class="center">${itemHasDiscount ? item.discount + '%' : '—'}</td>
+          <td class="center">${item.gstRate !== undefined ? item.gstRate + '%' : '18%'}</td>
+          <td class="right">${itemHasDiscount ? '₹ ' + fmtN(offerRate) : '—'}</td>
+          <td class="right">₹ ${fmtN(offerTotal)}</td>
+        </tr>`
+    }
+
+    // No discounts in this quotation — simplified columns
     return `
       <tr>
         <td class="center">${idx + 1}</td>
-        <td class="center" style="font-size:8.5pt;">${item.sku}</td>
-        <td class="center" style="font-size:8.5pt;">${item.productName}${item.description ? `<br><span style="font-size:7.5pt;color:#555;">${item.description}</span>` : ''}</td>
-        <td class="center">${imgCell}</td>
+        ${articleCell}
+        ${descCell}
+        ${imgTd}
         <td class="right">₹ ${fmtN(item.unitPrice)}</td>
         <td class="center">${item.qty}</td>
+        <td class="center">${item.gstRate !== undefined ? item.gstRate + '%' : '18%'}</td>
         <td class="right">₹ ${fmtN(mrpTotal)}</td>
-        <td class="right">₹ ${fmtN(offerRate)}</td>
-        <td class="right">₹ ${fmtN(offerTotal)}</td>
       </tr>`
   }).join('')
+
+  const header = hasAnyDiscount
+    ? `<tr>
+        <th class="detail-th center" style="width:36px;">Sr.<br>No.</th>
+        <th class="detail-th center" style="width:78px;">Article<br>No.</th>
+        <th class="detail-th center">Product Description</th>
+        <th class="detail-th center" style="width:72px;">Product Image</th>
+        <th class="detail-th center" style="width:68px;">List Price</th>
+        <th class="detail-th center" style="width:36px;">QTY</th>
+        <th class="detail-th center" style="width:90px;">MRP TOTAL</th>
+        <th class="detail-th center" style="width:44px;">DISC%</th>
+        <th class="detail-th center" style="width:40px;">GST%</th>
+        <th class="detail-th center" style="width:82px;">Special Offer Rate</th>
+        <th class="detail-th center" style="width:90px;">TOTAL</th>
+      </tr>`
+    : `<tr>
+        <th class="detail-th center" style="width:36px;">Sr.<br>No.</th>
+        <th class="detail-th center" style="width:78px;">Article<br>No.</th>
+        <th class="detail-th center">Product Description</th>
+        <th class="detail-th center" style="width:72px;">Product Image</th>
+        <th class="detail-th center" style="width:68px;">Unit Price</th>
+        <th class="detail-th center" style="width:36px;">QTY</th>
+        <th class="detail-th center" style="width:40px;">GST%</th>
+        <th class="detail-th center" style="width:90px;">TOTAL</th>
+      </tr>`
+
+  const totalsRow = hasAnyDiscount
+    ? `<tr class="detail-total-row">
+        <td colspan="5" class="center" style="font-size:11pt;">TOTAL</td>
+        <td class="center">${section.totalQty}</td>
+        <td class="right">${fmt(section.mrpTotal)}</td>
+        <td class="center">—</td>
+        <td class="center">—</td>
+        <td class="right">₹ ${fmtN(section.offerRateSum)}</td>
+        <td class="right">₹ ${fmtN(section.offerTotal)}</td>
+      </tr>`
+    : `<tr class="detail-total-row">
+        <td colspan="4" class="center" style="font-size:11pt;">TOTAL</td>
+        <td class="right">—</td>
+        <td class="center">${section.totalQty}</td>
+        <td class="center">—</td>
+        <td class="right">${fmt(section.mrpTotal)}</td>
+      </tr>`
 
   return `
     <div class="page-break">
       <table>
-        <tr><td colspan="9" class="gold bold section-header">${section.name}</td></tr>
-        <tr>
-          <th class="detail-th center" style="width:36px;">Sr.<br>No.</th>
-          <th class="detail-th center" style="width:78px;">Article<br>No.</th>
-          <th class="detail-th center">Product Description</th>
-          <th class="detail-th center" style="width:72px;">Product Image</th>
-          <th class="detail-th center" style="width:68px;">MRP</th>
-          <th class="detail-th center" style="width:36px;">QTY</th>
-          <th class="detail-th center" style="width:90px;">MRP TOTAL</th>
-          <th class="detail-th center" style="width:82px;">OFFER RATE</th>
-          <th class="detail-th center" style="width:90px;">TOTAL</th>
-        </tr>
+        <tr><td colspan="${colCount}" style="background:${headerColor};color:#fff;font-size:13pt;font-weight:bold;padding:7px 10px;letter-spacing:0.03em;border:1px solid #444;">${esc(section.name)}</td></tr>
+        ${header}
         ${rows}
-        <tr class="detail-total-row">
-          <td colspan="4" class="center" style="font-size:11pt;">TOTAL</td>
-          <td></td>
-          <td class="center">${section.totalQty}</td>
-          <td class="right">${fmt(section.mrpTotal)}</td>
-          <td class="right">₹ ${fmtN(section.offerRateSum)}</td>
-          <td class="right">₹ ${fmtN(section.offerTotal)}</td>
-        </tr>
+        ${totalsRow}
       </table>
     </div>`
 }
@@ -231,21 +314,22 @@ export function generateQuotationPrintHTML(data: PrintData): string {
   const sections = groupBySection(data.lineItems)
   const grandMrp = sections.reduce((s, sec) => s + sec.mrpTotal, 0)
   const grandOffer = sections.reduce((s, sec) => s + sec.offerTotal, 0)
+  const hasAnyDiscount = data.lineItems.some(li => li.discount > 0)
 
   const cover = coverPage(data, sections, grandMrp, grandOffer, baseUrl)
-  const details = sections.map(sectionDetailPage).join('')
+  const details = sections.map((s, i) => sectionDetailPage(s, hasAnyDiscount, i)).join('')
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Quotation ${data.number} — ${data.customerName}</title>
+  <title>Quotation ${esc(data.number)} — ${esc(data.customerName)}</title>
   <style>${CSS}</style>
 </head>
 <body>
   ${cover}
   ${details}
-  <script>window.onload = function () { window.print() }</script>
+  <script>window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 500); });</script>
 </body>
 </html>`
 }

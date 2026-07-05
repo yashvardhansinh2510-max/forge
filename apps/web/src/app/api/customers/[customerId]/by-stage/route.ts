@@ -4,7 +4,7 @@
 // filtered by stage and optionally by brand tab.
 //
 // Query params:
-//   stage  (required) PENDING_CO | PENDING_DIST | AT_GODOWN | IN_BOX | DISPATCHED | NOT_DISPLAYED | ALL
+//   stage  (required) NEEDS_PO | ORDERED | AT_GODOWN | IN_BOX | DISPATCHED | ALL
 //   brand  (optional) tab key — GROHE | HANSGROHE | VITRA | GEBERIT | ALL (default)
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -13,27 +13,19 @@ import { withErrorHandling } from '@/lib/api-helpers'
 import { BRAND_GROUPS } from '@/lib/mock/procurement-data'
 import { prisma } from '@forge/db'
 
-// ─── Validation ───────────────────────────────────────────────────────────────
-
-const STAGES = ['ALL', 'PENDING_CO', 'PENDING_DIST', 'AT_GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED'] as const
+const STAGES = ['ALL', 'NEEDS_PO', 'ORDERED', 'AT_GODOWN', 'IN_BOX', 'DISPATCHED'] as const
 
 const QuerySchema = z.object({
   stage: z.enum(STAGES),
   brand: z.string().optional(),
 })
 
-// ─── Stage → Prisma field ─────────────────────────────────────────────────────
-
 const STAGE_FIELD_MAP: Partial<Record<typeof STAGES[number], string>> = {
-  PENDING_CO:    'qtyPendingCo',
-  PENDING_DIST:  'qtyPendingDist',
-  AT_GODOWN:     'qtyAtGodown',
-  IN_BOX:        'qtyInBox',
-  DISPATCHED:    'qtyDispatched',
-  NOT_DISPLAYED: 'qtyNotDisplayed',
+  ORDERED:    'qtyPendingCo',
+  AT_GODOWN:  'qtyAtGodown',
+  IN_BOX:     'qtyInBox',
+  DISPATCHED: 'qtyDispatched',
 }
-
-// ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function GET(
   req: NextRequest,
@@ -52,38 +44,43 @@ export async function GET(
         ? undefined
         : (BRAND_GROUPS[brand] ?? [brand])
 
-    const stageFilter = stage === 'ALL'
+    const stageFilter = stage === 'ALL' || stage === 'NEEDS_PO'
       ? undefined
       : { [STAGE_FIELD_MAP[stage]!]: { gt: 0 } }
 
-    // Line items linked to quotation items for this project/customer
     const lines = await prisma.pOLineItem.findMany({
       where: {
         ...stageFilter,
         quotationItem: {
           room: {
             revision: {
-              quotation: {
-                projectId: customerId,
-              },
+              quotation: { projectId: customerId },
             },
           },
         },
         product: brandValues ? { brand: { in: brandValues as never[] } } : undefined,
       },
       include: {
-        product:  { select: { sku: true, name: true, brand: true, imageUrl: true, mrp: true } },
-        po:       { select: { id: true, poNumber: true, vendorName: true, expectedDelivery: true } },
+        product: { select: { sku: true, name: true, brand: true, imageUrl: true, mrp: true } },
+        po:      { select: { id: true, poNumber: true, vendorName: true, expectedDelivery: true } },
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    const result = lines.map((line) => ({
-      ...line,
-      qtyAtStage: stage === 'ALL'
-        ? line.qtyOrdered
-        : (line[STAGE_FIELD_MAP[stage] as keyof typeof line] as number),
-    }))
+    const result = lines
+      .map((line) => {
+        let qtyAtStage: number
+        if (stage === 'ALL') {
+          qtyAtStage = line.qtyOrdered
+        } else if (stage === 'NEEDS_PO') {
+          const staged = line.qtyPendingCo + line.qtyAtGodown + line.qtyInBox + line.qtyDispatched
+          qtyAtStage = Math.max(0, line.qtyOrdered - staged)
+        } else {
+          qtyAtStage = line[STAGE_FIELD_MAP[stage] as keyof typeof line] as number
+        }
+        return { ...line, qtyAtStage }
+      })
+      .filter((line) => stage !== 'NEEDS_PO' || line.qtyAtStage > 0)
 
     // Stage summary counts for the customer (all brands, all stages)
     const allLines = await prisma.pOLineItem.findMany({
@@ -97,28 +94,26 @@ export async function GET(
         },
       },
       select: {
-        qtyOrdered:     true,
-        qtyPendingCo:   true,
-        qtyPendingDist: true,
-        qtyAtGodown:    true,
-        qtyInBox:       true,
-        qtyDispatched:  true,
-        qtyNotDisplayed: true,
+        qtyOrdered:    true,
+        qtyPendingCo:  true,
+        qtyAtGodown:   true,
+        qtyInBox:      true,
+        qtyDispatched: true,
       },
     })
 
     const summary = allLines.reduce(
       (acc, l) => {
-        acc.totalOrdered    += l.qtyOrdered
-        acc.pendingFromCo   += l.qtyPendingCo
-        acc.pendingFromDist += l.qtyPendingDist
-        acc.atGodown        += l.qtyAtGodown
-        acc.inBox           += l.qtyInBox
-        acc.dispatched      += l.qtyDispatched
-        acc.notDisplayed    += l.qtyNotDisplayed
+        const staged = l.qtyPendingCo + l.qtyAtGodown + l.qtyInBox + l.qtyDispatched
+        acc.totalOrdered += l.qtyOrdered
+        acc.needsPo      += Math.max(0, l.qtyOrdered - staged)
+        acc.ordered      += l.qtyPendingCo
+        acc.atGodown     += l.qtyAtGodown
+        acc.inBox        += l.qtyInBox
+        acc.dispatched   += l.qtyDispatched
         return acc
       },
-      { totalOrdered: 0, pendingFromCo: 0, pendingFromDist: 0, atGodown: 0, inBox: 0, dispatched: 0, notDisplayed: 0 },
+      { totalOrdered: 0, needsPo: 0, ordered: 0, atGodown: 0, inBox: 0, dispatched: 0 },
     )
 
     return NextResponse.json({ lines: result, summary })

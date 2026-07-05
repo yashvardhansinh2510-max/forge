@@ -23,19 +23,17 @@ import type { POStatus } from '@/lib/mock/procurement-data'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ViewMode     = 'company' | 'customer'
+export type ViewMode     = 'company' | 'customer' | 'billing'
 export type StatusFilter = POStatus | 'ALL'
 export type BrandFilter  = string   | 'ALL'
 
-/** Keys matching the 7 KPI stat cards in TrackerKPIStrip */
+/** Keys matching the KPI stat cards in TrackerKPIStrip */
 export type KPICardKey =
   | 'totalOrdered'
   | 'pendingFromCo'
-  | 'pendingFromDist'
   | 'atGodown'
   | 'inBox'
   | 'dispatched'
-  | 'notDisplayed'
 
 interface PurchasesUIState {
   viewMode:          ViewMode

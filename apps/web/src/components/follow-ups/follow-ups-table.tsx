@@ -21,7 +21,7 @@ import {
   CUSTOMER_TYPE_LABELS,
   type FollowUp,
   type ResponseMethod,
-} from '@/lib/mock/followup-data'
+} from '@/lib/follow-up-types'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 

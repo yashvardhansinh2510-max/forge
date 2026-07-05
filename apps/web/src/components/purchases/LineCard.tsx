@@ -1,8 +1,12 @@
 'use client'
 
+import React from 'react'
+import { toast } from 'sonner'
 import MovePopover from '@/components/purchases/MovePopover'
+import PriorityTransferModal from '@/components/purchases/PriorityTransferModal'
 import {
   STAGE_COLORS,
+  STAGE_ORDER,
   STAGE_SHORT_LABEL,
   getOverflowStages,
   getVisibleMoveStages,
@@ -51,6 +55,37 @@ function StageChip({
   )
 }
 
+function PipelineDots({ stages }: { stages: HeaderCounts }) {
+  return (
+    <div className="mt-3 flex items-center gap-1.5">
+      {STAGE_ORDER.map((stage) => {
+        const qty = stages[stage] ?? 0
+        const color = STAGE_COLORS[stage]
+        return (
+          <div key={stage} className="relative flex flex-col items-center" title={`${STAGE_SHORT_LABEL[stage]}: ${qty}`}>
+            <div
+              className="rounded-full transition-all"
+              style={{
+                width: qty > 0 ? 10 : 7,
+                height: qty > 0 ? 10 : 7,
+                backgroundColor: qty > 0 ? color : '#e5e7eb',
+              }}
+            />
+            {qty > 0 && (
+              <span
+                className="mt-0.5 text-[9px] font-bold leading-none"
+                style={{ color }}
+              >
+                {qty}
+              </span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 interface LineCardProps {
   line: PurchaseTrackerLine
   context: 'company' | 'customer'
@@ -64,8 +99,19 @@ export default function LineCard({
   onMoved,
   brandScope,
 }: LineCardProps) {
+  const [marking, setMarking] = React.useState(false)
+  const [transferOpen, setTransferOpen] = React.useState(false)
+
   const moveStages = getVisibleMoveStages(line)
   const overflowStages = getOverflowStages(line)
+
+  const daysSinceOrder = line.createdAt
+    ? Math.floor((Date.now() - new Date(line.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+    : 0
+
+  const isStalled =
+    (line.stages.ORDER_IN_CO > 0 || line.stages.CO_BILLING > 0) &&
+    daysSinceOrder > 7
 
   const meta = context === 'company'
     ? [
@@ -79,6 +125,31 @@ export default function LineCard({
         line.customer?.siteAddress ? `Site: ${line.customer.siteAddress}` : 'Customer-linked line item',
       ]
 
+  async function handleMarkReceived() {
+    setMarking(true)
+    try {
+      const res = await fetch(
+        `/api/purchase-orders/lines/${encodeURIComponent(line.id)}/mark-received`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qty: line.stages.ORDER_IN_CO, brand: brandScope }),
+        },
+      )
+      const data = await res.json() as { stageTotals?: HeaderCounts; message?: string; error?: string }
+      if (!res.ok || !data.stageTotals) {
+        toast.error(data.message ?? data.error ?? 'Failed to mark received')
+        return
+      }
+      onMoved(data.stageTotals)
+      toast.success(`${line.stages.ORDER_IN_CO} unit${line.stages.ORDER_IN_CO !== 1 ? 's' : ''} marked as received at godown`)
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setMarking(false)
+    }
+  }
+
   return (
     <article className="rounded-[28px] border border-[var(--border)] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
       <div className="flex flex-col gap-5 lg:flex-row">
@@ -88,10 +159,27 @@ export default function LineCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
-                <h3 className="truncate text-lg font-semibold tracking-[-0.03em] text-[var(--text-primary)]">
-                  {line.product.name}
-                </h3>
-                <p className="mt-1 font-mono text-sm text-[var(--text-muted)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="truncate text-lg font-semibold tracking-[-0.03em] text-[var(--text-primary)]">
+                    {line.product.name}
+                  </h3>
+                  {isStalled && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                      ⚠ Stalled {daysSinceOrder}d
+                    </span>
+                  )}
+                  {line.allocationStatus && (
+                    <span className={[
+                      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-widest',
+                      line.allocationStatus === 'AWAITING_REPLACEMENT' ? 'border-red-200 bg-red-50 text-red-700' :
+                      line.allocationStatus.includes('URGENT') ? 'border-orange-200 bg-orange-50 text-orange-700' :
+                      'border-blue-200 bg-blue-50 text-blue-700'
+                    ].join(' ')}>
+                      {line.allocationStatus.replace('_', ' ')}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
                   {line.product.sku}
                 </p>
               </div>
@@ -117,6 +205,10 @@ export default function LineCard({
                 />
               ))}
             </div>
+
+            {context === 'customer' && (
+              <PipelineDots stages={line.stages} />
+            )}
           </div>
         </div>
 
@@ -145,11 +237,44 @@ export default function LineCard({
             )}
           </div>
 
+          {line.stages.ORDER_IN_CO > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleMarkReceived()}
+              disabled={marking}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
+            >
+              {marking
+                ? 'Marking…'
+                : `Mark ${line.stages.ORDER_IN_CO} as Received`}
+            </button>
+          )}
+
+          {(line.stages.INBOX > 0 || line.stages.DISPATCHED > 0) && (
+            <button
+              type="button"
+              onClick={() => setTransferOpen(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-100"
+            >
+              Reallocate Inventory
+            </button>
+          )}
+
           <p className="text-xs text-[var(--text-muted)]">
             One move control per active stage, capped at two for readability.
           </p>
         </div>
       </div>
+
+      {transferOpen && (
+        <PriorityTransferModal
+          line={line}
+          sourceCustomerName={line.customer?.name ?? 'Unknown'}
+          allLines={[]} // TODO: we might need to pass allLines if we want the dropdown to work in LineCard
+          onClose={() => setTransferOpen(false)}
+          onTransferred={() => { setTransferOpen(false); onMoved(line.stages) /* force refresh */ }}
+        />
+      )}
     </article>
   )
 }

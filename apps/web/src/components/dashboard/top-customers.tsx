@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { tableRowVariants } from '@forge/ui'
 import { formatINR } from '@/lib/mock/dashboard-data'
-import type { DashboardCustomer } from '@/app/api/dashboard/route'
+import type { StatsTopCustomer } from '@/app/api/dashboard/stats/route'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ function TopCustomersSkeleton() {
 
 // ── Customer Row ──────────────────────────────────────────────────────────────
 
-function CustomerRow({ customer, index, maxRevenue }: { customer: DashboardCustomer; index: number; maxRevenue: number }) {
+function CustomerRow({ customer, index, maxRevenue }: { customer: StatsTopCustomer; index: number; maxRevenue: number }) {
   const barWidth = maxRevenue > 0 ? (customer.revenue / maxRevenue) * 80 : 0
   const initials = getInitials(customer.customerName)
   const color = getAvatarColor(customer.customerName)
@@ -132,7 +132,7 @@ function CustomerRow({ customer, index, maxRevenue }: { customer: DashboardCusto
 
 interface TopCustomersProps {
   isLoading?: boolean
-  data?: DashboardCustomer[]
+  data?: StatsTopCustomer[]
 }
 
 export function TopCustomers({ isLoading = false, data }: TopCustomersProps) {

@@ -28,7 +28,7 @@ forge/
 │           ├── app/          # App Router pages
 │           ├── components/   # Feature components (one folder per module)
 │           └── lib/
-│               ├── mock/     # ALL data is mock — no real DB yet
+│               ├── mock/     # Mock data for modules not yet on live DB
 │               └── navigation.ts
 ├── packages/
 │   ├── ui/                   # Shared component library (@forge/ui)
@@ -55,8 +55,8 @@ forge/
 | Tables | TanStack Table + TanStack Virtual |
 | Drag & Drop | @dnd-kit |
 | Toasts | Sonner |
-| Database | PostgreSQL + Prisma (`packages/db`) — **schema currently empty** |
-| Data | **100% mock data** in `apps/web/src/lib/mock/` |
+| Database | PostgreSQL + Prisma (`packages/db`) — live schema with CRM, quotations, PO, settings models |
+| Data | Mix: live DB APIs for CRM, dashboard, quotations, purchase orders; mock data in `apps/web/src/lib/mock/` for remaining modules |
 
 ---
 
@@ -81,9 +81,9 @@ pnpm build
 
 ## Current App State
 
-- **All data is mock** — `src/lib/mock/*.ts` files. Prisma schema is a placeholder.
+- **Live DB APIs**: CRM contacts, dashboard stats, quotations, purchase orders — all backed by PostgreSQL via Prisma. Remaining modules still use mock data in `src/lib/mock/*.ts`.
 - **Auth is optional** — Clerk is wired but gracefully degrades if `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is not set
-- **Routes that are placeholders**: `/manufacturing/orders`, `/reports`, `/settings` — show "module is being built" state
+- **Routes that are placeholders**: `/manufacturing/orders`, `/reports` — show "module is being built" state
 - **Catalogue** — empty state UI (no data yet)
 - **Agent teams** — enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings
 
@@ -103,7 +103,7 @@ pnpm build
 | Reports | `/reports` | 🚧 Placeholder |
 | Catalogue | `/catalogue` | 🚧 Empty state |
 | Price Lists | `/settings/price-lists` | ✅ Full |
-| Settings | `/settings` | 🚧 Placeholder |
+| Settings | `/settings`, `/settings/company`, `/settings/users` | ✅ Full (company profile, users & roles) |
 
 ---
 
@@ -231,6 +231,14 @@ For all web browsing and design collaboration, use `/browse` from gstack — nev
 
 Available skills:
 `/office-hours` `/plan-ceo-review` `/plan-eng-review` `/plan-design-review` `/design-consultation` `/design-shotgun` `/design-html` `/review` `/ship` `/land-and-deploy` `/canary` `/benchmark` `/browse` `/connect-chrome` `/qa` `/qa-only` `/design-review` `/setup-browser-cookies` `/setup-deploy` `/retro` `/investigate` `/document-release` `/codex` `/cso` `/autoplan` `/plan-devex-review` `/devex-review` `/careful` `/freeze` `/guard` `/unfreeze` `/gstack-upgrade` `/learn`
+
+## Testing
+
+- Run command: `pnpm --filter @forge/web test`
+- Test directory: `apps/web/src/__tests__/`
+- See [TESTING.md](TESTING.md) for full docs
+
+When writing new functions, write a corresponding test. When fixing a bug, write a regression test. When adding a conditional, test both paths. Never commit code that breaks existing tests.
 
 ## Skill routing
 

@@ -21,20 +21,31 @@ model User {
   purchaseOrders   PurchaseOrder[]   @relation("CreatedPurchaseOrders")
   quotations       Quotation[]       @relation("CreatedBy")
   stageMovements   StageMovement[]   @relation("StageMovements")
+  transfers        Transfer[]        @relation("Transfers")
+  ownedContacts    Contact[]         @relation("OwnedContacts")
+  assignedLines    POLineItem[]      @relation("POLineItemAssignments")
+  lineItemNotes    POLineItemNote[]
 }
 
 model Contact {
-  id        String      @id @default(cuid())
-  name      String
-  role      String
-  companyId String?
-  email     String?
-  phone     String?
-  type      ContactType @default(ARCHITECT)
-  tags      String[]
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  company   Company?    @relation(fields: [companyId], references: [id])
+  id             String      @id @default(cuid())
+  name           String
+  title          String
+  companyId      String?
+  email          String?
+  phone          String?
+  type           ContactType @default(ARCHITECT)
+  tags           String[]
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  whatsapp       String?
+  city           String?
+  area           String?
+  ownerId        String?
+  lastActivityAt DateTime?
+  notes          String?
+  company        Company?    @relation(fields: [companyId], references: [id])
+  owner          User?       @relation("OwnedContacts", fields: [ownerId], references: [id])
 }
 
 model Company {
@@ -73,11 +84,17 @@ model Quotation {
   createdById   String
   currentStatus RevisionStatus      @default(DRAFT)
   createdAt     DateTime            @default(now())
-  customerName  String?
-  siteAddress   String?
-  createdBy     User                @relation("CreatedBy", fields: [createdById], references: [id])
+  customerName   String?
+  siteAddress    String?
+  customerGST    String?
+  billingAddress String?
+  salesRep       String?
+  brandLabel     String?
+  createdBy      User                @relation("CreatedBy", fields: [createdById], references: [id])
   project       Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   revisions     QuotationRevision[]
+
+  @@index([currentStatus])
 }
 
 model QuotationRevision {
@@ -90,6 +107,10 @@ model QuotationRevision {
   lockedAt          DateTime?
   snapshot          Json?
   notes             String?
+  customerPhone     String?
+  validDays         Int               @default(30)
+  validUntil        DateTime?
+  termsAndConditions String?
   createdAt         DateTime          @default(now())
   approvalRequests  ApprovalRequest[]
   purchaseOrders    PurchaseOrder[]
@@ -109,27 +130,37 @@ model QuotationRoom {
 }
 
 model QuotationItem {
-  id              String          @id @default(cuid())
-  roomId          String
-  productId       String
-  quantity        Int             @default(1)
-  selectedFinish  String?
-  selectedColor   String?
-  mrp             Float
-  discountPct     Float           @default(0.0)
-  offerRate       Float
-  totalOffer      Float
-  isAutoAdded     Boolean         @default(false)
-  sortOrder       Int             @default(0)
-  stockOrdered    Int             @default(0)
-  stockInBox      Int             @default(0)
-  stockDispatched Int             @default(0)
-  inventoryStatus InventoryStatus @default(QUOTED)
-  createdAt       DateTime        @default(now())
-  boxItems        BoxItem[]
-  poLineItems     POLineItem[]
-  product         Product         @relation(fields: [productId], references: [id])
-  room            QuotationRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  id                String          @id @default(cuid())
+  roomId            String
+  productId         String?
+  isCustom          Boolean         @default(false)
+  customDescription String?
+  customBrand       String?
+  customUnit        String?
+  customHsnCode     String?
+  customNotes       String?
+  quantity          Int             @default(1)
+  selectedFinish    String?
+  selectedColor     String?
+  mrp               Float
+  discountPct       Float           @default(0.0)
+  offerRate         Float
+  totalOffer        Float
+  isAutoAdded       Boolean         @default(false)
+  sortOrder         Int             @default(0)
+  stockOrdered      Int             @default(0)
+  stockInBox        Int             @default(0)
+  stockDispatched   Int             @default(0)
+  inventoryStatus   InventoryStatus @default(QUOTED)
+  imageUrl          String?
+  finishName        String?
+  seriesName        String?
+  articleNumber     String?
+  createdAt         DateTime        @default(now())
+  boxItems          BoxItem[]
+  poLineItems       POLineItem[]
+  product           Product?        @relation(fields: [productId], references: [id])
+  room              QuotationRoom   @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
 
 model Product {
@@ -160,6 +191,9 @@ model Product {
   seriesName      String?
   sourceFile      String?
   subcategory     String?
+  hsnCode         String?
+  filterTags      String[]        @default([])
+  sortOrder       Int?
   boxItems        BoxItem[]
   poLineItems     POLineItem[]
   concealedPart   Product?        @relation("ConcealedParts", fields: [concealedPartId], references: [id])
@@ -250,6 +284,8 @@ model PurchaseOrder {
   createdBy           User               @relation("CreatedPurchaseOrders", fields: [createdById], references: [id])
   project             Project?           @relation(fields: [projectId], references: [id])
   revision            QuotationRevision? @relation(fields: [revisionId], references: [id])
+
+  @@index([status])
 }
 
 model POLineItem {
@@ -260,20 +296,27 @@ model POLineItem {
   qtyOrdered      Int
   qtyReceived     Int             @default(0)
   qtyPendingCo    Int             @default(0)
-  qtyPendingDist  Int             @default(0)
   qtyAtGodown     Int             @default(0)
   qtyInBox        Int             @default(0)
   qtyDispatched   Int             @default(0)
-  qtyNotDisplayed Int             @default(0)
   landingCost     Float?
   clientOfferRate Float?
   status          POLineStatus    @default(PENDING)
   createdAt       DateTime        @default(now())
   followUpStatus  String?         @default("AWAITING")
+  priority        String          @default("MEDIUM")
+  assignedToId    String?
+  stageEnteredAt  DateTime?
   po              PurchaseOrder   @relation(fields: [poId], references: [id], onDelete: Cascade)
   product         Product         @relation(fields: [productId], references: [id])
   quotationItem   QuotationItem?  @relation(fields: [quotationItemId], references: [id])
+  assignedTo      User?           @relation("POLineItemAssignments", fields: [assignedToId], references: [id])
   stageMovements  StageMovement[]
+  purchaseItems   PurchaseItem[]
+  transfersOut    Transfer[]      @relation("TransfersOut")
+  transfersIn     Transfer[]      @relation("TransfersIn")
+  notes           POLineItemNote[]
+  allocationStatus String?
 }
 
 model StageMovement {
@@ -287,6 +330,33 @@ model StageMovement {
   movedAt      DateTime   @default(now())
   movedBy      User       @relation("StageMovements", fields: [movedById], references: [id])
   poLineItem   POLineItem @relation(fields: [poLineItemId], references: [id])
+}
+
+model Transfer {
+  id               String     @id @default(cuid())
+  poLineItemId     String
+  targetPoLineItemId String?
+  productId        String
+  productName      String     @default("")
+  fromCustomerId   String
+  fromCustomerName String
+  toCustomerId     String
+  toCustomerName   String
+  qty              Int
+  stage            String
+  urgency          String     @default("NORMAL")
+  reason           String?
+  notes            String?
+  transferredById  String
+  transferredAt    DateTime   @default(now())
+  poLineItem       POLineItem @relation("TransfersOut", fields: [poLineItemId], references: [id])
+  targetPoLineItem POLineItem? @relation("TransfersIn", fields: [targetPoLineItemId], references: [id])
+  transferredBy    User       @relation("Transfers", fields: [transferredById], references: [id])
+
+  @@index([fromCustomerId])
+  @@index([toCustomerId])
+  @@index([poLineItemId])
+  @@index([targetPoLineItemId])
 }
 
 model InventoryBox {
@@ -356,6 +426,8 @@ model CustomerPayment {
   recordedBy String                @default("System")
   createdAt  DateTime              @default(now())
   order      SalesOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([receivedAt])
 }
 
 model FollowUp {
@@ -379,6 +451,9 @@ model FollowUp {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   responses        FollowUpResponse[]
+
+  @@index([status, nextFollowUpDate])
+  @@index([customerPhone])
 }
 
 model FollowUpResponse {
@@ -404,12 +479,20 @@ model Activity {
   quotationId String?
   value       Float?
   createdAt   DateTime     @default(now())
+
+  @@index([contactId])
 }
 
 enum UserRole {
   OWNER
+  ADMIN
+  OPS_MANAGER
+  BILLING_STAFF
+  DISPATCH_STAFF
+  SALES_STAFF
   MANAGER
   WORKER
+  READ_ONLY
 }
 
 enum RevisionStatus {
@@ -522,6 +605,7 @@ enum CustomerPaymentMethod {
 enum FollowUpType {
   WALK_IN
   QUOTATION
+  QUOTATION_FOLLOWUP
 }
 
 enum FollowUpStatus {
@@ -548,6 +632,33 @@ enum FollowUpResponseMethod {
   VISIT
 }
 
+model PurchaseItem {
+  id             String             @id @default(cuid())
+  orderId        String
+  productId      String
+  batchQty       Int
+  status         PurchaseItemStatus @default(NEEDS_PO)
+  supplierId     String?
+  receivedAt     DateTime?
+  dispatchedAt   DateTime?
+  godownLocation String?
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  order          POLineItem         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+}
+
+enum PurchaseItemStatus {
+  NEEDS_PO
+  ORDERED
+  AT_GODOWN
+  IN_BOX
+  DISPATCHED
+}
+
 enum ActivityType {
   CALL
   WHATSAPP
@@ -559,4 +670,33 @@ enum ActivityType {
   QUOTE_CREATED
   QUOTE_SENT
   QUOTE_APPROVED
+}
+
+model POLineItemNote {
+  id          String     @id @default(cuid())
+  lineItemId  String
+  userId      String
+  content     String
+  createdAt   DateTime   @default(now())
+  
+  lineItem    POLineItem @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lineItemId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  userName    String   @default("")
+  action      String
+  entityType  String
+  entityId    String?
+  payload     Json?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
 }

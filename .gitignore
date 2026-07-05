@@ -6,7 +6,7 @@ dist/
 *.env.local
 .DS_Store
 .gstack/
--e 
+-e
 # Environment files
 *.env
 *.env.*
@@ -14,3 +14,21 @@ dist/
 .claude/skills/gstack/
 .ideavo/project
 *.log
+
+# Large binary/catalog asset dirs (source images — not committed to git)
+apps/web/public/products/
+apps/web/public/catalog/
+public/
+scripts/
+packages/db/data/
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Root-level screenshots (QA/review artifacts)
+*.png
+pos-*.png
+
+# Build cache
+tsconfig.tsbuildinfo
+apps/web/tsconfig.tsbuildinfo

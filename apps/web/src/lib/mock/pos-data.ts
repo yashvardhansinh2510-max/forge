@@ -24,7 +24,6 @@ export interface POSProduct {
   tier: 'luxury' | 'premium' | 'mid'
   finishes: Finish[]
   defaultFinish: string
-  emoji: string
   gradient: string
   requiresPartIds: string[]
   isConcealed: boolean

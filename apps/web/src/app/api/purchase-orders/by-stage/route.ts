@@ -4,7 +4,7 @@
 // Used by stat card drill-down panels.
 //
 // Query params:
-//   stage      (required) PENDING_CO | PENDING_DIST | AT_GODOWN | IN_BOX | DISPATCHED | NOT_DISPLAYED | ALL
+//   stage      (required) ORDER_IN_CO | CO_BILLING | INBOX | DISPATCHED | COMPLETED | ALL
 //   brand      (optional) tab key — GROHE | HANSGROHE | VITRA | GEBERIT | ALL (default)
 //              HANSGROHE matches HANSGROHE + AXOR (via BRAND_GROUPS)
 //   customerId (optional) filter to a single customer's allocations
@@ -15,9 +15,7 @@ import { withErrorHandling } from '@/lib/api-helpers'
 import { BRAND_GROUPS } from '@/lib/mock/procurement-data'
 import { prisma } from '@forge/db'
 
-// ─── Validation ───────────────────────────────────────────────────────────────
-
-const STAGES = ['ALL', 'PENDING_CO', 'PENDING_DIST', 'AT_GODOWN', 'IN_BOX', 'DISPATCHED', 'NOT_DISPLAYED'] as const
+const STAGES = ['ALL', 'ORDER_IN_CO', 'CO_BILLING', 'INBOX', 'DISPATCHED', 'COMPLETED'] as const
 type StageParam = typeof STAGES[number]
 
 const QuerySchema = z.object({
@@ -26,18 +24,13 @@ const QuerySchema = z.object({
   customerId: z.string().optional(),
 })
 
-// ─── Stage → Prisma field mapping ────────────────────────────────────────────
-
+// Stage → Prisma field mapping (ORDER_IN_CO is derived, handled separately)
 const STAGE_FIELD_MAP: Partial<Record<StageParam, string>> = {
-  PENDING_CO:    'qtyPendingCo',
-  PENDING_DIST:  'qtyPendingDist',
-  AT_GODOWN:     'qtyAtGodown',
-  IN_BOX:        'qtyInBox',
-  DISPATCHED:    'qtyDispatched',
-  NOT_DISPLAYED: 'qtyNotDisplayed',
+  CO_BILLING: 'qtyPendingCo',
+  INBOX:      'qtyAtGodown',
+  DISPATCHED: 'qtyInBox',
+  COMPLETED:  'qtyDispatched',
 }
-
-// ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   return withErrorHandling(async () => {
@@ -48,14 +41,13 @@ export async function GET(req: NextRequest) {
       customerId: searchParams.get('customerId') ?? undefined,
     })
 
-    // Resolve brand tab → individual brand values
     const brandValues: string[] | undefined =
       !brand || brand === 'ALL'
         ? undefined
         : (BRAND_GROUPS[brand] ?? [brand])
 
-    // Build stage qty filter
-    const stageFilter = stage === 'ALL'
+    // ORDER_IN_CO is derived — items where (qtyOrdered - staged) > 0
+    const stageFilter = stage === 'ALL' || stage === 'ORDER_IN_CO'
       ? undefined
       : { [STAGE_FIELD_MAP[stage]!]: { gt: 0 } }
 
@@ -65,19 +57,27 @@ export async function GET(req: NextRequest) {
         product: brandValues ? { brand: { in: brandValues as never[] } } : undefined,
       },
       include: {
-        product:  { select: { sku: true, name: true, brand: true, imageUrl: true, mrp: true } },
-        po:       { select: { id: true, poNumber: true, projectId: true, vendorName: true } },
+        product: { select: { sku: true, name: true, brand: true, imageUrl: true, mrp: true } },
+        po:      { select: { id: true, poNumber: true, projectId: true, vendorName: true } },
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    // Attach the qty at the requested stage to each line for convenience
-    const result = lines.map((line) => ({
-      ...line,
-      qtyAtStage: stage === 'ALL'
-        ? line.qtyOrdered
-        : (line[STAGE_FIELD_MAP[stage] as keyof typeof line] as number),
-    }))
+    const result = lines
+      .map((line) => {
+        let qtyAtStage: number
+        if (stage === 'ALL') {
+          qtyAtStage = line.qtyOrdered
+        } else if (stage === 'ORDER_IN_CO') {
+          const staged = line.qtyPendingCo + line.qtyAtGodown + line.qtyInBox + line.qtyDispatched
+          qtyAtStage = Math.max(0, line.qtyOrdered - staged)
+        } else {
+          qtyAtStage = line[STAGE_FIELD_MAP[stage] as keyof typeof line] as number
+        }
+        return { ...line, qtyAtStage }
+      })
+      // For ORDER_IN_CO, filter out lines where derived qty = 0
+      .filter((line) => stage !== 'ORDER_IN_CO' || line.qtyAtStage > 0)
 
     return NextResponse.json({ lines: result, total: result.reduce((s, l) => s + l.qtyAtStage, 0) })
   })

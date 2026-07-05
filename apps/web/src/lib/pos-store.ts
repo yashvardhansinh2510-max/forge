@@ -81,6 +81,12 @@ interface POSActions {
   closeModal: () => void
   // Reset
   resetBuilder: () => void
+  // Load from saved revision (items restored from API data)
+  loadFromRevision: (rooms: Array<{
+    id: string
+    name: string
+    items: Array<{ id: string; sku: string; articleNumber?: string; productName: string; mrp: number; qty: number; offerRate: number; productId: string; imageUrl?: string }>
+  }>) => void
 }
 
 // ─── Initial State ─────────────────────────────────────────────────────────────
@@ -286,6 +292,54 @@ export const usePOSStore = create<POSState & POSActions>()(
 
       closeModal: () =>
         set((s) => { s.modalProduct = null }),
+
+      // ── Load from revision ───────────────────────────────────────────────
+      loadFromRevision: (apiRooms) =>
+        set((s) => {
+          s.rooms = apiRooms.map((r, roomIdx) => ({
+            id: r.id,
+            name: r.name,
+            sortOrder: roomIdx,
+            roomDiscount: 0,
+            items: r.items.map((item, idx) => {
+              const stubProduct: POSProduct = {
+                id:              item.productId,
+                sku:             item.sku,
+                articleNumber:   item.articleNumber ?? item.sku,
+                name:            item.productName,
+                description:     '',
+                brand:           '',
+                brandColor:      '#000',
+                category:        '',
+                subCategory:     '',
+                mrp:             item.mrp,
+                gstRate:         18,
+                unit:            'pcs',
+                tier:            'premium',
+                finishes:        [{ name: 'Standard', code: 'STD', color: '#C0C0C0', priceAdj: 0 }],
+                defaultFinish:   'Standard',
+                gradient:        '',
+                requiresPartIds: [],
+                isConcealed:     false,
+                features:        [],
+                imageUrl:        item.imageUrl,
+              }
+              const discount = item.mrp > 0
+                ? Math.round((1 - item.offerRate / item.mrp) * 100)
+                : 0
+              return {
+                id:            item.id,
+                product:       stubProduct,
+                finish:        { name: 'Standard', code: 'STD', color: '#C0C0C0', priceAdj: 0 },
+                quantity:      item.qty,
+                itemDiscount:  discount,
+                isAutoAdded:   false,
+                sortOrder:     idx,
+              }
+            }),
+          }))
+          s.activeRoomId = apiRooms[0]?.id ?? null
+        }),
 
       // ── Reset ────────────────────────────────────────────────────────────
       resetBuilder: () =>

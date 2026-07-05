@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { prisma } from '@forge/db'
 import { getDevUserId, withErrorHandling } from '@/lib/api-helpers'
 import { AppError } from '@/lib/errors'
+import { hasPermission } from '@/lib/permissions'
+import { getCurrentRole } from '@/lib/permissions-server'
 import { moveFallbackLine, shouldUseFallback } from '@/lib/purchases-fallback'
 import {
   BRAND_TABS,
@@ -15,81 +17,64 @@ import {
   type PurchaseStage,
 } from '@/lib/purchases-tracker'
 
-const TO_STAGES = [
-  'PENDING_CO',
-  'PENDING_DIST',
-  'GODOWN',
-  'IN_BOX',
+const ALL_STAGES = [
+  'ORDER_IN_CO',
+  'CO_BILLING',
+  'INBOX',
   'DISPATCHED',
-  'NOT_DISPLAYED',
+  'COMPLETED',
 ] as const
 
-const LEGAL_TRANSITIONS: Record<PurchaseStage, typeof TO_STAGES[number][]> = {
-  UNALLOCATED: ['PENDING_CO', 'PENDING_DIST'],
-  PENDING_CO: ['PENDING_DIST', 'GODOWN'],
-  PENDING_DIST: ['GODOWN'],
-  GODOWN: ['IN_BOX'],
-  IN_BOX: ['DISPATCHED'],
-  DISPATCHED: ['NOT_DISPLAYED'],
-  NOT_DISPLAYED: [],
-}
-
 const DB_FIELD_BY_STAGE = {
-  PENDING_CO: 'qtyPendingCo',
-  PENDING_DIST: 'qtyPendingDist',
-  GODOWN: 'qtyAtGodown',
-  IN_BOX: 'qtyInBox',
-  DISPATCHED: 'qtyDispatched',
-  NOT_DISPLAYED: 'qtyNotDisplayed',
+  CO_BILLING: 'qtyPendingCo',
+  INBOX:      'qtyAtGodown',
+  DISPATCHED: 'qtyInBox',
+  COMPLETED:  'qtyDispatched',
 } as const
 
 type PersistedStage = keyof typeof DB_FIELD_BY_STAGE
 type QtyField = typeof DB_FIELD_BY_STAGE[PersistedStage]
 
+const TO_STAGES = ['CO_BILLING', 'INBOX', 'DISPATCHED', 'COMPLETED'] as const
+
 const MoveStageSchema = z.object({
-  fromStage: z.enum(['UNALLOCATED', ...TO_STAGES]),
-  toStage: z.enum(TO_STAGES),
-  qty: z.number().int().min(1),
+  fromStage:  z.enum(ALL_STAGES),
+  toStage:    z.enum(TO_STAGES),
+  qty:        z.number().int().min(1),
   customerId: z.string().optional(),
-  note: z.string().max(500).optional(),
-  brand: z.enum(BRAND_TABS).optional(),
+  note:       z.string().max(500).optional(),
+  brand:      z.enum(BRAND_TABS).optional(),
 })
 
 function getCurrentQtyAtStage(line: {
   qtyOrdered: number
   qtyPendingCo: number
-  qtyPendingDist: number
   qtyAtGodown: number
   qtyInBox: number
   qtyDispatched: number
-  qtyNotDisplayed: number
 }, stage: PurchaseStage): number {
-  if (stage === 'UNALLOCATED') {
-    return countsFromDbLine(line).UNALLOCATED
+  if (stage === 'ORDER_IN_CO') {
+    return countsFromDbLine(line).ORDER_IN_CO
   }
 
-  return line[DB_FIELD_BY_STAGE[stage]]
+  return line[DB_FIELD_BY_STAGE[stage as PersistedStage]]
 }
 
 function buildStageTotals(lines: Array<{
   qtyOrdered: number
   qtyPendingCo: number
-  qtyPendingDist: number
   qtyAtGodown: number
   qtyInBox: number
   qtyDispatched: number
-  qtyNotDisplayed: number
 }>): HeaderCounts {
   return lines.reduce((acc, line) => {
     const next = countsFromDbLine(line)
     return {
-      UNALLOCATED: acc.UNALLOCATED + next.UNALLOCATED,
-      PENDING_CO: acc.PENDING_CO + next.PENDING_CO,
-      PENDING_DIST: acc.PENDING_DIST + next.PENDING_DIST,
-      GODOWN: acc.GODOWN + next.GODOWN,
-      IN_BOX: acc.IN_BOX + next.IN_BOX,
-      DISPATCHED: acc.DISPATCHED + next.DISPATCHED,
-      NOT_DISPLAYED: acc.NOT_DISPLAYED + next.NOT_DISPLAYED,
+      ORDER_IN_CO: acc.ORDER_IN_CO + next.ORDER_IN_CO,
+      CO_BILLING:  acc.CO_BILLING  + next.CO_BILLING,
+      INBOX:       acc.INBOX       + next.INBOX,
+      DISPATCHED:  acc.DISPATCHED  + next.DISPATCHED,
+      COMPLETED:   acc.COMPLETED   + next.COMPLETED,
     }
   }, createEmptyHeaderCounts())
 }
@@ -98,22 +83,14 @@ async function getStageTotalsForScope(scope: BrandTab): Promise<HeaderCounts> {
   const brands = getBrandsForTab(scope)
   const lines = await prisma.pOLineItem.findMany({
     where: brands
-      ? {
-          product: {
-            brand: {
-              in: brands as never[],
-            },
-          },
-        }
+      ? { product: { brand: { in: brands as never[] } } }
       : undefined,
     select: {
-      qtyOrdered: true,
+      qtyOrdered:   true,
       qtyPendingCo: true,
-      qtyPendingDist: true,
-      qtyAtGodown: true,
-      qtyInBox: true,
+      qtyAtGodown:  true,
+      qtyInBox:     true,
       qtyDispatched: true,
-      qtyNotDisplayed: true,
     },
   })
 
@@ -125,37 +102,29 @@ export async function PATCH(
   { params }: { params: Promise<{ lineId: string }> },
 ) {
   return withErrorHandling(async () => {
+    const role = await getCurrentRole().catch(() => 'READ_ONLY' as const)
+    if (!hasPermission(role, 'can_move_stage')) {
+      return NextResponse.json({ error: 'Forbidden', required: 'can_move_stage' }, { status: 403 })
+    }
+
     const { lineId } = await params
     const body = MoveStageSchema.parse(await req.json())
-    const {
-      fromStage,
-      toStage,
-      qty,
-      customerId,
-      note,
-    } = body
+    const { fromStage, toStage, qty, customerId, note } = body
 
-    const allowedTargets = LEGAL_TRANSITIONS[fromStage] ?? []
-    if (!allowedTargets.includes(toStage)) {
-      throw new AppError(
-        'ILLEGAL_STAGE_TRANSITION',
-        `Cannot move from ${fromStage} to ${toStage}.`,
-        422,
-      )
+    if (fromStage === toStage) {
+      throw new AppError('INVALID_MOVE', 'Cannot move to the same stage.', 422)
     }
 
     try {
       const line = await prisma.pOLineItem.findUnique({
         where: { id: lineId },
         select: {
-          id: true,
-          qtyOrdered: true,
-          qtyPendingCo: true,
-          qtyPendingDist: true,
-          qtyAtGodown: true,
-          qtyInBox: true,
+          id:            true,
+          qtyOrdered:    true,
+          qtyPendingCo:  true,
+          qtyAtGodown:   true,
+          qtyInBox:      true,
           qtyDispatched: true,
-          qtyNotDisplayed: true,
         },
       })
 
@@ -175,14 +144,12 @@ export async function PATCH(
 
       const updates: Array<ReturnType<typeof prisma.pOLineItem.update> | ReturnType<typeof prisma.stageMovement.create>> = []
 
-      if (fromStage !== 'UNALLOCATED') {
+      if (fromStage !== 'ORDER_IN_CO') {
         updates.push(
           prisma.pOLineItem.update({
             where: { id: lineId },
             data: {
-              [DB_FIELD_BY_STAGE[fromStage] as QtyField]: {
-                decrement: qty,
-              },
+              [DB_FIELD_BY_STAGE[fromStage as PersistedStage] as QtyField]: { decrement: qty },
             },
           }),
         )
@@ -192,9 +159,7 @@ export async function PATCH(
         prisma.pOLineItem.update({
           where: { id: lineId },
           data: {
-            [DB_FIELD_BY_STAGE[toStage] as QtyField]: {
-              increment: qty,
-            },
+            [DB_FIELD_BY_STAGE[toStage as PersistedStage] as QtyField]: { increment: qty },
           },
         }),
       )
@@ -220,13 +185,7 @@ export async function PATCH(
         where: { id: lineId },
         include: {
           product: {
-            select: {
-              id: true,
-              sku: true,
-              name: true,
-              brand: true,
-              imageUrl: true,
-            },
+            select: { id: true, sku: true, name: true, brand: true, imageUrl: true },
           },
           po: {
             select: {
@@ -234,11 +193,7 @@ export async function PATCH(
               poNumber: true,
               vendorName: true,
               project: {
-                select: {
-                  id: true,
-                  clientName: true,
-                  siteAddress: true,
-                },
+                select: { id: true, clientName: true, siteAddress: true },
               },
             },
           },
@@ -251,10 +206,7 @@ export async function PATCH(
 
       const stageTotals = await getStageTotalsForScope(normalizeBrandTab(body.brand))
 
-      return NextResponse.json({
-        lineItem,
-        stageTotals,
-      })
+      return NextResponse.json({ lineItem, stageTotals })
     } catch (error) {
       if (shouldUseFallback(error)) {
         return NextResponse.json(moveFallbackLine({

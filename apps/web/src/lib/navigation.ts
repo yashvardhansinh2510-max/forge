@@ -9,6 +9,7 @@ import {
   Settings2,
   PhoneCall,
   Wallet,
+  ScrollText,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -60,6 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Catalogue', href: '/catalogue', icon: BookOpen },
       { label: 'Price Lists', href: '/settings/price-lists', icon: Tag },
       { label: 'Users', href: '/settings/users', icon: Users },
+      { label: 'Audit Logs', href: '/settings/audit-logs', icon: ScrollText },
       { label: 'Settings', href: '/settings', icon: Settings2 },
     ],
   },

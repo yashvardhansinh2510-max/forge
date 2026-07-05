@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { followUps as mockFollowUps } from '@/lib/mock/followup-data'
-import { activityData, topCustomers as mockTopCustomers, revenueData } from '@/lib/mock/dashboard-data'
 
 // ── Response types ─────────────────────────────────────────────────────────────
 
@@ -112,10 +110,10 @@ export async function GET() {
       // 3 — PO line stage aggregates (used for KPI and chart)
       prisma.pOLineItem.aggregate({
         _sum: {
-          qtyPendingCo: true,
-          qtyPendingDist: true,
-          qtyAtGodown: true,
-          qtyInBox: true,
+          qtyOrdered:    true,
+          qtyPendingCo:  true,
+          qtyAtGodown:   true,
+          qtyInBox:      true,
           qtyDispatched: true,
         },
       }),
@@ -180,7 +178,7 @@ export async function GET() {
     }, 0)
 
     const s = stageAgg._sum
-    const poLinesInTransit = (s.qtyPendingCo ?? 0) + (s.qtyPendingDist ?? 0) + (s.qtyAtGodown ?? 0)
+    const poLinesInTransit = (s.qtyPendingCo ?? 0) + (s.qtyAtGodown ?? 0)
 
     let outstandingPayments = 0
     let collectedThisMonth = 0
@@ -236,11 +234,10 @@ export async function GET() {
     // ── Purchase Stages ────────────────────────────────────────────────────────
 
     const purchaseStages: DashboardPurchaseStage[] = [
-      { stage: 'Pending CO',   qty: s.qtyPendingCo   ?? 0 },
-      { stage: 'Pending Dist', qty: s.qtyPendingDist  ?? 0 },
-      { stage: 'At Godown',    qty: s.qtyAtGodown     ?? 0 },
-      { stage: 'In Box',       qty: s.qtyInBox        ?? 0 },
-      { stage: 'Dispatched',   qty: s.qtyDispatched   ?? 0 },
+      { stage: 'Ordered',    qty: s.qtyPendingCo  ?? 0 },
+      { stage: 'At Godown',  qty: s.qtyAtGodown   ?? 0 },
+      { stage: 'In Box',     qty: s.qtyInBox      ?? 0 },
+      { stage: 'Dispatched', qty: s.qtyDispatched ?? 0 },
     ]
 
     // ── Recent Activity ────────────────────────────────────────────────────────
@@ -265,50 +262,20 @@ export async function GET() {
       activityResult.activities.length === 0
 
     if (dbIsEmpty) {
-      const now = new Date()
-      const activeFollowUps = mockFollowUps.filter((f) => f.status !== 'won' && f.status !== 'lost').length
-      const overdueFollowUps = mockFollowUps.filter(
-        (f) => f.status !== 'won' && f.status !== 'lost' && f.nextFollowUpDate < now
-      ).length
-
       const mockResponse: DashboardData = {
         kpis: {
-          activeFollowUps,
-          overdueFollowUps,
-          openQuotationsCount: 18,
-          openQuotationsPipelineValue: 4820000,
-          poLinesInTransit: 12,
-          outstandingPayments: 688000,
-          collectedThisMonth: 2847500,
+          activeFollowUps: 0,
+          overdueFollowUps: 0,
+          openQuotationsCount: 0,
+          openQuotationsPipelineValue: 0,
+          poLinesInTransit: 0,
+          outstandingPayments: 0,
+          collectedThisMonth: 0,
         },
-        recentActivity: activityData.map((a) => ({
-          id: a.id,
-          type: a.type,
-          description: `${a.action} ${a.target}${a.value ? ` · ${a.value}` : ''}`,
-          userName: a.user.name,
-          contactId: null,
-          value: null,
-          createdAt: a.timestamp.toISOString(),
-        })),
-        topCustomers: mockTopCustomers.map((c) => ({
-          rank: c.rank,
-          customerName: c.name,
-          revenue: c.revenue,
-          orderCount: c.orders,
-          outstanding: c.outstanding,
-        })),
-        revenueByMonth: revenueData.map((r) => ({
-          month: r.month,
-          year: new Date().getFullYear(),
-          revenue: r.revenue,
-        })),
-        purchaseStages: [
-          { stage: 'Pending CO',   qty: 5 },
-          { stage: 'Pending Dist', qty: 3 },
-          { stage: 'At Godown',    qty: 4 },
-          { stage: 'In Box',       qty: 2 },
-          { stage: 'Dispatched',   qty: 8 },
-        ],
+        recentActivity: [],
+        topCustomers: [],
+        revenueByMonth: [],
+        purchaseStages: [],
         generatedAt: new Date().toISOString(),
       }
       return NextResponse.json(mockResponse)

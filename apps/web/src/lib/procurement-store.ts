@@ -18,6 +18,9 @@ import {
   type BoxItemStatus,
   type BoxAllocationStatus,
   type CustomerAllocation,
+  type PriorityTransfer,
+  type TransferRecord,
+  type TransferStage,
 } from '@/lib/mock/procurement-data'
 import type { POSProduct } from '@/lib/mock/pos-data'
 
@@ -40,11 +43,11 @@ const EMPTY_DRAFT: DraftPO = {
 // ─── Store Types ────────────────────────────────────────────────────────────
 
 interface ProcurementState {
-  orders:        MockPurchaseOrder[]
-  boxes:         MockInventoryBox[]
-  draftPO:       DraftPO
-  sidebarOpen:   boolean
-  activeOrderId: string | null
+  orders:          MockPurchaseOrder[]
+  boxes:           MockInventoryBox[]
+  draftPO:         DraftPO
+  sidebarOpen:     boolean
+  activeOrderId:   string | null
 }
 
 interface ProcurementActions {
@@ -136,7 +139,7 @@ interface ProcurementActions {
   moveStage: (
     poId:      string,
     lineId:    string,
-    fromStage: 'ORDERED' | POStage,
+    fromStage: 'NEEDS_PO' | POStage,
     toStage:   POStage,
     qty:       number,
   ) => string | null
@@ -146,11 +149,11 @@ interface ProcurementActions {
 
 export const useProcurementStore = create<ProcurementState & ProcurementActions>()(
   immer((set, get) => ({
-    orders:        [] as MockPurchaseOrder[],
-    boxes:         [] as MockInventoryBox[],
-    draftPO:       EMPTY_DRAFT,
-    sidebarOpen:   false,
-    activeOrderId: null,
+    orders:          [] as MockPurchaseOrder[],
+    boxes:           [] as MockInventoryBox[],
+    draftPO:         EMPTY_DRAFT,
+    sidebarOpen:     false,
+    activeOrderId:   null,
 
     // ── Draft PO ────────────────────────────────────────────────────────────
 
@@ -235,12 +238,10 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
           clientOfferRate:     l.clientOfferRate,
           status:              'PENDING' as const,
           customerAllocations: [],
-          qtyPendingCo:        0,
-          qtyPendingDist:      0,
-          qtyAtGodown:         0,
-          qtyInBox:            0,
-          qtyDispatched:       0,
-          qtyNotDisplayed:     0,
+          qtyPendingCo:  0,
+          qtyAtGodown:   0,
+          qtyInBox:      0,
+          qtyDispatched: 0,
         })),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -430,21 +431,14 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
     // ── Stage movement ───────────────────────────────────────────────────────
 
     moveStage: (poId, lineId, fromStage, toStage, qty) => {
-      // Validate legal transition
-      const legal = LEGAL_TRANSITIONS[fromStage] as POStage[]
-      if (!legal.includes(toStage)) {
-        return `Cannot move from ${fromStage} to ${toStage}`
-      }
       if (qty < 1) return 'Quantity must be at least 1'
 
-      const STAGE_FIELD: Record<'ORDERED' | POStage, keyof MockPOLineItem | null> = {
-        ORDERED:       null,
-        PENDING_CO:    'qtyPendingCo',
-        PENDING_DIST:  'qtyPendingDist',
-        AT_GODOWN:     'qtyAtGodown',
-        IN_BOX:        'qtyInBox',
-        DISPATCHED:    'qtyDispatched',
-        NOT_DISPLAYED: 'qtyNotDisplayed',
+      const STAGE_FIELD: Record<'NEEDS_PO' | POStage, keyof MockPOLineItem | null> = {
+        NEEDS_PO:  null,
+        ORDERED:   'qtyPendingCo',
+        AT_GODOWN: 'qtyAtGodown',
+        IN_BOX:    'qtyInBox',
+        DISPATCHED: 'qtyDispatched',
       }
 
       let error: string | null = null
@@ -457,10 +451,9 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
 
         // Compute available qty at fromStage
         let available: number
-        if (fromStage === 'ORDERED') {
-          const staged = line.qtyPendingCo + line.qtyPendingDist + line.qtyAtGodown +
-                         line.qtyInBox + line.qtyDispatched + line.qtyNotDisplayed
-          available = line.qtyOrdered - staged
+        if (fromStage === 'NEEDS_PO') {
+          const staged = line.qtyPendingCo + line.qtyAtGodown + line.qtyInBox + line.qtyDispatched
+          available = Math.max(0, line.qtyOrdered - staged)
         } else {
           const f = STAGE_FIELD[fromStage] as keyof MockPOLineItem
           available = line[f] as number
@@ -472,7 +465,7 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
         }
 
         // Apply movement
-        if (fromStage !== 'ORDERED') {
+        if (fromStage !== 'NEEDS_PO') {
           const f = STAGE_FIELD[fromStage] as keyof MockPOLineItem
           ;(line[f] as number) -= qty
         }
@@ -489,6 +482,6 @@ export const useProcurementStore = create<ProcurementState & ProcurementActions>
 
 // ─── Selectors ──────────────────────────────────────────────────────────────
 
-export const useDraftLines     = () => useProcurementStore((s) => s.draftPO.lines)
-export const useDraftLineCount = () => useProcurementStore((s) => s.draftPO.lines.length)
-export const useSidebarOpen    = () => useProcurementStore((s) => s.sidebarOpen)
+export const useDraftLines       = () => useProcurementStore((s) => s.draftPO.lines)
+export const useDraftLineCount   = () => useProcurementStore((s) => s.draftPO.lines.length)
+export const useSidebarOpen      = () => useProcurementStore((s) => s.sidebarOpen)

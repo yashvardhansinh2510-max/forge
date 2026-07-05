@@ -11,20 +11,26 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  X, GripVertical, Plus, Send, Check, ChevronRight, Search, Trash2, Lock, Printer,
+  X, GripVertical, Plus, Send, Check, ChevronRight, Search, Trash2, Lock, Printer, Sparkles, SlidersHorizontal,
 } from 'lucide-react'
+import {
+  FILTER_TAG_LABELS, BRAND_FILTER_COLORS, HANSGROHE_CATEGORIES,
+  type FilterTag,
+} from '@/lib/constants/product-categories'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { StatusBadge } from '../shared/status-badge'
 import { DocumentTotals } from '../shared/document-totals'
 import { QuotationHistoryModal } from './QuotationHistoryModal'
+import { CustomLineItemModal } from './CustomLineItemModal'
 import useSWR from 'swr'
 import {
   calcDocumentTotals, type Quotation, type LineItem, type QuotationStatus,
 } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/format'
 import { generateQuotationPrintHTML } from '@/lib/quotation-print'
+import type { ProductApiItem } from '@/lib/pos-catalog'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -121,22 +127,58 @@ function InlineNumberInput({
   )
 }
 
-type LiveProduct = { id: string; sku: string; name: string; brand: string; mrp: number; unit: string }
+type LiveProduct = {
+  id: string
+  sku: string
+  name: string
+  brand: string
+  mrp: number
+  unit: string
+  imageUrl?: string
+  articleNumber?: string
+  seriesName?: string
+  finishName?: string
+  subcategory?: string
+  filterTags: string[]
+  sortOrder?: number
+}
 
 function ProductSearchCell({
-  item, onUpdate, products,
+  item, onUpdate, products, brandFilter, activeFilterTags,
 }: {
   item: LineItem
   onUpdate: (updates: Partial<LineItem>) => void
   products: LiveProduct[]
+  brandFilter: string | null
+  activeFilterTags: Set<string>
 }) {
   const [editing, setEditing] = React.useState(false)
   const [search, setSearch] = React.useState('')
   const containerRef = React.useRef<HTMLDivElement>(null)
 
-  const filtered = products.filter(p =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
-  ).slice(0, 6)
+  const preFiltered = React.useMemo(() => {
+    let list = products
+    if (brandFilter) list = list.filter(p => p.brand === brandFilter)
+    if (activeFilterTags.size > 0)
+      list = list.filter(p => [...activeFilterTags].every(t => p.filterTags.includes(t)))
+    return list
+  }, [products, brandFilter, activeFilterTags])
+
+  const filtered = React.useMemo(() => {
+    if (!search) return preFiltered.slice(0, 20)
+    const q = search.toLowerCase()
+    return preFiltered
+      .filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        (p.articleNumber ?? '').toLowerCase().includes(q) ||
+        (p.seriesName ?? '').toLowerCase().includes(q)
+      )
+      .slice(0, 20)
+  }, [preFiltered, search])
+
+  const totalCount   = preFiltered.length
+  const showingCount = filtered.length
 
   if (!editing) {
     return (
@@ -184,39 +226,94 @@ function ProductSearchCell({
         position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
         background: 'white', border: '1px solid var(--border-default)',
         borderRadius: 8, boxShadow: 'var(--shadow-lg)', marginTop: 4, overflow: 'hidden',
+        maxHeight: 340, display: 'flex', flexDirection: 'column',
       }}>
-        {filtered.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onMouseDown={() => {
-              onUpdate({ productId: p.id, productName: p.name, sku: p.sku, unit: p.unit, unitPrice: p.mrp })
-              setEditing(false)
-              setSearch('')
-            }}
-            style={{
-              display: 'block', width: '100%', textAlign: 'left',
-              padding: '8px 12px', fontSize: 12, background: 'white', border: 'none',
-              borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-tint)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'white' }}
-          >
-            <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 1 }}>{p.name}</div>
-            <div style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{p.sku} · {p.brand} · {formatINR(p.mrp)}</div>
-          </button>
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ padding: 12, fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>No products found</div>
+        {totalCount > 0 && (
+          <div style={{
+            padding: '5px 12px', fontSize: 10, color: 'var(--text-tertiary)',
+            borderBottom: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.02)',
+            fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums',
+          }}>
+            Showing {showingCount} of {totalCount} products
+          </div>
         )}
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {filtered.map((p) => {
+            const brandColor = BRAND_FILTER_COLORS[p.brand] ?? '#00529A'
+            const brandAbbr  = p.brand === 'AXOR' ? 'AX' : p.brand === 'GROHE' ? 'GR' : p.brand === 'VITRA' ? 'VT' : 'HG'
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onMouseDown={() => {
+                  onUpdate({
+                    productId:   p.id,
+                    productName: p.name,
+                    sku:         p.sku,
+                    unit:        p.unit,
+                    unitPrice:   p.mrp,
+                    imageUrl:    p.imageUrl,
+                    description: p.seriesName
+                      ? `${p.seriesName}${p.finishName ? ' · ' + p.finishName : ''}`
+                      : (p.subcategory ?? undefined),
+                  })
+                  setEditing(false)
+                  setSearch('')
+                }}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  width: '100%', textAlign: 'left',
+                  padding: '8px 12px', fontSize: 12, background: 'white', border: 'none',
+                  borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-tint)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'white' }}
+              >
+                {p.imageUrl ? (
+                  <img src={p.imageUrl} alt={p.name} style={{
+                    width: 32, height: 32, objectFit: 'contain',
+                    borderRadius: 4, border: '1px solid var(--border)',
+                    background: '#fafafa', flexShrink: 0,
+                  }} />
+                ) : (
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 4,
+                    background: `${brandColor}22`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 9, fontWeight: 700,
+                    color: brandColor,
+                    flexShrink: 0,
+                  }}>
+                    {brandAbbr}
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                  {p.subcategory && (
+                    <div style={{ color: 'var(--text-tertiary)', fontSize: 10, marginBottom: 1, fontStyle: 'italic' }}>{p.subcategory}</div>
+                  )}
+                  <div style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>
+                    {p.articleNumber ?? p.sku}
+                    {p.seriesName && ` · ${p.seriesName}`}
+                    {p.finishName && ` · ${p.finishName}`}
+                  </div>
+                  <div style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>{p.brand} · {formatINR(p.mrp)}</div>
+                </div>
+              </button>
+            )
+          })}
+          {filtered.length === 0 && (
+            <div style={{ padding: 12, fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>No products found</div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
 function SortableRow({
-  item, onUpdate, onDelete, isLast, products,
-}: { item: LineItem; onUpdate: (updates: Partial<LineItem>) => void; onDelete: () => void; isLast: boolean; products: LiveProduct[] }) {
+  item, onUpdate, onDelete, isLast, products, brandFilter, activeFilterTags,
+}: { item: LineItem; onUpdate: (updates: Partial<LineItem>) => void; onDelete: () => void; isLast: boolean; products: LiveProduct[]; brandFilter: string | null; activeFilterTags: Set<string> }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const [hovered, setHovered] = React.useState(false)
 
@@ -242,7 +339,7 @@ function SortableRow({
       {...attributes}
     >
       {/* Drag handle */}
-      <td style={{ width: 24, padding: '8px 4px 8px 12px', verticalAlign: 'top' }}>
+      <td style={{ width: 24, padding: '8px 4px 8px 4px', verticalAlign: 'top' }}>
         <div
           {...listeners}
           style={{ cursor: 'grab', color: hovered ? 'var(--text-tertiary)' : 'transparent', paddingTop: 2, transition: 'color 100ms' }}
@@ -250,9 +347,53 @@ function SortableRow({
           <GripVertical size={14} />
         </div>
       </td>
-      {/* Product */}
-      <td style={{ padding: '8px 8px', verticalAlign: 'top', minWidth: 200 }}>
-        <ProductSearchCell item={item} onUpdate={onUpdate} products={products} />
+      {/* Product + Image */}
+      <td style={{ padding: '10px 10px', verticalAlign: 'middle', minWidth: 260 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.productName}
+              style={{ width: 52, height: 52, objectFit: 'contain',
+                border: '1px solid var(--border-default)', borderRadius: 6,
+                background: '#fafafa', flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{ width: 52, height: 52, borderRadius: 6,
+              border: '1px solid var(--border-default)',
+              background: item.isCustom ? '#F9FAFB' : 'var(--surface)', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
+            }}>
+              {item.isCustom ? (item.brand ? item.brand.slice(0, 3) : 'CST') : 'IMG'}
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {item.isCustom ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {item.productName}
+                  </span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+                    color: '#6B7280', background: '#F3F4F6',
+                    border: '1px solid #E5E7EB', borderRadius: 3,
+                    padding: '1px 5px', flexShrink: 0,
+                  }}>
+                    CUSTOM
+                  </span>
+                </div>
+                {/* Compute subtitle from canonical fields — brand and hsnCode — not from item.description */}
+                {(item.brand || item.hsnCode) && (
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                    {[item.brand, item.hsnCode ? `HSN: ${item.hsnCode}` : null].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <ProductSearchCell item={item} onUpdate={onUpdate} products={products} brandFilter={brandFilter} activeFilterTags={activeFilterTags} />
+            )}
+          </div>
+        </div>
       </td>
       {/* Qty */}
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
@@ -266,23 +407,23 @@ function SortableRow({
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
         <InlineNumberInput value={item.discount} onChange={(v) => onUpdate({ discount: Math.min(100, v) })} />
       </td>
-      {/* Section */}
-      <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 86 }}>
-        <input
-          value={item.section ?? ''}
-          onChange={(e) => onUpdate({ section: e.target.value.trim() || undefined })}
-          placeholder="Room…"
-          style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--border-default)', borderRadius: 4, outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)' }}
-        />
-      </td>
-      {/* Image URL */}
-      <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 80 }}>
-        <input
-          value={item.imageUrl ?? ''}
-          onChange={(e) => onUpdate({ imageUrl: e.target.value.trim() || undefined })}
-          placeholder="https://…"
-          style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--border-default)', borderRadius: 4, outline: 'none', boxSizing: 'border-box', color: 'var(--text-primary)' }}
-        />
+      {/* Room */}
+      <td style={{ padding: '10px 6px', verticalAlign: 'middle', width: 110 }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-tertiary)',
+            textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+            Room
+          </div>
+          <input
+            value={item.section ?? ''}
+            onChange={(e) => onUpdate({ section: e.target.value || undefined })}
+            placeholder="e.g. BATHROOM 1,2"
+            style={{ width: '100%', fontSize: 11, padding: '4px 6px',
+              border: '1px solid var(--border-default)', borderRadius: 4,
+              outline: 'none', boxSizing: 'border-box',
+              color: 'var(--text-primary)', background: 'var(--background)' }}
+          />
+        </div>
       </td>
       {/* GST */}
       <td style={{ padding: '8px 4px', verticalAlign: 'top', width: 60 }}>
@@ -325,6 +466,127 @@ function SortableRow({
   )
 }
 
+const BRAND_FILTER_BRANDS = ['HANSGROHE', 'AXOR'] as const
+
+function ProductFilterBar({
+  products, brandFilter, activeFilterTags, onBrandChange, onTagToggle, onClear,
+}: {
+  products: LiveProduct[]
+  brandFilter: string | null
+  activeFilterTags: Set<string>
+  onBrandChange: (brand: string | null) => void
+  onTagToggle: (tag: string) => void
+  onClear: () => void
+}) {
+  const brandCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const p of products) counts[p.brand] = (counts[p.brand] ?? 0) + 1
+    return counts
+  }, [products])
+
+  const showFilterTags = brandFilter === 'HANSGROHE' || brandFilter === 'AXOR'
+  const accentColor    = brandFilter ? (BRAND_FILTER_COLORS[brandFilter] ?? '#374151') : '#374151'
+
+  const tagEntries = Object.values(HANSGROHE_CATEGORIES) as Array<{ label: string; tag: FilterTag }>
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.015)', flexShrink: 0 }}>
+      {/* Brand selector row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px 6px' }}>
+        <SlidersHorizontal size={12} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+        <button
+          onClick={() => onBrandChange(null)}
+          style={{
+            height: 26, padding: '0 10px', borderRadius: 13, fontSize: 11, fontWeight: 500, cursor: 'pointer', border: 'none',
+            background: !brandFilter ? '#111827' : 'transparent',
+            color: !brandFilter ? 'white' : 'var(--text-secondary)',
+            transition: 'all 150ms',
+          }}
+        >
+          All brands
+        </button>
+        {BRAND_FILTER_BRANDS.map(brand => {
+          const active = brandFilter === brand
+          const color  = BRAND_FILTER_COLORS[brand]
+          const count  = brandCounts[brand] ?? 0
+          return (
+            <motion.button
+              key={brand}
+              onClick={() => onBrandChange(active ? null : brand)}
+              whileTap={{ scale: 0.95 }}
+              style={{
+                height: 26, padding: '0 10px', borderRadius: 13, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                border: `1.5px solid ${active ? color : '#e5e7eb'}`,
+                background: active ? color : 'white',
+                color: active ? 'white' : '#374151',
+                display: 'flex', alignItems: 'center', gap: 4,
+                transition: 'background 150ms, border-color 150ms, color 150ms',
+              }}
+            >
+              {brand}
+              <span style={{ fontSize: 10, opacity: 0.75, fontFamily: 'var(--font-ui)', fontVariantNumeric: 'tabular-nums' }}>
+                {count}
+              </span>
+            </motion.button>
+          )
+        })}
+      </div>
+
+      {/* Filter tag pills row — only for HG/AXOR */}
+      <AnimatePresence>
+        {showFilterTags && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0, padding: '0 16px 8px', overflowX: 'auto' }}>
+              <div style={{ display: 'flex', gap: 5, minWidth: 'max-content' }}>
+                {tagEntries.map(({ label, tag }) => {
+                  const active = activeFilterTags.has(tag)
+                  return (
+                    <motion.button
+                      key={tag}
+                      onClick={() => onTagToggle(tag)}
+                      whileTap={{ scale: 0.93 }}
+                      animate={{ scale: active ? 1.03 : 1 }}
+                      transition={{ duration: 0.12 }}
+                      style={{
+                        height: 24, padding: '0 9px', borderRadius: 12, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                        border: `1.5px solid ${active ? accentColor : '#e5e7eb'}`,
+                        background: active ? accentColor : 'white',
+                        color: active ? 'white' : '#374151',
+                        whiteSpace: 'nowrap',
+                        transition: 'background 120ms, border-color 120ms, color 120ms',
+                      }}
+                    >
+                      {label}
+                    </motion.button>
+                  )
+                })}
+              </div>
+              {activeFilterTags.size > 0 && (
+                <button
+                  onClick={onClear}
+                  style={{
+                    marginLeft: 8, fontSize: 10, color: 'var(--text-tertiary)', background: 'none',
+                    border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 interface QuotationBuilderProps {
   quotation: Quotation | null
   onClose: () => void
@@ -340,16 +602,39 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
   const [showHistoryModal, setShowHistoryModal] = React.useState(false)
   const [customerName, setCustomerName] = React.useState('')
   const [customerPhone, setCustomerPhone] = React.useState('')
+  const [brandLabel, setBrandLabel] = React.useState('GROHE')
   const [siteAddress, setSiteAddress] = React.useState('')
   const [projectName, setProjectName] = React.useState('')
   const [notes, setNotes] = React.useState('')
   const [revisionStatus, setRevisionStatus] = React.useState<'DRAFT' | 'LOCKED'>('DRAFT')
   const [revisionId, setRevisionId] = React.useState<string | null>(null)
   const [creating, setCreating] = React.useState(false)
+  const [showCustomModal, setShowCustomModal] = React.useState(false)
+  const [brandFilter, setBrandFilter] = React.useState<string | null>(null)
+  const [activeFilterTags, setActiveFilterTags] = React.useState<Set<string>>(new Set())
 
-  const { data: liveProducts = [] } = useSWR<LiveProduct[]>(
-    '/api/products',
+  const { data: productsResponse } = useSWR<{ products: ProductApiItem[] }>(
+    '/api/products?limit=2000',
     (url: string) => fetch(url).then(r => r.json()),
+    { revalidateOnFocus: false },
+  )
+  const liveProducts = React.useMemo<LiveProduct[]>(
+    () => (productsResponse?.products ?? []).map(p => ({
+      id:            p.id,
+      sku:           p.sku,
+      name:          p.name,
+      brand:         p.brand,
+      mrp:           p.mrp,
+      unit:          p.unit,
+      imageUrl:      p.imageUrl      ?? undefined,
+      articleNumber: p.articleNumber ?? p.sku,
+      seriesName:    p.seriesName    ?? undefined,
+      finishName:    p.finishName    ?? undefined,
+      subcategory:   p.subcategory   ?? undefined,
+      filterTags:    p.filterTags    ?? [],
+      sortOrder:     p.sortOrder     ?? undefined,
+    })),
+    [productsResponse],
   )
 
   React.useEffect(() => {
@@ -382,6 +667,7 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
     setLineItems(prev => [...prev, {
       id: newId, productId: '', productName: '', sku: '', description: '',
       unit: 'pcs', qty: 1, unitPrice: 0, discount: 0, gstRate: 18,
+      imageUrl: undefined,
     }])
   }
 
@@ -393,19 +679,46 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
     setLineItems(prev => prev.filter(i => i.id !== id))
   }
 
+  async function createQuotationFollowUp() {
+    if (!quotation) return
+    const followUpDate = new Date()
+    followUpDate.setDate(followUpDate.getDate() + 3)
+    try {
+      await fetch('/api/follow-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'QUOTATION_FOLLOWUP',
+          customerName: customerName.trim() || quotation.customerName,
+          customerPhone: customerPhone.trim() || quotation.customerPhone || '',
+          quotationId: quotation.id,
+          quotationNumber: quotation.number,
+          status: 'PENDING',
+          nextFollowUpDate: followUpDate.toISOString(),
+          notes: `Follow up on Quotation ${quotation.number}`,
+        }),
+      })
+    } catch {
+      // Fire-and-forget — follow-up failure must not block the primary action
+    }
+  }
+
   function handleSend() {
     setStatus('sent')
     toast.success(`Quotation ${quotation?.number} sent to ${quotation?.customerName}`)
+    void createQuotationFollowUp()
   }
 
   function handlePrint() {
     if (!quotation) return
+    void createQuotationFollowUp()
     const html = generateQuotationPrintHTML({
       number: quotation.number,
       customerName,
       customerPhone: customerPhone || undefined,
       createdBy: quotation.createdBy,
       createdAt: quotation.createdAt,
+      brandLabel: brandLabel || 'GROHE',
       lineItems,
     })
     const win = window.open('', '_blank')
@@ -431,15 +744,36 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
         projectName: projectName.trim() || undefined,
         notes: notes.trim() || undefined,
         lineItems: lineItems
-          .filter(li => li.sku)
-          .map(li => ({
-            sku: li.sku,
-            productName: li.productName,
-            qty: li.qty,
-            unitPrice: li.unitPrice,
-            discount: li.discount,
-            gstRate: li.gstRate,
-          })),
+          .filter(li => li.sku || li.isCustom)
+          .map(li => {
+            if (li.isCustom) {
+              return {
+                isCustom: true as const,
+                customDescription: li.productName,
+                customBrand:       li.brand,
+                customUnit:        li.unit,
+                customHsnCode:     li.hsnCode,
+                customNotes:       li.notes,
+                qty:               li.qty,
+                unitPrice:         li.unitPrice,
+                discount:          li.discount,
+                gstRate:           li.gstRate,
+                section:           li.section,
+              }
+            }
+            return {
+              sku:         li.sku,
+              productName: li.productName,
+              qty:         li.qty,
+              unitPrice:   li.unitPrice,
+              discount:    li.discount,
+              gstRate:     li.gstRate,
+              section:     li.section,
+              imageUrl:    li.imageUrl,
+              finishName:  li.description?.includes('·') ? li.description.split('·')[1]?.trim() : undefined,
+              seriesName:  li.description?.includes('·') ? li.description.split('·')[0]?.trim() : li.description,
+            }
+          }),
       }
 
       let savedRevisionId = revisionId
@@ -647,6 +981,18 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                         onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)'; (e.target as HTMLInputElement).style.boxShadow = 'none' }}
                       />
                     </div>
+                    {/* Brand Label */}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Brand Label</label>
+                      <input
+                        value={brandLabel}
+                        onChange={(e) => setBrandLabel(e.target.value)}
+                        placeholder="e.g. GROHE"
+                        style={{ width: '100%', fontSize: 13, padding: '5px 8px', border: '1.5px solid var(--border-default)', borderRadius: 6, outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(0,113,227,0.5)'; (e.target as HTMLInputElement).style.boxShadow = '0 0 0 3px rgba(0,113,227,0.12)' }}
+                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)'; (e.target as HTMLInputElement).style.boxShadow = 'none' }}
+                      />
+                    </div>
                     {/* Editable: Site Address */}
                     <div style={{ marginBottom: 14 }}>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Site / Project Address</label>
@@ -697,6 +1043,21 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
 
                   {/* Right panel — line items */}
                   <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+
+                    {/* Brand + category filter bar */}
+                    <ProductFilterBar
+                      products={liveProducts}
+                      brandFilter={brandFilter}
+                      activeFilterTags={activeFilterTags}
+                      onBrandChange={(b) => { setBrandFilter(b); setActiveFilterTags(new Set()) }}
+                      onTagToggle={(tag) => setActiveFilterTags(prev => {
+                        const next = new Set(prev)
+                        next.has(tag) ? next.delete(tag) : next.add(tag)
+                        return next
+                      })}
+                      onClear={() => setActiveFilterTags(new Set())}
+                    />
+
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
@@ -704,10 +1065,9 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                             <th style={{ width: 24 }} />
                             <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Product</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>Qty</th>
-                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 100 }}>Price</th>
+                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 100 }}>MRP</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>Disc%</th>
-                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 86 }}>Section</th>
-                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 80 }}>Image URL</th>
+                            <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 110 }}>Room</th>
                             <th style={{ padding: '8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 60 }}>GST</th>
                             <th style={{ padding: '8px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right', width: 100 }}>Total</th>
                             <th style={{ width: 32 }} />
@@ -723,6 +1083,8 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                                 onDelete={() => deleteLineItem(item.id)}
                                 isLast={idx === lineItems.length - 1}
                                 products={liveProducts}
+                                brandFilter={brandFilter}
+                                activeFilterTags={activeFilterTags}
                               />
                             ))}
                           </tbody>
@@ -730,21 +1092,37 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
                       </table>
                     </DndContext>
 
-                    {/* Add line item */}
-                    <button
-                      onClick={addLineItem}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        height: 40, margin: '8px 16px', borderRadius: 8,
-                        border: '1.5px dashed var(--border-default)', background: 'transparent',
-                        fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer',
-                        transition: 'all 100ms',
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLElement).style.color = 'var(--accent)' }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-default)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-tertiary)' }}
-                    >
-                      <Plus size={14} /> Add line item
-                    </button>
+                    {/* Add line item / Add Custom Item */}
+                    <div style={{ display: 'flex', gap: 8, margin: '8px 16px' }}>
+                      <button
+                        onClick={addLineItem}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          height: 40, borderRadius: 8,
+                          border: '1.5px dashed var(--border-default)', background: 'transparent',
+                          fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer',
+                          transition: 'all 100ms',
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLElement).style.color = 'var(--accent)' }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-default)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-tertiary)' }}
+                      >
+                        <Plus size={14} /> Add line item
+                      </button>
+                      <button
+                        onClick={() => setShowCustomModal(true)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          height: 40, padding: '0 14px', borderRadius: 8,
+                          border: '1.5px dashed #D1D5DB', background: 'transparent',
+                          fontSize: 13, color: '#6B7280', cursor: 'pointer',
+                          transition: 'all 100ms', whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#6B7280'; (e.currentTarget as HTMLElement).style.color = '#111827' }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#D1D5DB'; (e.currentTarget as HTMLElement).style.color = '#6B7280' }}
+                      >
+                        <Sparkles size={13} /> + Add Custom Item
+                      </button>
+                    </div>
 
                     {/* Totals */}
                     <div style={{ marginTop: 'auto', padding: '16px 24px 24px', borderTop: '1px solid var(--border-subtle)' }}>
@@ -831,6 +1209,13 @@ export function QuotationBuilder({ quotation, onClose, onSave, onConvertToOrder 
         isOpen={showHistoryModal}
         onClose={() => setShowHistoryModal(false)}
         quotation={quotation}
+      />
+
+      {/* Custom Line Item Modal */}
+      <CustomLineItemModal
+        open={showCustomModal}
+        onClose={() => setShowCustomModal(false)}
+        onAdd={(item) => setLineItems(prev => [...prev, item])}
       />
     </DialogPrimitive.Root>
   )

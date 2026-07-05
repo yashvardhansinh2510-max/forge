@@ -5,12 +5,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  createWalkInFollowUp,
-  ALL_BRANDS,
-  type CustomerType,
-  type FollowUpStatus,
-} from '@/lib/mock/followup-data'
+import { ALL_BRANDS, type CustomerType } from '@/lib/follow-up-types'
 
 const STAFF = ['Suresh Iyer', 'Ramesh Pawar']
 
@@ -106,22 +101,6 @@ export function AddFollowUpModal({ open, onClose, onCreate }: AddFollowUpModalPr
           nextFollowUpDate: nextDate,
           notes: notes.trim(),
           status: 'PENDING',
-        })
-      } else {
-        createWalkInFollowUp({
-          type: 'walk_in',
-          customerName: name.trim(),
-          customerPhone,
-          customerType,
-          brandsInterested: brands,
-          productsNoted: productsNoted.trim(),
-          estimatedBudget: budget ? parseInt(budget.replace(/,/g, ''), 10) : undefined,
-          projectName: project.trim() || undefined,
-          status: 'pending' as FollowUpStatus,
-          nextFollowUpDate: new Date(nextDate),
-          notes: notes.trim(),
-          responses: [],
-          assignedTo,
         })
       }
       toast.success(`Follow-up added for ${name.trim()}`)

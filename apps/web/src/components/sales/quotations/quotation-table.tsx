@@ -11,7 +11,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import { Badge } from '@/components/shared/badge'
 import { calcDocumentTotals, type Quotation } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
-import { getFollowUpByQuotationNumber, FOLLOWUP_STATUS_CONFIG } from '@/lib/mock/followup-data'
+import { FOLLOWUP_STATUS_CONFIG } from '@/lib/follow-up-types'
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -127,29 +127,9 @@ export function QuotationTable({ data, globalFilter, onRowClick }: QuotationTabl
       header: 'Follow-up',
       size: 120,
       enableSorting: false,
-      cell: ({ row }) => {
-        const fu = getFollowUpByQuotationNumber(row.original.number)
-        if (!fu) {
-          return (
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-              —
-            </span>
-          )
-        }
-        const cfg = FOLLOWUP_STATUS_CONFIG[fu.status]
-        return (
-          <span
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '2px 7px', borderRadius: 6,
-              background: cfg.bg, fontSize: 11, fontWeight: 600, color: cfg.text,
-            }}
-          >
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.text, flexShrink: 0 }} />
-            {cfg.label}
-          </span>
-        )
-      },
+      cell: () => (
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>—</span>
+      ),
     },
     {
       accessorKey: 'validUntil',

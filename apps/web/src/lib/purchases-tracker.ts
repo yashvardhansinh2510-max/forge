@@ -1,72 +1,64 @@
 export const STAGE_ORDER = [
-  'UNALLOCATED',
-  'PENDING_CO',
-  'PENDING_DIST',
-  'GODOWN',
-  'IN_BOX',
+  'ORDER_IN_CO',
+  'CO_BILLING',
+  'INBOX',
   'DISPATCHED',
-  'NOT_DISPLAYED',
+  'COMPLETED',
 ] as const
 
 export type PurchaseStage = typeof STAGE_ORDER[number]
 
 export interface HeaderCounts {
-  UNALLOCATED: number
-  PENDING_CO: number
-  PENDING_DIST: number
-  GODOWN: number
-  IN_BOX: number
-  DISPATCHED: number
-  NOT_DISPLAYED: number
+  ORDER_IN_CO: number
+  CO_BILLING:  number
+  INBOX:       number
+  DISPATCHED:  number
+  COMPLETED:   number
 }
 
 export const STAGE_LABEL: Record<PurchaseStage, string> = {
-  UNALLOCATED: 'Unallocated',
-  PENDING_CO: 'Pend. Company',
-  PENDING_DIST: 'Pend. Distributor',
-  GODOWN: 'At Godown',
-  IN_BOX: 'In Box',
-  DISPATCHED: 'Dispatched',
-  NOT_DISPLAYED: 'Not Displayed',
+  ORDER_IN_CO: 'Order In Co.',
+  CO_BILLING:  'Co. Billing',
+  INBOX:       'Inbox',
+  DISPATCHED:  'Dispatched',
+  COMPLETED:   'Completed',
 }
 
 export const STAGE_SHORT_LABEL: Record<PurchaseStage, string> = {
-  UNALLOCATED: 'UNALLOCATED',
-  PENDING_CO: 'PEND.CO',
-  PENDING_DIST: 'PEND.DIST',
-  GODOWN: 'GODOWN',
-  IN_BOX: 'IN BOX',
-  DISPATCHED: 'DISPATCHED',
-  NOT_DISPLAYED: 'NOT DISPLAYED',
+  ORDER_IN_CO: 'ORDER IN CO',
+  CO_BILLING:  'CO. BILLING',
+  INBOX:       'INBOX',
+  DISPATCHED:  'DISPATCHED',
+  COMPLETED:   'COMPLETED',
 }
 
 export const STAGE_COLORS: Record<PurchaseStage, string> = {
-  UNALLOCATED: '#3B82F6',
-  PENDING_CO: '#F59E0B',
-  PENDING_DIST: '#F97316',
-  GODOWN: '#8B5CF6',
-  IN_BOX: '#06B6D4',
-  DISPATCHED: '#10B981',
-  NOT_DISPLAYED: '#6B7280',
+  ORDER_IN_CO: '#3B82F6',
+  CO_BILLING:  '#F59E0B',
+  INBOX:       '#8B5CF6',
+  DISPATCHED:  '#06B6D4',
+  COMPLETED:   '#10B981',
 }
 
-export const BRAND_TABS = ['ALL', 'GROHE', 'HANSGROHE', 'VITRA', 'GEBERIT'] as const
+export const BRAND_TABS = ['ALL', 'GROHE', 'HANSGROHE', 'VITRA', 'KAJARIA', 'GEBERIT'] as const
 
 export type BrandTab = typeof BRAND_TABS[number]
 export type BrandTabFilter = Exclude<BrandTab, 'ALL'>
 
 export const BRAND_GROUPS: Record<BrandTabFilter, string[]> = {
-  GROHE: ['GROHE'],
+  GROHE:     ['GROHE'],
   HANSGROHE: ['HANSGROHE', 'AXOR'],
-  VITRA: ['VITRA'],
-  GEBERIT: ['GEBERIT'],
+  VITRA:     ['VITRA'],
+  KAJARIA:   ['KAJARIA'],
+  GEBERIT:   ['GEBERIT'],
 }
 
 export const BRAND_ACCENTS: Record<BrandTabFilter, string> = {
-  GROHE: '#00A3E0',
+  GROHE:     '#00A3E0',
   HANSGROHE: '#E30613',
-  VITRA: '#005BAC',
-  GEBERIT: '#003087',
+  VITRA:     '#005BAC',
+  KAJARIA:   '#C84B1F',
+  GEBERIT:   '#003087',
 }
 
 export interface PurchaseTrackerLine {
@@ -91,6 +83,12 @@ export interface PurchaseTrackerLine {
   qtyReceived: number
   stages: HeaderCounts
   followUpStatus?: string | null
+  createdAt?: string | null
+  landingCost?: number | null
+  priority?: string | null
+  assignedTo?: { id: string; name: string } | null
+  stageEnteredAt?: string | null
+  allocationStatus?: string | null
 }
 
 export interface PurchaseLinesResponse {
@@ -106,23 +104,22 @@ export interface CustomerOption {
 
 export function createEmptyHeaderCounts(): HeaderCounts {
   return {
-    UNALLOCATED: 0,
-    PENDING_CO: 0,
-    PENDING_DIST: 0,
-    GODOWN: 0,
-    IN_BOX: 0,
-    DISPATCHED: 0,
-    NOT_DISPLAYED: 0,
+    ORDER_IN_CO: 0,
+    CO_BILLING:  0,
+    INBOX:       0,
+    DISPATCHED:  0,
+    COMPLETED:   0,
   }
 }
 
 export function createEmptyBrandCounts(): Record<BrandTab, number> {
   return {
-    ALL: 0,
-    GROHE: 0,
+    ALL:       0,
+    GROHE:     0,
     HANSGROHE: 0,
-    VITRA: 0,
-    GEBERIT: 0,
+    VITRA:     0,
+    KAJARIA:   0,
+    GEBERIT:   0,
   }
 }
 
@@ -136,6 +133,7 @@ export function getBrandTabForBrand(brand: string): BrandTabFilter | null {
   if (brand === 'AXOR' || brand === 'HANSGROHE') return 'HANSGROHE'
   if (brand === 'GROHE') return 'GROHE'
   if (brand === 'VITRA') return 'VITRA'
+  if (brand === 'KAJARIA') return 'KAJARIA'
   if (brand === 'GEBERIT') return 'GEBERIT'
   return null
 }
@@ -154,43 +152,41 @@ export function matchesBrandTab(brand: string, tab: BrandTab): boolean {
   return brands === null ? true : brands.includes(brand)
 }
 
+// Maps DB qty columns (POLineItem) to the 5 tracker stages.
+// qtyPendingCo  → CO_BILLING
+// qtyAtGodown   → INBOX
+// qtyInBox      → DISPATCHED
+// qtyDispatched → COMPLETED
+// ORDER_IN_CO is derived: qtyOrdered minus all staged qty
 export function countsFromDbLine(line: {
   qtyOrdered: number
   qtyPendingCo: number
-  qtyPendingDist: number
   qtyAtGodown: number
   qtyInBox: number
   qtyDispatched: number
-  qtyNotDisplayed: number
 }): HeaderCounts {
   const staged =
     line.qtyPendingCo +
-    line.qtyPendingDist +
     line.qtyAtGodown +
     line.qtyInBox +
-    line.qtyDispatched +
-    line.qtyNotDisplayed
+    line.qtyDispatched
 
   return {
-    UNALLOCATED: Math.max(0, line.qtyOrdered - staged),
-    PENDING_CO: line.qtyPendingCo,
-    PENDING_DIST: line.qtyPendingDist,
-    GODOWN: line.qtyAtGodown,
-    IN_BOX: line.qtyInBox,
-    DISPATCHED: line.qtyDispatched,
-    NOT_DISPLAYED: line.qtyNotDisplayed,
+    ORDER_IN_CO: Math.max(0, line.qtyOrdered - staged),
+    CO_BILLING:  line.qtyPendingCo,
+    INBOX:       line.qtyAtGodown,
+    DISPATCHED:  line.qtyInBox,
+    COMPLETED:   line.qtyDispatched,
   }
 }
 
 export function addCounts(target: HeaderCounts, source: HeaderCounts): HeaderCounts {
   return {
-    UNALLOCATED: target.UNALLOCATED + source.UNALLOCATED,
-    PENDING_CO: target.PENDING_CO + source.PENDING_CO,
-    PENDING_DIST: target.PENDING_DIST + source.PENDING_DIST,
-    GODOWN: target.GODOWN + source.GODOWN,
-    IN_BOX: target.IN_BOX + source.IN_BOX,
-    DISPATCHED: target.DISPATCHED + source.DISPATCHED,
-    NOT_DISPLAYED: target.NOT_DISPLAYED + source.NOT_DISPLAYED,
+    ORDER_IN_CO: target.ORDER_IN_CO + source.ORDER_IN_CO,
+    CO_BILLING:  target.CO_BILLING  + source.CO_BILLING,
+    INBOX:       target.INBOX       + source.INBOX,
+    DISPATCHED:  target.DISPATCHED  + source.DISPATCHED,
+    COMPLETED:   target.COMPLETED   + source.COMPLETED,
   }
 }
 

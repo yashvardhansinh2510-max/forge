@@ -39,8 +39,10 @@ export async function buildPOFromRevision(
 
   const allItems = revision.rooms
     .flatMap((room) => room.items)
-    .filter((item) =>
-      options.vendorFilter ? item.product.brand === options.vendorFilter : true,
+    // Custom items have no catalog product — exclude from PO (they are one-off line items)
+    .filter((item): item is typeof item & { product: NonNullable<typeof item.product> } =>
+      !item.isCustom && item.product != null &&
+      (options.vendorFilter ? item.product.brand === options.vendorFilter : true)
     )
 
   if (allItems.length === 0) {
@@ -71,7 +73,7 @@ export async function buildPOFromRevision(
         quotationNumber: revision.quotation.number,
         lineItems: {
           create: allItems.map((item) => ({
-            productId: item.productId,
+            productId: item.productId!,  // allItems filter guarantees non-null (catalog items only)
             quotationItemId: item.id,
             qtyOrdered: item.quantity,
             clientOfferRate: item.offerRate,

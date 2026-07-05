@@ -13,8 +13,9 @@ export async function GET() {
     }
   }
 
-  const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, clerkId: true },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const users = await (prisma.user as any).findMany({
+    select: { id: true, name: true, email: true, role: true, clerkId: true, isActive: true },
     orderBy: { name: 'asc' },
   })
 

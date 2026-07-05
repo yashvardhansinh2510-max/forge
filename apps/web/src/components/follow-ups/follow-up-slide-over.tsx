@@ -12,12 +12,11 @@ import {
   FOLLOWUP_STATUS_CONFIG,
   CUSTOMER_TYPE_LABELS,
   RESPONSE_METHOD_LABELS,
-  addFollowUpResponse,
-  updateFollowUpStatus,
   type FollowUp,
   type FollowUpStatus,
   type ResponseMethod,
-} from '@/lib/mock/followup-data'
+} from '@/lib/follow-up-types'
+
 import type { Quotation } from '@/lib/mock/sales-data'
 import { formatINR } from '@/lib/mock/dashboard-data'
 import { Badge } from '@/components/shared/badge'
@@ -157,35 +156,14 @@ export function FollowUpSlideOver({ followUp, onClose, onRefresh, onStatusChange
   }
 
   async function handleStatusChange(status: FollowUpStatus) {
-    if (onStatusChange) {
-      await onStatusChange(f!.id, status)
-    } else {
-      updateFollowUpStatus(f!.id, status)
-      await onRefresh()
-    }
+    if (onStatusChange) await onStatusChange(f!.id, status)
     toast.success(`Status updated to ${FOLLOWUP_STATUS_CONFIG[status].label}`)
   }
 
   async function handleLogResponse() {
-    if (!outcome.trim()) {
-      toast.error('Enter what the customer said')
-      return
-    }
+    if (!outcome.trim()) { toast.error('Enter what the customer said'); return }
     setSubmitting(true)
-    if (onLogResponse) {
-      await onLogResponse(f!.id, outcome.trim(), method, nextAction.trim(), nextDate)
-    } else {
-      const response = {
-        id: `r${Date.now()}`,
-        date: new Date(),
-        method,
-        outcome: outcome.trim(),
-        nextAction: nextAction.trim(),
-        staffMember: 'Suresh Iyer',
-      }
-      addFollowUpResponse(f!.id, response, new Date(nextDate))
-      await onRefresh()
-    }
+    if (onLogResponse) await onLogResponse(f!.id, outcome.trim(), method, nextAction.trim(), nextDate)
     setOutcome('')
     setNextAction('')
     setSubmitting(false)
@@ -193,38 +171,14 @@ export function FollowUpSlideOver({ followUp, onClose, onRefresh, onStatusChange
   }
 
   async function handleMarkWon() {
-    if (onStatusChange) {
-      await onStatusChange(f!.id, 'won')
-    } else {
-      updateFollowUpStatus(f!.id, 'won')
-      // Sync quotation in mock data
-      if (f!.quotationId) {
-        const qIdx = quotations.findIndex((q) => q.id === f!.quotationId)
-        if (qIdx !== -1) {
-          quotations[qIdx] = { ...quotations[qIdx]!, status: 'accepted', acceptedAt: new Date() }
-        }
-      }
-      await onRefresh()
-    }
+    if (onStatusChange) await onStatusChange(f!.id, 'won')
     setConfirmWon(false)
     toast.success('Marked as Won!')
     onClose()
   }
 
   async function handleMarkLost() {
-    if (onStatusChange) {
-      await onStatusChange(f!.id, 'lost')
-    } else {
-      updateFollowUpStatus(f!.id, 'lost')
-      // Sync quotation in mock data
-      if (f!.quotationId) {
-        const qIdx = quotations.findIndex((q) => q.id === f!.quotationId)
-        if (qIdx !== -1) {
-          quotations[qIdx] = { ...quotations[qIdx]!, status: 'declined' }
-        }
-      }
-      await onRefresh()
-    }
+    if (onStatusChange) await onStatusChange(f!.id, 'lost')
     setConfirmLost(false)
     toast.success('Marked as Lost')
     onClose()

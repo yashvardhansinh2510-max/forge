@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@forge/db'
 import { z } from 'zod'
 import { withErrorHandling } from '@/lib/api-helpers'
-import { followUps as mockFollowUps } from '@/lib/mock/followup-data'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -52,7 +51,7 @@ export type FollowUpsListResponse = {
 // ── Validation ─────────────────────────────────────────────────────────────────
 
 const createFollowUpSchema = z.object({
-  type: z.enum(['WALK_IN', 'QUOTATION']).default('WALK_IN'),
+  type: z.enum(['WALK_IN', 'QUOTATION', 'QUOTATION_FOLLOWUP']).default('WALK_IN'),
   customerName: z.string().min(1),
   customerPhone: z.string().min(1),
   customerType: z.enum(['ARCHITECT', 'INTERIOR_DESIGNER', 'BUILDER', 'RETAIL', 'OTHER']).default('RETAIL'),
@@ -83,54 +82,16 @@ export async function GET(_req: NextRequest) {
       },
     })
 
-    // If DB is empty, serve mock data
+    // Empty state — no data yet
     if (all.length === 0) {
-      const now = new Date()
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      const mockActive = mockFollowUps.filter((f) => f.status !== 'won' && f.status !== 'lost')
-      const mockOverdue = mockActive.filter((f) => f.nextFollowUpDate < now)
-      const mockWonMonth = mockFollowUps.filter((f) => f.status === 'won' && f.updatedAt >= startOfMonth)
-      const mockLostMonth = mockFollowUps.filter((f) => f.status === 'lost' && f.updatedAt >= startOfMonth)
-      const mockWonValue = mockWonMonth.reduce((s, f) => s + (f.quotationValue ?? f.estimatedBudget ?? 0), 0)
-
-      const followUps: FollowUpItem[] = mockFollowUps.map((f) => ({
-        id: f.id,
-        type: f.type.toUpperCase(),
-        customerName: f.customerName,
-        customerPhone: f.customerPhone,
-        customerType: f.customerType.toUpperCase(),
-        brandsInterested: f.brandsInterested as string[],
-        productsNoted: f.productsNoted ?? null,
-        estimatedBudget: f.estimatedBudget ?? null,
-        projectName: f.projectName ?? null,
-        quotationId: f.quotationId ?? null,
-        quotationNumber: f.quotationNumber ?? null,
-        quotationValue: f.quotationValue ?? null,
-        status: f.status.toUpperCase(),
-        nextFollowUpDate: f.nextFollowUpDate.toISOString(),
-        lastContactedAt: f.lastContactedAt?.toISOString() ?? null,
-        notes: f.notes ?? null,
-        assignedTo: f.assignedTo ?? null,
-        createdAt: f.createdAt.toISOString(),
-        updatedAt: f.updatedAt.toISOString(),
-        responses: f.responses.map((r) => ({
-          id: r.id,
-          date: r.date.toISOString(),
-          method: r.method.toUpperCase(),
-          outcome: r.outcome,
-          nextAction: r.nextAction ?? null,
-          staffMember: r.staffMember,
-        })),
-      }))
-
       return NextResponse.json({
-        followUps,
+        followUps: [],
         kpis: {
-          active: mockActive.length,
-          overdue: mockOverdue.length,
-          wonThisMonth: mockWonMonth.length,
-          wonValueThisMonth: mockWonValue,
-          lostThisMonth: mockLostMonth.length,
+          active: 0,
+          overdue: 0,
+          wonThisMonth: 0,
+          wonValueThisMonth: 0,
+          lostThisMonth: 0,
         },
       } satisfies FollowUpsListResponse)
     }
@@ -191,6 +152,15 @@ export async function POST(request: NextRequest) {
   return withErrorHandling(async () => {
     const body = await request.json() as unknown
     const data = createFollowUpSchema.parse(body)
+
+    // Dedup: if a follow-up for this quotation already exists, return it
+    if (data.quotationId) {
+      const existing = await prisma.followUp.findFirst({
+        where: { quotationId: data.quotationId },
+        include: { responses: true },
+      })
+      if (existing) return NextResponse.json({ followUp: existing }, { status: 200 })
+    }
 
     const followUp = await prisma.followUp.create({
       data: {
