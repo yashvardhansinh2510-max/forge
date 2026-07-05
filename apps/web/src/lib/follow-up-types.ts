@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type FollowUpType = 'walk_in' | 'quotation'
@@ -101,3 +102,12 @@ export function getEffectiveStatus(f: Pick<FollowUp, 'status' | 'nextFollowUpDat
   if (f.nextFollowUpDate < today && f.status !== 'overdue') return 'overdue'
   return f.status
 }
+=======
+export {
+  getEffectiveStatus,
+  type CustomerType,
+  type FollowUp,
+  type FollowUpStatus,
+  type ResponseMethod,
+} from './mock/followup-data'
+>>>>>>> origin/main

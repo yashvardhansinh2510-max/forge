@@ -1,0 +1,37 @@
+{
+  "systemSetup": [
+    { "name": "Install pnpm", "command": "npm install -g pnpm" }
+  ],
+  "templateName": "custom",
+  "projectDependencies": [
+    { "name": "Install Dependencies", "command": "pnpm install" }
+  ],
+  "codeChecks": [
+    { "name": "Run Lint", "command": "pnpm run lint" },
+    { "name": "Type Check", "command": "pnpm run type-check" }
+  ],
+  "buildSteps": [
+    { "name": "Build Project", "command": "pnpm run build" }
+  ],
+  "runStep": [
+    { "name": "Run Dev Server", "command": "cd /home/user/project/apps/web && pnpm exec next dev --port 3000 --hostname 0.0.0.0", "port": "3000" }
+  ],
+  "deploySteps": [],
+  "cleanupFiles": [
+    "node_modules",
+    "apps/web/node_modules",
+    "apps/web/.next",
+    "apps/web/dist",
+    "clerk-nextjs/node_modules",
+    "clerk-nextjs/.next",
+    "packages/ui/node_modules",
+    "packages/db/node_modules",
+    "frontend/node_modules"
+  ],
+  "packageManager": "pnpm",
+  "envPaths": [
+    { "name": "web", "path": "apps/web/.env" },
+    { "name": "clerk-nextjs", "path": "clerk-nextjs/.env" },
+    { "name": "db", "path": "packages/db/.env" }
+  ]
+}

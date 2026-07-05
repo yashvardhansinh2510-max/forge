@@ -12,6 +12,7 @@ dist/
 *.env.*
 .worktrees/
 .claude/skills/gstack/
+<<<<<<< HEAD
 
 # Large binary/catalog asset dirs (source images — not committed to git)
 apps/web/public/products/
@@ -30,3 +31,7 @@ pos-*.png
 # Build cache
 tsconfig.tsbuildinfo
 apps/web/tsconfig.tsbuildinfo
+=======
+.ideavo/project
+*.log
+>>>>>>> origin/main

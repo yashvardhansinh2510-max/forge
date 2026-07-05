@@ -12,13 +12,7 @@ import { CommandPalette } from './command-palette'
 import { MobileHeader } from './mobile-header'
 import { MobileNav } from './mobile-nav'
 import { NAV_GROUPS, isNavItemActive } from '@/lib/navigation'
-import { DefaultUserProvider } from '@/lib/user-context'
-import { ClerkUserProvider } from '@/lib/clerk-user-provider'
 import Link from 'next/link'
-
-const clerkConfigured =
-  typeof process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY === 'string' &&
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.length > 8
 
 function MobileSidebarDrawer({
   open,
@@ -230,10 +224,5 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 }
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const Provider = clerkConfigured ? ClerkUserProvider : DefaultUserProvider
-  return (
-    <Provider>
-      <ShellContent>{children}</ShellContent>
-    </Provider>
-  )
+  return <ShellContent>{children}</ShellContent>
 }
